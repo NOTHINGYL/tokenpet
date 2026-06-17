@@ -19,6 +19,8 @@ declare global {
     quotapet: {
       getUsageSnapshot: () => Promise<UsageSnapshot>;
       togglePopover: () => void;
+      startDrag: () => Promise<{ started: boolean }>;
+      endDrag: () => Promise<{ moved: boolean }>;
       close: () => void;
     };
   }
@@ -93,22 +95,43 @@ function GoldCat() {
 
 function PetApp() {
   const usage = useUsage();
+  const [dragging, setDragging] = useState(false);
+
+  function close(event: React.SyntheticEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    window.quotapet.close();
+  }
+
+  async function startDrag(event: React.PointerEvent<HTMLElement>) {
+    if (event.button !== 0) return;
+
+    const target = event.target as HTMLElement;
+    if (target.closest("button")) return;
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setDragging(true);
+    await window.quotapet.startDrag();
+  }
+
+  async function endDrag() {
+    if (!dragging) return;
+
+    setDragging(false);
+    await window.quotapet.endDrag();
+  }
 
   return (
-    <main className="pet-stage">
-      <div
-        className="pet-drag-region"
-        aria-label="Drag QuotaPet"
-        onDoubleClick={() => window.quotapet.togglePopover()}
-      >
+    <main
+      className={`pet-stage ${dragging ? "is-dragging" : ""}`}
+      onDoubleClick={() => window.quotapet.togglePopover()}
+      onPointerDown={startDrag}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
+    >
+      <div className="pet-drag-region" aria-label="Drag QuotaPet">
         <GoldCat />
       </div>
-      <button
-        className="pet-summary-hotspot"
-        type="button"
-        aria-label="Open QuotaPet summary"
-        onDoubleClick={() => window.quotapet.togglePopover()}
-      />
       <button
         className="token-pill"
         type="button"
@@ -117,34 +140,16 @@ function PetApp() {
       >
         {compactNumber(usage.todayTokens)}
       </button>
+      <button
+        className="pet-close"
+        type="button"
+        aria-label="Close QuotaPet"
+        onPointerDown={close}
+        onClick={close}
+      >
+        x
+      </button>
     </main>
-  );
-}
-
-function CloseApp() {
-  function close() {
-    window.quotapet.close();
-    window.close();
-  }
-
-  return (
-    <button
-      className="pet-close"
-      type="button"
-      aria-label="Close QuotaPet"
-      onMouseDown={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        close();
-      }}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        close();
-      }}
-    >
-      x
-    </button>
   );
 }
 
@@ -215,10 +220,6 @@ function App() {
 
   if (view === "popover") {
     return <PopoverApp />;
-  }
-
-  if (view === "close") {
-    return <CloseApp />;
   }
 
   return <PetApp />;
