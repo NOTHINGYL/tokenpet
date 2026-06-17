@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, Menu, screen } from "electron";
+import type { Rectangle } from "electron";
 import { execFile } from "node:child_process";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
@@ -78,6 +79,14 @@ type ProviderReport = ProviderSnapshot & {
 };
 
 let usageCache: { expiresAt: number; snapshot: UsageSnapshot } | null = null;
+
+const POPOVER_SIZE = {
+  width: 390,
+  height: 360,
+};
+
+const POPOVER_MARGIN = 12;
+const POPOVER_GAP = 8;
 
 function rendererUrl(view: "pet" | "popover") {
   if (isDev && devServerUrl) {
@@ -312,13 +321,40 @@ function quitQuotaPet() {
   app.quit();
 }
 
+function clamp(value: number, min: number, max: number) {
+  if (max < min) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function popoverPositionForPet(petBounds: Rectangle, popoverBounds = POPOVER_SIZE) {
+  const display = screen.getDisplayMatching(petBounds);
+  const workArea = display.workArea;
+  const centeredX = petBounds.x + petBounds.width / 2 - popoverBounds.width / 2;
+  const x = clamp(
+    Math.round(centeredX),
+    workArea.x + POPOVER_MARGIN,
+    workArea.x + workArea.width - popoverBounds.width - POPOVER_MARGIN,
+  );
+
+  const belowY = petBounds.y + petBounds.height + POPOVER_GAP;
+  const aboveY = petBounds.y - popoverBounds.height - POPOVER_GAP;
+  const maxY = workArea.y + workArea.height - popoverBounds.height - POPOVER_MARGIN;
+  const minY = workArea.y + POPOVER_MARGIN;
+  const preferredY = belowY <= maxY ? belowY : aboveY;
+  const y = clamp(Math.round(preferredY), minY, maxY);
+
+  return { x, y };
+}
+
 function positionAccessoryWindows() {
   if (!petWindow) return;
 
   const petBounds = petWindow.getBounds();
 
   if (popoverWindow) {
-    popoverWindow.setPosition(petBounds.x - 90, petBounds.y + petBounds.height - 12, false);
+    const popoverBounds = popoverWindow.getBounds();
+    const { x, y } = popoverPositionForPet(petBounds, popoverBounds);
+    popoverWindow.setPosition(x, y, false);
   }
 }
 
@@ -389,12 +425,13 @@ function createPopoverWindow() {
   if (!petWindow) return;
 
   const petBounds = petWindow.getBounds();
+  const popoverPosition = popoverPositionForPet(petBounds);
 
   popoverWindow = new BrowserWindow({
-    width: 390,
-    height: 360,
-    x: petBounds.x - 90,
-    y: petBounds.y + petBounds.height - 12,
+    width: POPOVER_SIZE.width,
+    height: POPOVER_SIZE.height,
+    x: popoverPosition.x,
+    y: popoverPosition.y,
     frame: false,
     transparent: true,
     resizable: false,
