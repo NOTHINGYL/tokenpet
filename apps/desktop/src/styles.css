@@ -40,12 +40,30 @@ button {
   height: 172px;
   padding: 0;
   place-items: center;
-  cursor: grabbing;
+  cursor: grab;
   -webkit-app-region: drag;
+}
+
+.pet-drag-region:active {
+  cursor: grabbing;
 }
 
 .pet-drag-region:hover .cat {
   transform: translateY(-1px);
+}
+
+.pet-summary-hotspot {
+  position: absolute;
+  top: 54px;
+  left: 56px;
+  width: 78px;
+  height: 70px;
+  padding: 0;
+  cursor: default;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  -webkit-app-region: no-drag;
 }
 
 .cat {
@@ -208,12 +226,10 @@ button {
 }
 
 .pet-close {
-  position: absolute;
-  top: 17px;
-  right: 18px;
   display: grid;
   width: 26px;
   height: 26px;
+  margin: 3px;
   padding: 0;
   place-items: center;
   cursor: pointer;

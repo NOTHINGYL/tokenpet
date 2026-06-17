@@ -94,17 +94,21 @@ function GoldCat() {
 function PetApp() {
   const usage = useUsage();
 
-  function onClose(event: React.MouseEvent<HTMLButtonElement>) {
-    event.stopPropagation();
-    window.quotapet.close();
-    window.close();
-  }
-
   return (
     <main className="pet-stage">
-      <div className="pet-drag-region" aria-label="Drag QuotaPet">
+      <div
+        className="pet-drag-region"
+        aria-label="Drag QuotaPet"
+        onDoubleClick={() => window.quotapet.togglePopover()}
+      >
         <GoldCat />
       </div>
+      <button
+        className="pet-summary-hotspot"
+        type="button"
+        aria-label="Open QuotaPet summary"
+        onDoubleClick={() => window.quotapet.togglePopover()}
+      />
       <button
         className="token-pill"
         type="button"
@@ -113,10 +117,34 @@ function PetApp() {
       >
         {compactNumber(usage.todayTokens)}
       </button>
-      <button className="pet-close" type="button" aria-label="Close QuotaPet" onClick={onClose}>
-        x
-      </button>
     </main>
+  );
+}
+
+function CloseApp() {
+  function close() {
+    window.quotapet.close();
+    window.close();
+  }
+
+  return (
+    <button
+      className="pet-close"
+      type="button"
+      aria-label="Close QuotaPet"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        close();
+      }}
+    >
+      x
+    </button>
   );
 }
 
@@ -187,6 +215,10 @@ function App() {
 
   if (view === "popover") {
     return <PopoverApp />;
+  }
+
+  if (view === "close") {
+    return <CloseApp />;
   }
 
   return <PetApp />;

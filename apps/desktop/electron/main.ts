@@ -9,6 +9,7 @@ const devServerUrl = process.env.QUOTAPET_DEV_SERVER_URL;
 
 let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
+let closeWindow: BrowserWindow | null = null;
 
 const mockUsage = {
   todayTokens: 128420,
@@ -22,7 +23,7 @@ const mockUsage = {
   status: "mock data",
 };
 
-function rendererUrl(view: "pet" | "popover") {
+function rendererUrl(view: "pet" | "popover" | "close") {
   if (isDev && devServerUrl) {
     return `${devServerUrl}/?view=${view}`;
   }
@@ -30,14 +31,29 @@ function rendererUrl(view: "pet" | "popover") {
   return `file://${join(__dirname, "../dist-renderer/index.html")}?view=${view}`;
 }
 
-async function loadWindow(window: BrowserWindow, view: "pet" | "popover") {
+async function loadWindow(window: BrowserWindow, view: "pet" | "popover" | "close") {
   await window.loadURL(rendererUrl(view));
 }
 
 function quitQuotaPet() {
+  closeWindow?.close();
   popoverWindow?.close();
   petWindow?.close();
   app.quit();
+}
+
+function positionAccessoryWindows() {
+  if (!petWindow) return;
+
+  const petBounds = petWindow.getBounds();
+
+  if (closeWindow) {
+    closeWindow.setPosition(petBounds.x + 146, petBounds.y + 16, false);
+  }
+
+  if (popoverWindow) {
+    popoverWindow.setPosition(petBounds.x - 90, petBounds.y + petBounds.height - 12, false);
+  }
 }
 
 function showPetContextMenu() {
@@ -54,6 +70,39 @@ function showPetContextMenu() {
       click: () => quitQuotaPet(),
     },
   ]).popup({ window: petWindow ?? undefined });
+}
+
+function createCloseWindow() {
+  if (!petWindow) return;
+
+  const petBounds = petWindow.getBounds();
+
+  closeWindow = new BrowserWindow({
+    width: 32,
+    height: 32,
+    x: petBounds.x + 146,
+    y: petBounds.y + 16,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    movable: false,
+    hasShadow: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    webPreferences: {
+      preload: join(__dirname, "preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  closeWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  closeWindow.setAlwaysOnTop(true, "floating");
+  void loadWindow(closeWindow, "close");
+
+  closeWindow.on("closed", () => {
+    closeWindow = null;
+  });
 }
 
 function createPetWindow() {
@@ -84,9 +133,15 @@ function createPetWindow() {
     showPetContextMenu();
   });
   void loadWindow(petWindow, "pet");
+  createCloseWindow();
+
+  petWindow.on("move", () => {
+    positionAccessoryWindows();
+  });
 
   petWindow.on("closed", () => {
     petWindow = null;
+    closeWindow?.close();
     popoverWindow?.close();
   });
 }
@@ -124,6 +179,8 @@ function createPopoverWindow() {
   popoverWindow.on("closed", () => {
     popoverWindow = null;
   });
+
+  positionAccessoryWindows();
 }
 
 function togglePopover() {
