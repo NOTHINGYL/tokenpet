@@ -44,6 +44,19 @@ async function loadWindow(window: BrowserWindow, view: "pet" | "popover") {
   await window.loadURL(rendererUrl(view));
 }
 
+function verifyBridge(window: BrowserWindow, label: string) {
+  window.webContents.once("did-finish-load", () => {
+    window.webContents
+      .executeJavaScript("Boolean(window.quotapet)")
+      .then((ready) => {
+        console.log(`[quotapet] ${label} preload bridge: ${ready ? "ready" : "missing"}`);
+      })
+      .catch((error: unknown) => {
+        console.warn(`[quotapet] ${label} preload bridge check failed`, error);
+      });
+  });
+}
+
 function quitQuotaPet() {
   popoverWindow?.close();
   petWindow?.close();
@@ -90,9 +103,11 @@ function createPetWindow() {
     resizable: false,
     hasShadow: false,
     alwaysOnTop: true,
+    acceptFirstMouse: true,
+    focusable: true,
     skipTaskbar: true,
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
@@ -103,6 +118,7 @@ function createPetWindow() {
   petWindow.webContents.on("context-menu", () => {
     showPetContextMenu();
   });
+  verifyBridge(petWindow, "pet");
   void loadWindow(petWindow, "pet");
 
   petWindow.on("move", () => {
@@ -135,15 +151,17 @@ function createPopoverWindow() {
     resizable: false,
     hasShadow: true,
     alwaysOnTop: true,
+    acceptFirstMouse: true,
     skipTaskbar: true,
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
 
   popoverWindow.setAlwaysOnTop(true, "floating");
+  verifyBridge(popoverWindow, "popover");
   void loadWindow(popoverWindow, "popover");
 
   popoverWindow.on("blur", () => {
