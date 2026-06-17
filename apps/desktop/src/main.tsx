@@ -22,6 +22,7 @@ declare global {
       startDrag: (pointer: { x: number; y: number }) => void;
       moveDrag: (pointer: { x: number; y: number }) => void;
       endDrag: () => void;
+      close: () => void;
     };
   }
 }
@@ -97,10 +98,14 @@ function PetApp() {
   const usage = useUsage();
   const [dragging, setDragging] = useState(false);
   const [moved, setMoved] = useState(false);
+  const draggingRef = useRef(false);
+  const movedRef = useRef(false);
   const dragOrigin = useRef<{ x: number; y: number } | null>(null);
 
   function onPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
     event.currentTarget.setPointerCapture(event.pointerId);
+    draggingRef.current = true;
+    movedRef.current = false;
     setDragging(true);
     setMoved(false);
     dragOrigin.current = { x: event.screenX, y: event.screenY };
@@ -108,29 +113,38 @@ function PetApp() {
   }
 
   function onPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!dragging) return;
+    if (!draggingRef.current) return;
     const origin = dragOrigin.current;
     if (origin) {
       const distance = Math.hypot(event.screenX - origin.x, event.screenY - origin.y);
-      if (distance > 4) setMoved(true);
+      if (distance > 4) {
+        movedRef.current = true;
+        setMoved(true);
+      }
     }
     window.quotapet.moveDrag({ x: event.screenX, y: event.screenY });
   }
 
   function onPointerUp() {
     window.quotapet.endDrag();
+    draggingRef.current = false;
     setDragging(false);
     dragOrigin.current = null;
 
-    if (!moved) {
+    if (!movedRef.current) {
       window.quotapet.togglePopover();
     }
+  }
+
+  function onClose(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    window.quotapet.close();
   }
 
   return (
     <main className="pet-stage">
       <button
-        className="pet-button"
+        className={`pet-button ${dragging || moved ? "is-dragging" : ""}`}
         type="button"
         aria-label="Open QuotaPet summary"
         onPointerDown={onPointerDown}
@@ -140,6 +154,9 @@ function PetApp() {
       >
         <GoldCat />
         <span className="token-pill">{compactNumber(usage.todayTokens)}</span>
+      </button>
+      <button className="pet-close" type="button" aria-label="Close QuotaPet" onClick={onClose}>
+        x
       </button>
     </main>
   );

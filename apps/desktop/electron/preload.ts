@@ -18,4 +18,5 @@ contextBridge.exposeInMainWorld("quotapet", {
   startDrag: (pointer: { x: number; y: number }) => ipcRenderer.send("pet:drag-start", pointer),
   moveDrag: (pointer: { x: number; y: number }) => ipcRenderer.send("pet:drag-move", pointer),
   endDrag: () => ipcRenderer.send("pet:drag-end"),
+  close: () => ipcRenderer.send("pet:close"),
 });

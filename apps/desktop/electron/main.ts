@@ -133,9 +133,17 @@ ipcMain.on("pet:toggle-popover", () => {
   togglePopover();
 });
 
-ipcMain.on("pet:drag-start", (_event, pointer: { x: number; y: number }) => {
+ipcMain.on("pet:close", () => {
+  popoverWindow?.close();
+  petWindow?.close();
+  app.quit();
+});
+
+ipcMain.on("pet:drag-start", () => {
   if (!petWindow) return;
   const bounds = petWindow.getBounds();
+  const pointer = screen.getCursorScreenPoint();
+
   dragStart = {
     pointerX: pointer.x,
     pointerY: pointer.y,
@@ -144,9 +152,10 @@ ipcMain.on("pet:drag-start", (_event, pointer: { x: number; y: number }) => {
   };
 });
 
-ipcMain.on("pet:drag-move", (_event, pointer: { x: number; y: number }) => {
+ipcMain.on("pet:drag-move", () => {
   if (!petWindow || !dragStart) return;
 
+  const pointer = screen.getCursorScreenPoint();
   const nextX = Math.round(dragStart.windowX + pointer.x - dragStart.pointerX);
   const nextY = Math.round(dragStart.windowY + pointer.y - dragStart.pointerY);
   petWindow.setPosition(nextX, nextY, false);
