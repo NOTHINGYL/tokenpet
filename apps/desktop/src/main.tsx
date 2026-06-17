@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -19,9 +19,6 @@ declare global {
     quotapet: {
       getUsageSnapshot: () => Promise<UsageSnapshot>;
       togglePopover: () => void;
-      startDrag: (pointer: { x: number; y: number }) => void;
-      moveDrag: (pointer: { x: number; y: number }) => void;
-      endDrag: () => void;
       close: () => void;
     };
   }
@@ -96,64 +93,25 @@ function GoldCat() {
 
 function PetApp() {
   const usage = useUsage();
-  const [dragging, setDragging] = useState(false);
-  const [moved, setMoved] = useState(false);
-  const draggingRef = useRef(false);
-  const movedRef = useRef(false);
-  const dragOrigin = useRef<{ x: number; y: number } | null>(null);
-
-  function onPointerDown(event: React.PointerEvent<HTMLButtonElement>) {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    draggingRef.current = true;
-    movedRef.current = false;
-    setDragging(true);
-    setMoved(false);
-    dragOrigin.current = { x: event.screenX, y: event.screenY };
-    window.quotapet.startDrag({ x: event.screenX, y: event.screenY });
-  }
-
-  function onPointerMove(event: React.PointerEvent<HTMLButtonElement>) {
-    if (!draggingRef.current) return;
-    const origin = dragOrigin.current;
-    if (origin) {
-      const distance = Math.hypot(event.screenX - origin.x, event.screenY - origin.y);
-      if (distance > 4) {
-        movedRef.current = true;
-        setMoved(true);
-      }
-    }
-    window.quotapet.moveDrag({ x: event.screenX, y: event.screenY });
-  }
-
-  function onPointerUp() {
-    window.quotapet.endDrag();
-    draggingRef.current = false;
-    setDragging(false);
-    dragOrigin.current = null;
-
-    if (!movedRef.current) {
-      window.quotapet.togglePopover();
-    }
-  }
 
   function onClose(event: React.MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
     window.quotapet.close();
+    window.close();
   }
 
   return (
     <main className="pet-stage">
+      <div className="pet-drag-region" aria-label="Drag QuotaPet">
+        <GoldCat />
+      </div>
       <button
-        className={`pet-button ${dragging || moved ? "is-dragging" : ""}`}
+        className="token-pill"
         type="button"
         aria-label="Open QuotaPet summary"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onClick={() => window.quotapet.togglePopover()}
       >
-        <GoldCat />
-        <span className="token-pill">{compactNumber(usage.todayTokens)}</span>
+        {compactNumber(usage.todayTokens)}
       </button>
       <button className="pet-close" type="button" aria-label="Close QuotaPet" onClick={onClose}>
         x

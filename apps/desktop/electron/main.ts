@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, screen } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, screen } from "electron";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -9,7 +9,6 @@ const devServerUrl = process.env.QUOTAPET_DEV_SERVER_URL;
 
 let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
-let dragStart: { pointerX: number; pointerY: number; windowX: number; windowY: number } | null = null;
 
 const mockUsage = {
   todayTokens: 128420,
@@ -33,6 +32,28 @@ function rendererUrl(view: "pet" | "popover") {
 
 async function loadWindow(window: BrowserWindow, view: "pet" | "popover") {
   await window.loadURL(rendererUrl(view));
+}
+
+function quitQuotaPet() {
+  popoverWindow?.close();
+  petWindow?.close();
+  app.quit();
+}
+
+function showPetContextMenu() {
+  Menu.buildFromTemplate([
+    {
+      label: "Open Summary",
+      click: () => togglePopover(),
+    },
+    {
+      type: "separator",
+    },
+    {
+      label: "Quit QuotaPet",
+      click: () => quitQuotaPet(),
+    },
+  ]).popup({ window: petWindow ?? undefined });
 }
 
 function createPetWindow() {
@@ -59,6 +80,9 @@ function createPetWindow() {
 
   petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   petWindow.setAlwaysOnTop(true, "floating");
+  petWindow.webContents.on("context-menu", () => {
+    showPetContextMenu();
+  });
   void loadWindow(petWindow, "pet");
 
   petWindow.on("closed", () => {
@@ -134,38 +158,5 @@ ipcMain.on("pet:toggle-popover", () => {
 });
 
 ipcMain.on("pet:close", () => {
-  popoverWindow?.close();
-  petWindow?.close();
-  app.quit();
-});
-
-ipcMain.on("pet:drag-start", () => {
-  if (!petWindow) return;
-  const bounds = petWindow.getBounds();
-  const pointer = screen.getCursorScreenPoint();
-
-  dragStart = {
-    pointerX: pointer.x,
-    pointerY: pointer.y,
-    windowX: bounds.x,
-    windowY: bounds.y,
-  };
-});
-
-ipcMain.on("pet:drag-move", () => {
-  if (!petWindow || !dragStart) return;
-
-  const pointer = screen.getCursorScreenPoint();
-  const nextX = Math.round(dragStart.windowX + pointer.x - dragStart.pointerX);
-  const nextY = Math.round(dragStart.windowY + pointer.y - dragStart.pointerY);
-  petWindow.setPosition(nextX, nextY, false);
-
-  if (popoverWindow) {
-    const petBounds = petWindow.getBounds();
-    popoverWindow.setPosition(petBounds.x - 90, petBounds.y + petBounds.height - 12, false);
-  }
-});
-
-ipcMain.on("pet:drag-end", () => {
-  dragStart = null;
+  quitQuotaPet();
 });

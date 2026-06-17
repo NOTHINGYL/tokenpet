@@ -33,30 +33,19 @@ button {
   user-select: none;
 }
 
-.pet-button {
+.pet-drag-region {
   position: relative;
   display: grid;
   width: 172px;
   height: 172px;
   padding: 0;
   place-items: center;
-  cursor: grab;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.pet-button:active {
   cursor: grabbing;
+  -webkit-app-region: drag;
 }
 
-.pet-button.is-dragging .cat {
-  transform: translateY(-2px) scale(1.02);
-}
-
-.pet-button:focus-visible .token-pill {
-  outline: 3px solid rgba(17, 24, 39, 0.32);
-  outline-offset: 3px;
+.pet-drag-region:hover .cat {
+  transform: translateY(-1px);
 }
 
 .cat {
@@ -64,6 +53,7 @@ button {
   width: 132px;
   height: 128px;
   filter: drop-shadow(0 16px 18px rgba(88, 56, 9, 0.28));
+  transition: transform 140ms ease;
 }
 
 .cat-glow {
@@ -199,10 +189,22 @@ button {
   color: #3a2408;
   background: rgba(255, 253, 239, 0.88);
   box-shadow: 0 10px 24px rgba(87, 57, 11, 0.22);
+  cursor: pointer;
   font-size: 18px;
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
+  -webkit-app-region: no-drag;
+}
+
+.token-pill:hover {
+  background: #fff8d7;
+}
+
+.token-pill:focus-visible,
+.pet-close:focus-visible {
+  outline: 3px solid rgba(17, 24, 39, 0.32);
+  outline-offset: 3px;
 }
 
 .pet-close {
@@ -223,6 +225,8 @@ button {
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
+  z-index: 2;
+  -webkit-app-region: no-drag;
 }
 
 .pet-close:hover {
