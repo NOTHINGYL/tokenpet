@@ -7,6 +7,7 @@ export default defineConfig({
   base: "./",
   plugins: [react()],
   build: {
+    target: "es2022",
     outDir: resolve(__dirname, "../../dist-renderer"),
     emptyOutDir: true,
   },

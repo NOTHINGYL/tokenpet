@@ -40,6 +40,8 @@ docs                Product and technical notes
 
 ## Development
 
+Requires Node.js 18 or newer.
+
 Install dependencies and start the desktop app:
 
 ```bash
