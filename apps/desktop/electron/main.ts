@@ -204,7 +204,7 @@ async function loadProvider(provider: ProviderId): Promise<ProviderReport> {
       id: provider,
       label,
       status: allTimeTokens > 0 ? "connected" : "idle",
-      detail: allTimeTokens > 0 ? `${allTimeTokens.toLocaleString()} all time` : "no local usage found",
+      detail: allTimeTokens > 0 ? `${allTimeTokens.toLocaleString()} local all time` : "no local usage found",
       todayTokens,
       sevenDayTokens,
       allTimeTokens,
@@ -391,8 +391,8 @@ function createPopoverWindow() {
   const petBounds = petWindow.getBounds();
 
   popoverWindow = new BrowserWindow({
-    width: 360,
-    height: 286,
+    width: 390,
+    height: 360,
     x: petBounds.x - 90,
     y: petBounds.y + petBounds.height - 12,
     frame: false,

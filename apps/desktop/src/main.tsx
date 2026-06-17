@@ -213,7 +213,7 @@ function PopoverApp() {
       <div className="stats-grid">
         <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
         <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
-        <StatCard label="All time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
+        <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
       </div>
 
       <section className="hero-stat">

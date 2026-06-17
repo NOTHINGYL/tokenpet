@@ -15,7 +15,7 @@ v0.2 prototype. The desktop pet now reads local token usage through the bundled 
 - Live token counter displayed on the pet
 - Click-to-open usage summary popover
 - Real local usage snapshot from `ccusage` for Codex and Claude Code
-- Today, 7 days, All time, Top model, burn rate, and provider status
+- Today, 7 days, Local all time, Top model, burn rate, and provider status
 - macOS-focused Electron prototype
 
 QuotaPet uses the local `node_modules/.bin/ccusage` installed with this project. It reads local usage metadata only; no prompts, code, paths, or session content are sent anywhere.
@@ -45,18 +45,24 @@ docs                Product and technical notes
 
 Requires Node.js 18 or newer.
 
-Install dependencies and start the desktop app:
+Install dependencies and start the desktop app for development:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build and run the production bundle locally:
+Build and run the production bundle in the foreground:
 
 ```bash
 npm run build
 npm start
+```
+
+Launch QuotaPet in the background so it keeps running after the terminal closes:
+
+```bash
+npm run launch
 ```
 
 ## License

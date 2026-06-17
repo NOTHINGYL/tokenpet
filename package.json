@@ -13,6 +13,7 @@
     "build:main": "node -e \"require('node:fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p apps/desktop/electron/tsconfig.json && cp apps/desktop/electron/preload.cjs dist-electron/preload.cjs",
     "build:renderer": "vite build --config apps/desktop/vite.config.ts",
     "check": "npm run build",
+    "launch": "node scripts/launch.mjs",
     "start": "npm run build && electron ."
   },
   "dependencies": {
