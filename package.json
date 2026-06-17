@@ -1,6 +1,6 @@
 {
   "name": "quotapet",
-  "version": "0.0.0",
+  "version": "0.2.0",
   "private": true,
   "description": "A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.",
   "license": "MIT",
@@ -16,15 +16,16 @@
     "start": "npm run build && electron ."
   },
   "dependencies": {
+    "ccusage": "^20.0.14",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.7.0",
-    "electron": "^39.2.7",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^39.2.7",
     "typescript": "^5.9.3",
     "vite": "^6.4.3"
   },

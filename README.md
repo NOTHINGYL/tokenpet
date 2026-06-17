@@ -6,16 +6,19 @@ QuotaPet is a local-first desktop companion for AI coding workflows. The pet liv
 
 ## Status
 
-v0.1 prototype. The desktop pet and click summary are implemented with mock token data.
+v0.2 prototype. The desktop pet now reads local token usage through the bundled `ccusage` dependency.
 
-## v0.1 Features
+## v0.2 Features
 
 - Transparent always-on-top desktop pet window
 - Draggable yellow-gold cat companion
 - Live token counter displayed on the pet
 - Click-to-open usage summary popover
-- Mock usage snapshot for Today, 7 days, All time, Top model, and provider status
+- Real local usage snapshot from `ccusage` for Codex and Claude Code
+- Today, 7 days, All time, Top model, burn rate, and provider status
 - macOS-focused Electron prototype
+
+QuotaPet uses the local `node_modules/.bin/ccusage` installed with this project. It reads local usage metadata only; no prompts, code, paths, or session content are sent anywhere.
 
 ## Planned Scope
 

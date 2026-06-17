@@ -313,8 +313,11 @@ button {
 
 .stat-card small,
 .provider-row small {
+  overflow: hidden;
   color: #687386;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .hero-stat {
@@ -344,7 +347,7 @@ button {
 
 .provider-row {
   display: grid;
-  grid-template-columns: 12px 1fr auto;
+  grid-template-columns: 12px 86px minmax(0, 1fr);
   gap: 8px;
   align-items: center;
   min-height: 28px;
@@ -365,6 +368,10 @@ button {
   background: #31a36a;
 }
 
-.provider-dot.mock {
+.provider-dot.idle {
   background: #c7b06a;
+}
+
+.provider-dot.error {
+  background: #d46b5d;
 }

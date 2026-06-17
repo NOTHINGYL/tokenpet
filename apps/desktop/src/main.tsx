@@ -12,6 +12,18 @@ type UsageSnapshot = {
   topTool: string;
   burnRate: string;
   status: string;
+  generatedAt: string;
+  providers: ProviderSnapshot[];
+};
+
+type ProviderSnapshot = {
+  id: "codex" | "claude";
+  label: string;
+  status: "connected" | "idle" | "error";
+  detail: string;
+  todayTokens: number;
+  sevenDayTokens: number;
+  allTimeTokens: number;
 };
 
 declare global {
@@ -35,7 +47,28 @@ const fallbackUsage: UsageSnapshot = {
   topModel: "gpt-5.5",
   topTool: "Codex",
   burnRate: "steady",
-  status: "mock data",
+  status: "loading",
+  generatedAt: new Date(0).toISOString(),
+  providers: [
+    {
+      id: "codex",
+      label: "Codex",
+      status: "idle",
+      detail: "checking ccusage",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+    {
+      id: "claude",
+      label: "Claude Code",
+      status: "idle",
+      detail: "checking ccusage",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+  ],
 };
 
 function compactNumber(value: number) {
@@ -165,21 +198,14 @@ function StatCard(props: { label: string; value: string; detail: string }) {
 
 function PopoverApp() {
   const usage = useUsage();
-  const providerRows = useMemo(
-    () => [
-      { name: "Codex", state: "connected", value: `${compactNumber(usage.todayTokens)} today` },
-      { name: "Claude Code", state: "mock", value: "provider planned" },
-      { name: "Cursor", state: "mock", value: "provider planned" },
-    ],
-    [usage.todayTokens],
-  );
+  const providerRows = useMemo(() => usage.providers, [usage.providers]);
 
   return (
     <main className="popover">
       <header className="popover-header">
         <div>
           <strong>QuotaPet</strong>
-          <span>v0.1 · {usage.status}</span>
+          <span>v0.2 · {usage.status}</span>
         </div>
         <span className="status-dot" />
       </header>
@@ -203,10 +229,10 @@ function PopoverApp() {
 
       <section className="providers">
         {providerRows.map((row) => (
-          <div className="provider-row" key={row.name}>
-            <span className={`provider-dot ${row.state}`} />
-            <strong>{row.name}</strong>
-            <small>{row.value}</small>
+          <div className="provider-row" key={row.id}>
+            <span className={`provider-dot ${row.status}`} />
+            <strong>{row.label}</strong>
+            <small>{compactNumber(row.todayTokens)} today · {row.detail}</small>
           </div>
         ))}
       </section>
