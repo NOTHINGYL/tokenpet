@@ -5,8 +5,27 @@
   "description": "A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.",
   "license": "MIT",
   "type": "module",
-  "packageManager": "pnpm@10.12.1",
+  "main": "dist-electron/main.js",
+  "packageManager": "npm@11.4.2",
   "scripts": {
-    "check": "node --version"
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p apps/desktop/electron/tsconfig.json",
+    "build:renderer": "vite build --config apps/desktop/vite.config.ts",
+    "check": "npm run build",
+    "start": "npm run build && electron ."
+  },
+  "dependencies": {
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^39.2.7",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.0.16"
   }
 }

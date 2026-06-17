@@ -2,11 +2,20 @@
 
 A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.
 
-QuotaPet is planned as a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.
+QuotaPet is a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.
 
 ## Status
 
-Early setup. Product design and implementation details are still being shaped.
+v0.1 prototype. The desktop pet and click summary are implemented with mock token data.
+
+## v0.1 Features
+
+- Transparent always-on-top desktop pet window
+- Draggable yellow-gold cat companion
+- Live token counter displayed on the pet
+- Click-to-open usage summary popover
+- Mock usage snapshot for Today, 7 days, All time, Top model, and provider status
+- macOS-focused Electron prototype
 
 ## Planned Scope
 
@@ -31,11 +40,18 @@ docs                Product and technical notes
 
 ## Development
 
-This repository is intentionally minimal until the first implementation plan is finalized.
+Install dependencies and start the desktop app:
 
 ```bash
-pnpm install
-pnpm check
+npm install
+npm run dev
+```
+
+Build and run the production bundle locally:
+
+```bash
+npm run build
+npm start
 ```
 
 ## License
