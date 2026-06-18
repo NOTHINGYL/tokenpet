@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CatPaws, GoldCat } from "../components/GoldCat";
+import { GoldCat } from "../components/GoldCat";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import { compactNumber } from "../utils/format";
@@ -52,7 +52,6 @@ export function PetApp() {
       >
         {compactNumber(usage.todayTokens)}
       </button>
-      <CatPaws />
       <button className="pet-close" type="button" aria-label="Close QuotaPet" onPointerDown={close} onClick={close}>
         x
       </button>
