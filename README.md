@@ -39,14 +39,21 @@ QuotaPet uses the local `node_modules/.bin/ccusage` installed with this project.
 ## Repository Layout
 
 ```text
-apps/desktop        Desktop app shell
-packages/core       Token, quota, pricing, and aggregation models
-packages/providers  Tool-specific usage data adapters
-packages/pet-engine Pet states, animations, skins, and effects
-packages/ui         Shared UI for popovers and dashboard views
-assets/pets         Pet art and animation assets
-docs                Product and technical notes
+apps/desktop/electron/main.ts       Electron window, tray, IPC, and app lifecycle
+apps/desktop/electron/usage.ts      Local ccusage/provider loading and aggregation
+apps/desktop/electron/types.ts      Main-process data contracts
+apps/desktop/src/App.tsx            Renderer view router
+apps/desktop/src/views              Pet, popover, menu bar, and console screens
+apps/desktop/src/components         Shared UI, charts, and pet components
+apps/desktop/src/hooks              Renderer data/settings hooks
+apps/desktop/src/state              Fallback renderer state
+apps/desktop/src/styles             Split CSS by base, pet, panels, and console
+apps/desktop/src/types.ts           Renderer data contracts
 ```
+
+Future shared packages such as `packages/providers`, `packages/pet-engine`, and
+`packages/ui` can be introduced once the desktop app has more repeated logic to
+extract.
 
 ## Development
 

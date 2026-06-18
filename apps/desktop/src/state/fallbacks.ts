@@ -1,0 +1,76 @@
+import type { AppSettings, UsageSnapshot } from "../types";
+
+export const fallbackUsage: UsageSnapshot = {
+  todayTokens: 128420,
+  sevenDayTokens: 8920000,
+  allTimeTokens: 925000000,
+  todayCost: 8.34,
+  sevenDayCost: 716.7,
+  topModel: "gpt-5.5",
+  topTool: "Codex",
+  burnRate: "steady",
+  status: "loading",
+  generatedAt: new Date(0).toISOString(),
+  providers: [
+    {
+      id: "codex",
+      label: "Codex",
+      status: "idle",
+      detail: "checking ccusage",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+    {
+      id: "claude",
+      label: "Claude Code",
+      status: "idle",
+      detail: "checking ccusage",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+    {
+      id: "cursor",
+      label: "Cursor",
+      status: "idle",
+      detail: "local adapter planned",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+    {
+      id: "ccusage",
+      label: "ccusage",
+      status: "connected",
+      detail: "bundled npm dependency",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+  ],
+  analysis: {
+    daily: [],
+    models: [],
+    sessions: [],
+    costStructure: {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      reasoningOutputTokens: 0,
+    },
+    activeDays: 0,
+    sessionCount: 0,
+    cacheHitRate: 0,
+    dailyAverageTokens: 0,
+    nextSevenDayForecast: 0,
+    nextThirtyDayForecast: 0,
+  },
+};
+
+export const fallbackSettings: AppSettings = {
+  launchAtLogin: false,
+  petVisible: true,
+  alwaysOnTop: true,
+  petTheme: "gold",
+};

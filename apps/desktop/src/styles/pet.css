@@ -1,0 +1,262 @@
+.pet-stage {
+  --pet-glow: rgba(252, 211, 77, 0.42);
+  --pet-body: linear-gradient(145deg, #fff2a8 0%, #f9c84b 38%, #e7a520 72%, #a75f12 100%);
+  --pet-ear: linear-gradient(145deg, #ffe68a 0%, #e9a62b 72%);
+  --pet-tail: #d89120;
+  --pet-paw: linear-gradient(180deg, #ffe895 0%, #d98921 100%);
+  --pet-pill-bg: rgba(255, 253, 239, 0.88);
+  --pet-pill-hover: #fff8d7;
+  --pet-pill-text: #3a2408;
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.pet-theme-gold {
+  --pet-glow: rgba(252, 211, 77, 0.42);
+  --pet-body: linear-gradient(145deg, #fff2a8 0%, #f9c84b 38%, #e7a520 72%, #a75f12 100%);
+  --pet-ear: linear-gradient(145deg, #ffe68a 0%, #e9a62b 72%);
+  --pet-tail: #d89120;
+  --pet-paw: linear-gradient(180deg, #ffe895 0%, #d98921 100%);
+  --pet-pill-bg: rgba(255, 253, 239, 0.88);
+  --pet-pill-hover: #fff8d7;
+  --pet-pill-text: #3a2408;
+}
+
+.pet-theme-mint {
+  --pet-glow: rgba(74, 222, 128, 0.28);
+  --pet-body: linear-gradient(145deg, #dcfce7 0%, #86efac 42%, #22c55e 78%, #15803d 100%);
+  --pet-ear: linear-gradient(145deg, #bbf7d0 0%, #4ade80 72%);
+  --pet-tail: #22a05a;
+  --pet-paw: linear-gradient(180deg, #bbf7d0 0%, #22c55e 100%);
+  --pet-pill-bg: rgba(240, 253, 244, 0.9);
+  --pet-pill-hover: #dcfce7;
+  --pet-pill-text: #14532d;
+}
+
+.pet-theme-rose {
+  --pet-glow: rgba(251, 113, 133, 0.26);
+  --pet-body: linear-gradient(145deg, #ffe4e6 0%, #fda4af 42%, #f43f5e 76%, #be123c 100%);
+  --pet-ear: linear-gradient(145deg, #fecdd3 0%, #fb7185 72%);
+  --pet-tail: #e54462;
+  --pet-paw: linear-gradient(180deg, #fecdd3 0%, #fb7185 100%);
+  --pet-pill-bg: rgba(255, 241, 242, 0.9);
+  --pet-pill-hover: #ffe4e6;
+  --pet-pill-text: #881337;
+}
+
+.pet-theme-sky {
+  --pet-glow: rgba(56, 189, 248, 0.25);
+  --pet-body: linear-gradient(145deg, #e0f2fe 0%, #7dd3fc 42%, #0ea5e9 76%, #0369a1 100%);
+  --pet-ear: linear-gradient(145deg, #bae6fd 0%, #38bdf8 72%);
+  --pet-tail: #148bc5;
+  --pet-paw: linear-gradient(180deg, #bae6fd 0%, #38bdf8 100%);
+  --pet-pill-bg: rgba(240, 249, 255, 0.9);
+  --pet-pill-hover: #e0f2fe;
+  --pet-pill-text: #0c4a6e;
+}
+
+.pet-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.pet-drag-region {
+  position: relative;
+  display: grid;
+  width: 172px;
+  height: 172px;
+  padding: 0;
+  place-items: center;
+}
+
+.pet-drag-region:hover .cat {
+  transform: translateY(-1px);
+}
+
+.cat {
+  position: relative;
+  width: 132px;
+  height: 128px;
+  filter: drop-shadow(0 16px 18px rgba(88, 56, 9, 0.28));
+  transition: transform 140ms ease;
+}
+
+.cat-glow {
+  position: absolute;
+  right: 10px;
+  bottom: 0;
+  left: 10px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--pet-glow);
+  filter: blur(10px);
+}
+
+.cat-body {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  left: 14px;
+  height: 96px;
+  border: 2px solid rgba(120, 70, 14, 0.24);
+  border-radius: 48% 48% 43% 43%;
+  background:
+    radial-gradient(circle at 34% 34%, rgba(255, 255, 255, 0.85), transparent 0 10px, transparent 18px),
+    var(--pet-body);
+}
+
+.cat-ear {
+  position: absolute;
+  top: -20px;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(120, 70, 14, 0.22);
+  background: var(--pet-ear);
+  transform: rotate(45deg);
+}
+
+.cat-ear::after {
+  position: absolute;
+  inset: 11px;
+  content: "";
+  border-radius: 3px;
+  background: rgba(174, 85, 37, 0.28);
+}
+
+.cat-ear-left {
+  left: 10px;
+  border-radius: 9px 4px 10px 4px;
+}
+
+.cat-ear-right {
+  right: 10px;
+  border-radius: 4px 9px 4px 10px;
+}
+
+.cat-tail {
+  position: absolute;
+  right: 0;
+  bottom: 26px;
+  width: 46px;
+  height: 72px;
+  border: 14px solid var(--pet-tail);
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+  border-radius: 999px;
+  transform: rotate(22deg);
+}
+
+.cat-face {
+  position: absolute;
+  top: 36px;
+  right: 30px;
+  left: 30px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.cat-eye {
+  width: 10px;
+  height: 14px;
+  border-radius: 999px;
+  background: #2f1c08;
+  box-shadow: inset 2px 2px 0 rgba(255, 255, 255, 0.35);
+}
+
+.cat-muzzle {
+  position: absolute;
+  top: 58px;
+  left: 50%;
+  width: 32px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(255, 247, 205, 0.62);
+  transform: translateX(-50%);
+}
+
+.cat-muzzle span {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  width: 7px;
+  height: 5px;
+  border-radius: 50%;
+  background: #6e3c10;
+  transform: translateX(-50%);
+}
+
+.cat-paw {
+  position: absolute;
+  bottom: 8px;
+  width: 24px;
+  height: 18px;
+  border: 2px solid rgba(120, 70, 14, 0.18);
+  border-radius: 999px;
+  background: var(--pet-paw);
+}
+
+.cat-paw-left {
+  left: 38px;
+}
+
+.cat-paw-right {
+  right: 38px;
+}
+
+.token-pill {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  min-width: 76px;
+  padding: 8px 11px;
+  border: 1px solid rgba(105, 62, 13, 0.18);
+  border-radius: 999px;
+  color: var(--pet-pill-text);
+  background: var(--pet-pill-bg);
+  box-shadow: 0 10px 24px rgba(87, 57, 11, 0.22);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.token-pill:hover {
+  background: var(--pet-pill-hover);
+}
+
+.token-pill:focus-visible,
+.pet-close:focus-visible {
+  outline: 3px solid rgba(17, 24, 39, 0.32);
+  outline-offset: 3px;
+}
+
+.pet-close {
+  position: absolute;
+  top: 17px;
+  right: 18px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  place-items: center;
+  cursor: pointer;
+  color: rgba(58, 36, 8, 0.78);
+  border: 1px solid rgba(105, 62, 13, 0.16);
+  border-radius: 50%;
+  background: rgba(255, 253, 239, 0.82);
+  box-shadow: 0 8px 18px rgba(87, 57, 11, 0.18);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  z-index: 2;
+}
+
+.pet-close:hover {
+  color: #3a2408;
+  background: #fff8d7;
+}
