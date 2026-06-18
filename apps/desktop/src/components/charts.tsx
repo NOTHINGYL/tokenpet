@@ -1,9 +1,14 @@
 import { Fragment } from "react";
+import { EmptyState } from "./ui";
 import type { CostStructure, DailyUsagePoint, ModelUsagePoint, SessionUsagePoint } from "../types";
 import { compactNumber, lastUpdated, maxOf, money, percent, shortDate } from "../utils/format";
 
 export function SparkBars(props: { points: DailyUsagePoint[] }) {
   const points = props.points.slice(-42);
+  if (points.length === 0) {
+    return <EmptyState title="No local trend yet" detail="QuotaPet will draw the daily trend after ccusage finds local records." />;
+  }
+
   const maxTokens = maxOf(points.map((point) => point.tokens));
 
   return (
@@ -20,6 +25,10 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
 
 export function ForecastLine(props: { points: DailyUsagePoint[]; forecast: number }) {
   const history = props.points.slice(-14);
+  if (history.length === 0) {
+    return <EmptyState title="Forecast warming up" detail="At least one local usage day is needed before forecasting." />;
+  }
+
   const projected = Array.from({ length: 7 }, (_value, index) => props.forecast / 7 + index * (props.forecast / 70));
   const values = [...history.map((point) => point.tokens), ...projected];
   const maxValue = maxOf(values);
@@ -44,6 +53,10 @@ export function ForecastLine(props: { points: DailyUsagePoint[]; forecast: numbe
 }
 
 export function ActivityHeatmap(props: { points: DailyUsagePoint[] }) {
+  if (props.points.length === 0) {
+    return <EmptyState title="No activity blocks" detail="Recent local days will appear here once usage is detected." />;
+  }
+
   const cells = Array.from({ length: 7 }, () => Array.from({ length: 12 }, () => 0));
   const points = props.points.slice(-84);
   const maxTokens = maxOf(points.map((point) => point.tokens));
@@ -74,6 +87,10 @@ export function ActivityHeatmap(props: { points: DailyUsagePoint[] }) {
 }
 
 export function ModelUsageTable(props: { models: ModelUsagePoint[] }) {
+  if (props.models.length === 0) {
+    return <EmptyState title="No models yet" detail="Model usage appears after local Codex or Claude usage is detected." />;
+  }
+
   return (
     <div className="model-table">
       {props.models.slice(0, 8).map((model, index) => (
@@ -93,6 +110,10 @@ export function ModelUsageTable(props: { models: ModelUsagePoint[] }) {
 }
 
 export function SessionBreakdown(props: { sessions: SessionUsagePoint[] }) {
+  if (props.sessions.length === 0) {
+    return <EmptyState title="No sessions yet" detail="Local session rows will appear here after ccusage finds them." />;
+  }
+
   return (
     <div className="session-list">
       {props.sessions.slice(0, 12).map((session) => (

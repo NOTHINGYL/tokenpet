@@ -7,14 +7,14 @@
 
 .console-tabs {
   position: sticky;
-  top: -22px;
+  top: -24px;
   z-index: 3;
   display: flex;
   gap: 22px;
-  margin: 18px -22px 18px;
-  padding: 0 22px;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.1);
-  background: rgba(246, 248, 251, 0.96);
+  margin: 18px -24px 18px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--qp-border);
+  background: rgba(246, 248, 251, 0.86);
   backdrop-filter: blur(10px);
 }
 
@@ -23,7 +23,7 @@
   min-height: 40px;
   padding: 0;
   border: 0;
-  color: #687386;
+  color: var(--qp-muted);
   background: transparent;
   cursor: pointer;
   font-size: 14px;
@@ -31,7 +31,7 @@
 }
 
 .console-tabs button.active {
-  color: #111827;
+  color: var(--qp-text);
 }
 
 .console-tabs button.active::after {
@@ -42,7 +42,13 @@
   height: 2px;
   content: "";
   border-radius: 999px;
-  background: #3d8f68;
+  background: var(--qp-green);
+}
+
+.console-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .analytics-grid {
@@ -61,9 +67,10 @@
   padding: 14px;
   align-content: center;
   gap: 8px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--qp-border);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--qp-card);
+  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03);
 }
 
 .metric-card div {
@@ -73,7 +80,7 @@
 }
 
 .metric-card span {
-  color: #687386;
+  color: var(--qp-muted);
   font-size: 12px;
   font-weight: 900;
   letter-spacing: 0;
@@ -83,8 +90,8 @@
 .metric-card em {
   padding: 2px 5px;
   border-radius: 999px;
-  color: #24724f;
-  background: rgba(49, 163, 106, 0.13);
+  color: var(--qp-green);
+  background: var(--qp-green-soft);
   font-size: 10px;
   font-style: normal;
   font-weight: 900;
@@ -97,7 +104,7 @@
 
 .metric-card small {
   overflow: hidden;
-  color: #687386;
+  color: var(--qp-muted);
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -116,7 +123,7 @@
   padding: 12px 8px 2px;
   border-radius: 8px;
   background:
-    linear-gradient(to top, rgba(17, 24, 39, 0.08) 1px, transparent 1px) 0 0 / 100% 25%,
+    linear-gradient(to top, rgba(16, 24, 40, 0.08) 1px, transparent 1px) 0 0 / 100% 25%,
     #ffffff;
 }
 
@@ -131,7 +138,7 @@
   display: block;
   min-height: 3px;
   border-radius: 3px 3px 0 0;
-  background: #6ca483;
+  background: linear-gradient(180deg, #75c193, var(--qp-green));
 }
 
 .spark-bar small {
@@ -157,13 +164,13 @@
 }
 
 .chart-gridline {
-  stroke: rgba(17, 24, 39, 0.1);
+  stroke: rgba(16, 24, 40, 0.1);
   stroke-dasharray: 3 5;
 }
 
 .forecast-path {
   fill: none;
-  stroke: #3b82f6;
+  stroke: var(--qp-blue);
   stroke-linecap: round;
   stroke-width: 3;
   stroke-dasharray: 6 6;
@@ -172,20 +179,20 @@
 .forecast-stats {
   display: grid;
   gap: 0;
-  border-top: 1px solid rgba(17, 24, 39, 0.08);
+  border-top: 1px solid var(--qp-border);
 }
 
 .forecast-stats span {
   display: flex;
   justify-content: space-between;
   padding: 9px 0;
-  color: #687386;
-  border-bottom: 1px solid rgba(17, 24, 39, 0.08);
+  color: var(--qp-muted);
+  border-bottom: 1px solid var(--qp-border);
   font-size: 13px;
 }
 
 .forecast-stats strong {
-  color: #111827;
+  color: var(--qp-text);
 }
 
 .activity-heatmap {
@@ -196,7 +203,7 @@
 }
 
 .heatmap-label {
-  color: #687386;
+  color: var(--qp-muted);
   font-size: 12px;
 }
 
@@ -204,7 +211,7 @@
   display: block;
   aspect-ratio: 1.8 / 1;
   border-radius: 4px;
-  background: #eef1f5;
+  background: #edf1f5;
 }
 
 .heatmap-cell[data-level="1"] {
@@ -239,14 +246,14 @@
   gap: 10px;
   align-items: center;
   min-height: 42px;
-  color: #687386;
+  color: var(--qp-muted);
   font-size: 12px;
 }
 
 .model-row strong,
 .session-row strong {
   overflow: hidden;
-  color: #111827;
+  color: var(--qp-text);
   font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -263,7 +270,7 @@
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #5b9b78;
+  background: linear-gradient(90deg, #75c193, var(--qp-green));
 }
 
 .session-row {
@@ -273,10 +280,10 @@
   align-items: center;
   min-height: 58px;
   padding: 9px 10px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--qp-border);
   border-radius: 8px;
-  background: #ffffff;
-  color: #687386;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--qp-muted);
   font-size: 12px;
 }
 
@@ -288,7 +295,7 @@
 
 .session-row small {
   overflow: hidden;
-  color: #687386;
+  color: var(--qp-muted);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -308,7 +315,7 @@
 
 .stacked-bar span.input,
 .legend-dot.input {
-  background: #4f7ee8;
+  background: var(--qp-blue);
 }
 
 .stacked-bar span.output,
@@ -366,11 +373,11 @@
   display: grid;
   min-height: 230px;
   place-items: center;
-  border: 1px solid rgba(17, 24, 39, 0.08);
+  border: 1px solid var(--qp-border);
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.4)),
-    #f6f8fb;
+    var(--qp-soft);
 }
 
 .theme-options {
@@ -385,7 +392,7 @@
   gap: 10px;
   min-height: 54px;
   padding: 0 12px;
-  border: 1px solid rgba(17, 24, 39, 0.1);
+  border: 1px solid var(--qp-border);
   border-radius: 8px;
   background: #ffffff;
   cursor: pointer;
@@ -393,8 +400,8 @@
 }
 
 .theme-options button.selected {
-  border-color: rgba(49, 163, 106, 0.42);
-  box-shadow: 0 0 0 3px rgba(49, 163, 106, 0.12);
+  border-color: rgba(47, 148, 97, 0.42);
+  box-shadow: 0 0 0 3px var(--qp-green-soft);
 }
 
 .theme-swatch {

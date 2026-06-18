@@ -6,19 +6,31 @@ QuotaPet is a local-first desktop companion for AI coding workflows. The pet liv
 
 ## Status
 
-v0.4 prototype. The desktop pet now includes a macOS menu bar panel, a tabbed analytics console, and real local token usage through the bundled `ccusage` dependency.
+v0.5 prototype. The desktop pet now has a more polished macOS-style interface, persistent settings, clearer loading/empty states, README screenshots, and real local token usage through the bundled `ccusage` dependency.
 
-## v0.4 Features
+## Preview
+
+The screenshots below use bundled demo data for documentation only. The app itself reads local usage metadata from your machine.
+
+![QuotaPet console](docs/screenshots/console-v05.png)
+
+<p>
+  <img src="docs/screenshots/menubar-v05.png" alt="QuotaPet menu bar panel" width="360" />
+  <img src="docs/screenshots/pet-v05.png" alt="QuotaPet desktop pet" width="260" />
+</p>
+
+## v0.5 Features
 
 - Transparent always-on-top desktop pet window
-- Draggable yellow-gold cat companion
+- Draggable yellow-gold cat companion with subtle breathing and blink animation
 - Live token counter displayed on the pet
 - Click-to-open usage summary popover
 - macOS menu bar icon with a richer status panel
 - Refresh, open console, and quit controls from the menu bar panel
-- Basic settings for launch at login, pet visibility, and always-on-top mode
+- Persistent settings for launch at login, pet visibility, always-on-top mode, and pet theme
 - Tabbed console with Overview, Breakdown, Cost & Efficiency, Pet, and Settings views
 - Daily trend, forecast, model breakdown, session breakdown, cost structure, and activity heatmap charts
+- Polished card styling, status badges, empty states, and loading/error handling
 - Basic pet color theme switching
 - Real local usage snapshot from `ccusage` for Codex and Claude Code
 - Source status rows for Codex, Claude Code, Cursor, and ccusage
@@ -57,7 +69,7 @@ extract.
 
 ## Development
 
-Requires Node.js 18 or newer.
+Requires Node.js 20.19+ or 22.12+.
 
 Install dependencies and start the desktop app for development:
 
@@ -77,6 +89,12 @@ Launch QuotaPet in the background so it keeps running after the terminal closes:
 
 ```bash
 npm run launch
+```
+
+Regenerate README screenshots with deterministic demo data:
+
+```bash
+npm run screenshots
 ```
 
 ## License

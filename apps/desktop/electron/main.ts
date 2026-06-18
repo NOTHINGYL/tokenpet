@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from "electron";
 import type { Rectangle } from "electron";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AppSettings, UsageSnapshot } from "./types.js";
@@ -26,12 +27,14 @@ let dragState:
     }
   | null = null;
 
-let settings: AppSettings = {
+const DEFAULT_SETTINGS: AppSettings = {
   launchAtLogin: false,
   petVisible: true,
   alwaysOnTop: true,
   petTheme: "gold",
 };
+
+let settings: AppSettings = { ...DEFAULT_SETTINGS };
 
 const POPOVER_SIZE = {
   width: 390,
@@ -89,6 +92,39 @@ function compactNumber(value: number) {
 function clamp(value: number, min: number, max: number) {
   if (max < min) return min;
   return Math.min(Math.max(value, min), max);
+}
+
+function settingsPath() {
+  return join(app.getPath("userData"), "settings.json");
+}
+
+function readStoredSettings() {
+  const path = settingsPath();
+  if (!existsSync(path)) return {};
+
+  try {
+    return JSON.parse(readFileSync(path, "utf8")) as Partial<AppSettings>;
+  } catch (error) {
+    console.warn("[quotapet] failed to read settings", error);
+    return {};
+  }
+}
+
+function writeStoredSettings() {
+  try {
+    mkdirSync(app.getPath("userData"), { recursive: true });
+    writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+  } catch (error) {
+    console.warn("[quotapet] failed to write settings", error);
+  }
+}
+
+function hydrateSettings() {
+  settings = {
+    ...DEFAULT_SETTINGS,
+    ...readStoredSettings(),
+    launchAtLogin: app.getLoginItemSettings().openAtLogin,
+  };
 }
 
 function createTrayIcon() {
@@ -335,7 +371,9 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
     setPetTheme(value as AppSettings["petTheme"]);
   }
 
-  return currentSettings();
+  const nextSettings = currentSettings();
+  writeStoredSettings();
+  return nextSettings;
 }
 
 function showPetContextMenu() {
@@ -456,7 +494,7 @@ function togglePopover() {
 }
 
 app.whenReady().then(() => {
-  settings = currentSettings();
+  hydrateSettings();
   if (process.platform === "darwin") {
     app.dock?.hide();
   }

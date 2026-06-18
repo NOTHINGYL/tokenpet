@@ -1,12 +1,34 @@
 import type { ProviderSnapshot } from "../types";
+import { compactNumber } from "../utils/format";
 
-export function StatCard(props: { label: string; value: string; detail: string }) {
+export function StatCard(props: { label: string; value: string; detail: string; accent?: boolean }) {
   return (
-    <section className="stat-card">
+    <section className={`stat-card ${props.accent ? "accent" : ""}`}>
       <span>{props.label}</span>
       <strong>{props.value}</strong>
       <small>{props.detail}</small>
     </section>
+  );
+}
+
+export function HealthBadge(props: { status: string; loading?: boolean; error?: string | null }) {
+  const tone = props.error ? "error" : props.loading ? "loading" : props.status === "ready" ? "connected" : "idle";
+  const label = props.error ? "needs attention" : props.loading ? "refreshing" : props.status;
+
+  return (
+    <span className={`health-badge ${tone}`}>
+      <span />
+      {label}
+    </span>
+  );
+}
+
+export function EmptyState(props: { title: string; detail: string }) {
+  return (
+    <div className="empty-state">
+      <strong>{props.title}</strong>
+      <span>{props.detail}</span>
+    </div>
   );
 }
 
@@ -31,7 +53,9 @@ export function ProviderStatusRows(props: { providers: ProviderSnapshot[] }) {
           <span className={`provider-dot ${row.status}`} />
           <div>
             <strong>{row.label}</strong>
-            <small>{row.detail}</small>
+            <small>
+              {row.detail} · {compactNumber(row.todayTokens)} today · {compactNumber(row.allTimeTokens)} local all time
+            </small>
           </div>
           <span className={`source-badge ${row.status}`}>{row.status}</span>
         </div>

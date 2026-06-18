@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { StatCard } from "../components/ui";
+import { APP_VERSION } from "../constants";
+import { HealthBadge, StatCard } from "../components/ui";
 import { useUsage } from "../hooks/useUsage";
 import { compactNumber, money } from "../utils/format";
 
 export function PopoverApp() {
-  const { usage } = useUsage();
+  const { usage, loading, error } = useUsage();
   const providerRows = useMemo(() => usage.providers, [usage.providers]);
 
   return (
@@ -12,13 +13,13 @@ export function PopoverApp() {
       <header className="popover-header">
         <div>
           <strong>QuotaPet</strong>
-          <span>v0.3 · {usage.status}</span>
+          <span>v{APP_VERSION} · local-first token companion</span>
         </div>
-        <span className="status-dot" />
+        <HealthBadge status={usage.status} loading={loading} error={error} />
       </header>
 
       <div className="stats-grid">
-        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
+        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} accent />
         <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
         <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
       </div>

@@ -1,10 +1,11 @@
-import { ProviderStatusRows, SettingToggle, StatCard } from "../components/ui";
+import { APP_VERSION } from "../constants";
+import { HealthBadge, ProviderStatusRows, SettingToggle, StatCard } from "../components/ui";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import { compactNumber, lastUpdated, money } from "../utils/format";
 
 export function MenuBarApp() {
-  const { usage, refresh, loading } = useUsage();
+  const { usage, refresh, loading, error } = useUsage();
   const { settings, setSetting } = useAppSettings();
 
   return (
@@ -12,9 +13,9 @@ export function MenuBarApp() {
       <header className="panel-header">
         <div>
           <strong>QuotaPet</strong>
-          <span>v0.3 · {usage.status}</span>
+          <span>v{APP_VERSION} · updated {lastUpdated(usage.generatedAt)}</span>
         </div>
-        <span className="panel-pill">{compactNumber(usage.todayTokens)} today</span>
+        <HealthBadge status={usage.status} loading={loading} error={error} />
       </header>
 
       <div className="panel-actions">
@@ -30,7 +31,7 @@ export function MenuBarApp() {
       </div>
 
       <div className="stats-grid panel-stats">
-        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
+        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} accent />
         <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
         <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
       </div>
@@ -38,7 +39,7 @@ export function MenuBarApp() {
       <section className="panel-section">
         <div className="section-heading">
           <strong>Sources</strong>
-          <span>Updated {lastUpdated(usage.generatedAt)}</span>
+          <span>{compactNumber(usage.todayTokens)} today</span>
         </div>
         <ProviderStatusRows providers={usage.providers} />
       </section>

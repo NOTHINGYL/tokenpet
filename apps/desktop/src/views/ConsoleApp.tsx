@@ -8,7 +8,8 @@ import {
   SparkBars,
 } from "../components/charts";
 import { GoldCat } from "../components/GoldCat";
-import { MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
+import { APP_VERSION } from "../constants";
+import { HealthBadge, MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import type { AppSettings, ConsoleTab, UsageSnapshot } from "../types";
@@ -227,7 +228,7 @@ function SettingsTab(props: {
 }
 
 export function ConsoleApp() {
-  const { usage, refresh, loading } = useUsage();
+  const { usage, refresh, loading, error } = useUsage();
   const { settings, setSetting } = useAppSettings();
   const [activeTab, setActiveTab] = useState<ConsoleTab>("overview");
   const tabs: Array<{ id: ConsoleTab; label: string }> = [
@@ -243,11 +244,14 @@ export function ConsoleApp() {
       <header className="console-header">
         <div>
           <strong>QuotaPet Console</strong>
-          <span>Local token dashboard · updated {lastUpdated(usage.generatedAt)}</span>
+          <span>v{APP_VERSION} · local token dashboard · updated {lastUpdated(usage.generatedAt)}</span>
         </div>
-        <button type="button" onClick={() => void refresh()} disabled={loading}>
-          {loading ? "Refreshing" : "Refresh"}
-        </button>
+        <div className="console-header-actions">
+          <HealthBadge status={usage.status} loading={loading} error={error} />
+          <button type="button" onClick={() => void refresh()} disabled={loading}>
+            {loading ? "Refreshing" : "Refresh"}
+          </button>
+        </div>
       </header>
 
       <nav className="console-tabs" aria-label="Console sections">
