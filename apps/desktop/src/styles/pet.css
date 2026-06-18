@@ -16,16 +16,6 @@
   user-select: none;
 }
 
-.pet-stage::before {
-  position: absolute;
-  inset: 40px 18px 18px;
-  content: "";
-  border-radius: 999px;
-  background: radial-gradient(circle, var(--pet-glow), transparent 65%);
-  opacity: 0.42;
-  pointer-events: none;
-}
-
 .pet-theme-gold {
   --pet-glow: rgba(252, 211, 77, 0.42);
   --pet-body: linear-gradient(145deg, #fff2a8 0%, #f9c84b 38%, #e7a520 72%, #a75f12 100%);
@@ -251,7 +241,7 @@
 .token-pill {
   position: absolute;
   right: auto;
-  bottom: 39px;
+  bottom: 15px;
   left: 50%;
   display: grid;
   min-width: 98px;

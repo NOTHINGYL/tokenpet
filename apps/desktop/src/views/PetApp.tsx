@@ -43,15 +43,15 @@ export function PetApp() {
     >
       <div className="pet-drag-region" aria-label="Drag QuotaPet">
         <GoldCat />
+        <button
+          className="token-pill"
+          type="button"
+          aria-label="Open QuotaPet summary"
+          onClick={() => window.quotapet.togglePopover()}
+        >
+          {compactNumber(usage.todayTokens)}
+        </button>
       </div>
-      <button
-        className="token-pill"
-        type="button"
-        aria-label="Open QuotaPet summary"
-        onClick={() => window.quotapet.togglePopover()}
-      >
-        {compactNumber(usage.todayTokens)}
-      </button>
       <button className="pet-close" type="button" aria-label="Close QuotaPet" onPointerDown={close} onClick={close}>
         x
       </button>
