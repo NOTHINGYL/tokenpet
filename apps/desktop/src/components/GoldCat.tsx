@@ -1,21 +1,20 @@
-export function GoldCat() {
+const petAssets = {
+  desktop: "assets/pets/cat-desktop.png",
+  summary: "assets/pets/cat-summary.png",
+  menubar: "assets/pets/cat-menubar.png",
+  icon: "assets/pets/cat-icon.png",
+};
+
+export function GoldCat(props: { variant?: keyof typeof petAssets; className?: string }) {
+  const variant = props.variant ?? "desktop";
+
   return (
-    <div className="cat" aria-hidden="true">
-      <div className="cat-glow" />
-      <div className="cat-tail" />
-      <div className="cat-body">
-        <div className="cat-ear cat-ear-left" />
-        <div className="cat-ear cat-ear-right" />
-        <div className="cat-face">
-          <span className="cat-eye" />
-          <span className="cat-eye" />
-        </div>
-        <div className="cat-muzzle">
-          <span />
-        </div>
-      </div>
-      <div className="cat-paw cat-paw-left" />
-      <div className="cat-paw cat-paw-right" />
-    </div>
+    <img
+      className={`cat-image cat-image-${variant} ${props.className ?? ""}`}
+      src={petAssets[variant]}
+      alt=""
+      draggable={false}
+      aria-hidden="true"
+    />
   );
 }

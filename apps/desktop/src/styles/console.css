@@ -45,12 +45,6 @@
   background: var(--qp-green);
 }
 
-.console-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .analytics-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

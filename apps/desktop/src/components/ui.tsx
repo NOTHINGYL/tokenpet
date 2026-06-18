@@ -13,7 +13,7 @@ export function StatCard(props: { label: string; value: string; detail: string; 
 
 export function HealthBadge(props: { status: string; loading?: boolean; error?: string | null }) {
   const tone = props.error ? "error" : props.loading ? "loading" : props.status === "ready" ? "connected" : "idle";
-  const label = props.error ? "needs attention" : props.loading ? "refreshing" : props.status;
+  const label = props.error ? "Needs attention" : props.loading ? "Refreshing" : props.status === "ready" ? "All good" : props.status;
 
   return (
     <span className={`health-badge ${tone}`}>

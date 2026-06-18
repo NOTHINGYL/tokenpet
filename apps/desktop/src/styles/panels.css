@@ -207,7 +207,11 @@
 }
 
 .menubar-panel {
-  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  overflow: hidden;
   border: 1px solid var(--qp-border-strong);
   border-radius: 18px;
   background:
@@ -231,6 +235,58 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.panel-header .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.menubar-panel .panel-title strong {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.menubar-panel .panel-version {
+  color: var(--qp-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.panel-header .panel-header-actions,
+.console-header .console-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.icon-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  color: var(--qp-text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: rgba(16, 24, 40, 0.05);
+}
+
+.icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
 }
 
 .panel-header div,
@@ -288,7 +344,16 @@
 }
 
 .panel-stats {
-  margin-top: 14px;
+  margin-top: 2px;
+}
+
+.menubar-panel .stat-card {
+  min-height: 86px;
+  padding: 10px 12px;
+}
+
+.menubar-panel .stat-card strong {
+  font-size: 23px;
 }
 
 .panel-section,
@@ -318,6 +383,140 @@
 
 .section-heading strong {
   font-size: 14px;
+}
+
+.menubar-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.58fr) minmax(148px, 0.95fr);
+  gap: 10px;
+  min-height: 142px;
+}
+
+.menubar-card {
+  min-height: 142px;
+  padding: 12px;
+  border: 1px solid var(--qp-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.menubar-card .section-heading {
+  margin-bottom: 8px;
+}
+
+.menubar-source-list {
+  display: grid;
+  gap: 0;
+}
+
+.menubar-source-row {
+  display: grid;
+  grid-template-columns: 10px 74px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 26px;
+  border-top: 1px solid rgba(16, 24, 40, 0.07);
+}
+
+.menubar-source-row:first-child {
+  border-top: 0;
+}
+
+.menubar-source-row strong {
+  overflow: hidden;
+  color: var(--qp-text);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menubar-source-row small {
+  overflow: hidden;
+  color: var(--qp-muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menubar-source-row em {
+  justify-self: end;
+  color: #967329;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.menubar-source-row em.connected {
+  color: var(--qp-green);
+}
+
+.settings-list.compact {
+  gap: 6px;
+}
+
+.settings-list.compact .setting-row {
+  min-height: 31px;
+  padding: 5px 0;
+  grid-template-columns: minmax(0, 1fr) 30px;
+  border: 0;
+  background: transparent;
+}
+
+.settings-list.compact .setting-row strong {
+  font-size: 10.5px;
+  line-height: 1.1;
+}
+
+.settings-list.compact .setting-row small {
+  display: none;
+}
+
+.settings-list.compact .switch-track {
+  width: 30px;
+  height: 18px;
+}
+
+.settings-list.compact .switch-track span {
+  width: 14px;
+  height: 14px;
+}
+
+.settings-list.compact .setting-row input:checked + .switch-track span {
+  transform: translateX(12px);
+}
+
+.menubar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  margin: 0 -14px -14px;
+  padding: 8px 14px;
+  color: var(--qp-muted);
+  border-top: 1px solid var(--qp-border);
+  background: rgba(255, 255, 255, 0.62);
+  font-size: 11px;
+}
+
+.menubar-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.menubar-footer button {
+  padding: 0;
+  border: 0;
+  color: var(--qp-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.menubar-footer button:hover {
+  color: var(--qp-text);
 }
 
 .source-list {

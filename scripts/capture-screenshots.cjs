@@ -51,7 +51,7 @@ app.whenReady().then(async () => {
   mkdirSync(outputDir, { recursive: true });
 
   await capture("console", "console-v05.png", { width: 1280, height: 1400 });
-  await capture("menubar", "menubar-v05.png", { width: 520, height: 760 });
+  await capture("menubar", "menubar-v05.png", { width: 548, height: 408 });
   await capture("pet", "pet-v05.png", { width: 320, height: 320 });
 
   for (const window of windows) {

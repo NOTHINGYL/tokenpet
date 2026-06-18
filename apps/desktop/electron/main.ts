@@ -45,8 +45,8 @@ const POPOVER_MARGIN = 12;
 const POPOVER_GAP = 8;
 
 const MENUBAR_SIZE = {
-  width: 430,
-  height: 620,
+  width: 500,
+  height: 360,
 };
 
 function rendererUrl(view: "pet" | "popover" | "menubar" | "console") {
@@ -128,6 +128,18 @@ function hydrateSettings() {
 }
 
 function createTrayIcon() {
+  const assetCandidates = [
+    join(__dirname, "../dist-renderer/assets/pets/cat-menubar.png"),
+    join(app.getAppPath(), "apps/desktop/public/assets/pets/cat-menubar.png"),
+  ];
+
+  for (const assetPath of assetCandidates) {
+    const image = nativeImage.createFromPath(assetPath);
+    if (!image.isEmpty()) {
+      return image.resize({ width: 18, height: 14, quality: "best" });
+    }
+  }
+
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 18 18">
       <path fill="black" d="M9 1.6c1.7 0 3.1.8 4 2.1l1.3-.9c.4-.3.9.1.8.6l-.5 2.1A5.8 5.8 0 0 1 15 8.1c0 3.3-2.7 5.9-6 5.9s-6-2.6-6-5.9c0-.9.2-1.8.6-2.6L3.1 3.4c-.1-.5.4-.9.8-.6l1.3.9A4.7 4.7 0 0 1 9 1.6Zm-2.2 6c-.5 0-.9.5-.9 1.1s.4 1.1.9 1.1.9-.5.9-1.1-.4-1.1-.9-1.1Zm4.4 0c-.5 0-.9.5-.9 1.1s.4 1.1.9 1.1.9-.5.9-1.1-.4-1.1-.9-1.1ZM7.3 11c.4.5 1 .8 1.7.8s1.3-.3 1.7-.8H7.3Z"/>
