@@ -388,3 +388,269 @@ button {
 .provider-dot.error {
   background: #d46b5d;
 }
+
+.menubar-panel,
+.console-view {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  color: #111827;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.menubar-panel {
+  padding: 16px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.22);
+}
+
+.console-view {
+  padding: 22px;
+  background: #f6f8fb;
+}
+
+.panel-header,
+.console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-header div,
+.console-header div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.panel-header strong,
+.console-header strong {
+  font-size: 22px;
+}
+
+.panel-header span:not(.panel-pill),
+.console-header span,
+.section-heading span {
+  overflow: hidden;
+  color: #687386;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-pill {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  border: 1px solid rgba(49, 163, 106, 0.24);
+  border-radius: 999px;
+  color: #24724f;
+  background: rgba(49, 163, 106, 0.12);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.panel-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.panel-actions button,
+.console-header button {
+  min-height: 34px;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 8px;
+  color: #111827;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.panel-actions button:hover,
+.console-header button:hover {
+  background: #f2f5f8;
+}
+
+.panel-actions button:disabled,
+.console-header button:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.panel-stats {
+  margin-top: 14px;
+}
+
+.panel-section,
+.console-section {
+  margin-top: 14px;
+}
+
+.console-section,
+.console-grid .stat-card {
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.console-section {
+  padding: 14px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.section-heading strong {
+  font-size: 14px;
+}
+
+.source-list {
+  display: grid;
+  gap: 8px;
+}
+
+.source-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 48px;
+  padding: 9px 10px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.source-row div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.source-row strong {
+  font-size: 14px;
+}
+
+.source-row small {
+  overflow: hidden;
+  color: #687386;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.source-badge {
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #687386;
+  background: #eef1f5;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.source-badge.connected {
+  color: #24724f;
+  background: rgba(49, 163, 106, 0.13);
+}
+
+.source-badge.idle {
+  color: #7a6728;
+  background: rgba(199, 176, 106, 0.18);
+}
+
+.source-badge.error {
+  color: #9a3f35;
+  background: rgba(212, 107, 93, 0.16);
+}
+
+.settings-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-list.wide {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.setting-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 10px;
+  align-items: center;
+  min-height: 54px;
+  padding: 9px 10px;
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.setting-row > span:first-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.setting-row strong {
+  font-size: 14px;
+}
+
+.setting-row small {
+  overflow: hidden;
+  color: #687386;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-row input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.switch-track {
+  display: block;
+  width: 42px;
+  height: 24px;
+  border-radius: 999px;
+  background: #d8dee8;
+  transition: background 140ms ease;
+}
+
+.switch-track span {
+  display: block;
+  width: 20px;
+  height: 20px;
+  margin: 2px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.24);
+  transition: transform 140ms ease;
+}
+
+.setting-row input:checked + .switch-track {
+  background: #31a36a;
+}
+
+.setting-row input:checked + .switch-track span {
+  transform: translateX(18px);
+}
+
+.console-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}

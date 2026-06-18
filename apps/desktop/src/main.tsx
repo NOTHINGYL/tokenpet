@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -17,7 +17,7 @@ type UsageSnapshot = {
 };
 
 type ProviderSnapshot = {
-  id: "codex" | "claude";
+  id: "codex" | "claude" | "cursor" | "ccusage";
   label: string;
   status: "connected" | "idle" | "error";
   detail: string;
@@ -26,10 +26,21 @@ type ProviderSnapshot = {
   allTimeTokens: number;
 };
 
+type AppSettings = {
+  launchAtLogin: boolean;
+  petVisible: boolean;
+  alwaysOnTop: boolean;
+};
+
 declare global {
   interface Window {
     quotapet: {
       getUsageSnapshot: () => Promise<UsageSnapshot>;
+      refreshUsageSnapshot: () => Promise<UsageSnapshot>;
+      getAppSettings: () => Promise<AppSettings>;
+      setAppSetting: (key: keyof AppSettings, enabled: boolean) => Promise<AppSettings>;
+      openConsole: () => void;
+      quit: () => void;
       togglePopover: () => void;
       startDrag: () => Promise<{ started: boolean }>;
       endDrag: () => Promise<{ moved: boolean }>;
@@ -68,7 +79,31 @@ const fallbackUsage: UsageSnapshot = {
       sevenDayTokens: 0,
       allTimeTokens: 0,
     },
+    {
+      id: "cursor",
+      label: "Cursor",
+      status: "idle",
+      detail: "local adapter planned",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
+    {
+      id: "ccusage",
+      label: "ccusage",
+      status: "connected",
+      detail: "bundled npm dependency",
+      todayTokens: 0,
+      sevenDayTokens: 0,
+      allTimeTokens: 0,
+    },
   ],
+};
+
+const fallbackSettings: AppSettings = {
+  launchAtLogin: false,
+  petVisible: true,
+  alwaysOnTop: true,
 };
 
 function compactNumber(value: number) {
@@ -88,12 +123,48 @@ function money(value: number) {
 
 function useUsage() {
   const [usage, setUsage] = useState<UsageSnapshot>(fallbackUsage);
+  const [loading, setLoading] = useState(false);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    try {
+      const snapshot = await window.quotapet.refreshUsageSnapshot();
+      setUsage(snapshot);
+      return snapshot;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
 
-    window.quotapet?.getUsageSnapshot().then((snapshot) => {
-      if (active) setUsage(snapshot);
+    function load() {
+      window.quotapet?.getUsageSnapshot().then((snapshot) => {
+        if (active) setUsage(snapshot);
+      });
+    }
+
+    load();
+    const timer = window.setInterval(load, 60_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  return { usage, refresh, loading };
+}
+
+function useAppSettings() {
+  const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
+
+  useEffect(() => {
+    let active = true;
+
+    window.quotapet?.getAppSettings().then((nextSettings) => {
+      if (active) setSettings(nextSettings);
     });
 
     return () => {
@@ -101,7 +172,23 @@ function useUsage() {
     };
   }, []);
 
-  return usage;
+  const setSetting = useCallback(async (key: keyof AppSettings, enabled: boolean) => {
+    const nextSettings = await window.quotapet.setAppSetting(key, enabled);
+    setSettings(nextSettings);
+  }, []);
+
+  return { settings, setSetting };
+}
+
+function lastUpdated(isoDate: string) {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return "not refreshed";
+
+  return new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(date);
 }
 
 function GoldCat() {
@@ -127,7 +214,7 @@ function GoldCat() {
 }
 
 function PetApp() {
-  const usage = useUsage();
+  const { usage } = useUsage();
   const [dragging, setDragging] = useState(false);
 
   function close(event: React.SyntheticEvent) {
@@ -197,7 +284,7 @@ function StatCard(props: { label: string; value: string; detail: string }) {
 }
 
 function PopoverApp() {
-  const usage = useUsage();
+  const { usage } = useUsage();
   const providerRows = useMemo(() => usage.providers, [usage.providers]);
 
   return (
@@ -205,7 +292,7 @@ function PopoverApp() {
       <header className="popover-header">
         <div>
           <strong>QuotaPet</strong>
-          <span>v0.2 · {usage.status}</span>
+          <span>v0.3 · {usage.status}</span>
         </div>
         <span className="status-dot" />
       </header>
@@ -240,12 +327,192 @@ function PopoverApp() {
   );
 }
 
+function ProviderStatusRows(props: { providers: ProviderSnapshot[] }) {
+  return (
+    <section className="source-list">
+      {props.providers.map((row) => (
+        <div className="source-row" key={row.id}>
+          <span className={`provider-dot ${row.status}`} />
+          <div>
+            <strong>{row.label}</strong>
+            <small>{row.detail}</small>
+          </div>
+          <span className={`source-badge ${row.status}`}>{row.status}</span>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function SettingToggle(props: {
+  label: string;
+  detail: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="setting-row">
+      <span>
+        <strong>{props.label}</strong>
+        <small>{props.detail}</small>
+      </span>
+      <input
+        type="checkbox"
+        checked={props.checked}
+        onChange={(event) => props.onChange(event.currentTarget.checked)}
+      />
+      <span className="switch-track" aria-hidden="true">
+        <span />
+      </span>
+    </label>
+  );
+}
+
+function MenuBarApp() {
+  const { usage, refresh, loading } = useUsage();
+  const { settings, setSetting } = useAppSettings();
+
+  return (
+    <main className="menubar-panel">
+      <header className="panel-header">
+        <div>
+          <strong>QuotaPet</strong>
+          <span>v0.3 · {usage.status}</span>
+        </div>
+        <span className="panel-pill">{compactNumber(usage.todayTokens)} today</span>
+      </header>
+
+      <div className="panel-actions">
+        <button type="button" onClick={() => void refresh()} disabled={loading}>
+          {loading ? "Refreshing" : "Refresh"}
+        </button>
+        <button type="button" onClick={() => window.quotapet.openConsole()}>
+          Console
+        </button>
+        <button type="button" onClick={() => window.quotapet.quit()}>
+          Quit
+        </button>
+      </div>
+
+      <div className="stats-grid panel-stats">
+        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
+        <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
+        <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
+      </div>
+
+      <section className="panel-section">
+        <div className="section-heading">
+          <strong>Sources</strong>
+          <span>Updated {lastUpdated(usage.generatedAt)}</span>
+        </div>
+        <ProviderStatusRows providers={usage.providers} />
+      </section>
+
+      <section className="panel-section">
+        <div className="section-heading">
+          <strong>Settings</strong>
+          <span>Local app controls</span>
+        </div>
+        <div className="settings-list">
+          <SettingToggle
+            label="Launch at login"
+            detail="Start QuotaPet with macOS"
+            checked={settings.launchAtLogin}
+            onChange={(checked) => void setSetting("launchAtLogin", checked)}
+          />
+          <SettingToggle
+            label="Show pet"
+            detail="Display the desktop companion"
+            checked={settings.petVisible}
+            onChange={(checked) => void setSetting("petVisible", checked)}
+          />
+          <SettingToggle
+            label="Always on top"
+            detail="Keep the pet above other windows"
+            checked={settings.alwaysOnTop}
+            onChange={(checked) => void setSetting("alwaysOnTop", checked)}
+          />
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function ConsoleApp() {
+  const { usage, refresh, loading } = useUsage();
+  const { settings, setSetting } = useAppSettings();
+
+  return (
+    <main className="console-view">
+      <header className="console-header">
+        <div>
+          <strong>QuotaPet Console</strong>
+          <span>Local token dashboard · updated {lastUpdated(usage.generatedAt)}</span>
+        </div>
+        <button type="button" onClick={() => void refresh()} disabled={loading}>
+          {loading ? "Refreshing" : "Refresh"}
+        </button>
+      </header>
+
+      <div className="console-grid">
+        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
+        <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
+        <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
+        <StatCard label="Top model" value={usage.topModel} detail={`top tool ${usage.topTool}`} />
+      </div>
+
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Source Status</strong>
+          <span>Codex, Claude Code, Cursor, and ccusage</span>
+        </div>
+        <ProviderStatusRows providers={usage.providers} />
+      </section>
+
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Pet Settings</strong>
+          <span>Applied immediately</span>
+        </div>
+        <div className="settings-list wide">
+          <SettingToggle
+            label="Launch at login"
+            detail="Start QuotaPet with macOS"
+            checked={settings.launchAtLogin}
+            onChange={(checked) => void setSetting("launchAtLogin", checked)}
+          />
+          <SettingToggle
+            label="Show pet"
+            detail="Display the desktop companion"
+            checked={settings.petVisible}
+            onChange={(checked) => void setSetting("petVisible", checked)}
+          />
+          <SettingToggle
+            label="Always on top"
+            detail="Keep the pet above other windows"
+            checked={settings.alwaysOnTop}
+            onChange={(checked) => void setSetting("alwaysOnTop", checked)}
+          />
+        </div>
+      </section>
+    </main>
+  );
+}
+
 function App() {
   const search = new URLSearchParams(window.location.search);
   const view = search.get("view");
 
   if (view === "popover") {
     return <PopoverApp />;
+  }
+
+  if (view === "menubar") {
+    return <MenuBarApp />;
+  }
+
+  if (view === "console") {
+    return <ConsoleApp />;
   }
 
   return <PetApp />;
