@@ -104,6 +104,20 @@
   z-index: 1;
 }
 
+.cat-paws-image {
+  position: absolute;
+  left: 50%;
+  bottom: 61px;
+  display: block;
+  width: 92px;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  transform: translateX(-51%);
+  filter: drop-shadow(0 5px 7px rgba(91, 55, 10, 0.12));
+  z-index: 3;
+}
+
 .cat-image-summary {
   width: 72px;
 }
@@ -250,10 +264,11 @@
 
 .token-pill {
   position: absolute;
-  right: 20px;
-  bottom: 20px;
-  min-width: 76px;
-  padding: 8px 11px;
+  right: auto;
+  bottom: 36px;
+  left: 50%;
+  min-width: 98px;
+  padding: 10px 16px 9px;
   border: 1px solid rgba(105, 62, 13, 0.18);
   border-radius: 999px;
   color: var(--pet-pill-text);
@@ -266,6 +281,8 @@
   font-weight: 800;
   line-height: 1;
   letter-spacing: 0;
+  transform: translateX(-50%);
+  z-index: 2;
 }
 
 .token-pill:hover {
