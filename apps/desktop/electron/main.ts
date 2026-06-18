@@ -136,7 +136,7 @@ function createTrayIcon() {
   for (const assetPath of assetCandidates) {
     const image = nativeImage.createFromPath(assetPath);
     if (!image.isEmpty()) {
-      return image.resize({ width: 18, height: 14, quality: "best" });
+      return image.resize({ width: 22, quality: "best" });
     }
   }
 

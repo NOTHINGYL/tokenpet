@@ -94,7 +94,7 @@
 .cat-image {
   position: relative;
   display: block;
-  width: 176px;
+  width: 184px;
   height: auto;
   pointer-events: none;
   user-select: none;
@@ -107,15 +107,15 @@
 .cat-paws-image {
   position: absolute;
   left: 50%;
-  bottom: 61px;
+  bottom: 64px;
   display: block;
-  width: 92px;
+  width: 96px;
   height: auto;
   pointer-events: none;
   user-select: none;
-  transform: translateX(-51%);
-  filter: drop-shadow(0 5px 7px rgba(91, 55, 10, 0.12));
-  z-index: 3;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 5px 7px rgba(91, 55, 10, 0.1));
+  z-index: 4;
 }
 
 .cat-image-summary {
@@ -265,10 +265,10 @@
 .token-pill {
   position: absolute;
   right: auto;
-  bottom: 36px;
+  bottom: 32px;
   left: 50%;
-  min-width: 98px;
-  padding: 10px 16px 9px;
+  min-width: 108px;
+  padding: 10px 18px 9px;
   border: 1px solid rgba(105, 62, 13, 0.18);
   border-radius: 999px;
   color: var(--pet-pill-text);
@@ -282,7 +282,7 @@
   line-height: 1;
   letter-spacing: 0;
   transform: translateX(-50%);
-  z-index: 2;
+  z-index: 3;
 }
 
 .token-pill:hover {
