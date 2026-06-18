@@ -42,6 +42,53 @@ type ProviderSnapshot = {
   allTimeTokens: number;
 };
 
+type DailyUsagePoint = {
+  date: string;
+  tokens: number;
+  cost: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  reasoningOutputTokens: number;
+};
+
+type ModelUsagePoint = {
+  model: string;
+  tokens: number;
+  cost: number;
+  share: number;
+};
+
+type SessionUsagePoint = {
+  id: string;
+  directory: string;
+  lastActivity: string;
+  tokens: number;
+  cost: number;
+  model: string;
+  share: number;
+};
+
+type CostStructure = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  reasoningOutputTokens: number;
+};
+
+type UsageAnalysis = {
+  daily: DailyUsagePoint[];
+  models: ModelUsagePoint[];
+  sessions: SessionUsagePoint[];
+  costStructure: CostStructure;
+  activeDays: number;
+  sessionCount: number;
+  cacheHitRate: number;
+  dailyAverageTokens: number;
+  nextSevenDayForecast: number;
+  nextThirtyDayForecast: number;
+};
+
 type UsageSnapshot = {
   todayTokens: number;
   sevenDayTokens: number;
@@ -54,12 +101,14 @@ type UsageSnapshot = {
   status: string;
   generatedAt: string;
   providers: ProviderSnapshot[];
+  analysis: UsageAnalysis;
 };
 
 type AppSettings = {
   launchAtLogin: boolean;
   petVisible: boolean;
   alwaysOnTop: boolean;
+  petTheme: "gold" | "mint" | "rose" | "sky";
 };
 
 type CcusageDailyRow = {
@@ -72,6 +121,13 @@ type CcusageDailyRow = {
   modelBreakdowns?: Array<{ modelName?: string; totalTokens?: number; inputTokens?: number; outputTokens?: number }>;
 };
 
+type CcusageSessionRow = CcusageDailyRow & {
+  directory?: string;
+  lastActivity?: string;
+  sessionFile?: string;
+  sessionId?: string;
+};
+
 type CcusageDailyReport = {
   daily?: CcusageDailyRow[];
   totals?: {
@@ -81,8 +137,14 @@ type CcusageDailyReport = {
   };
 };
 
+type CcusageSessionReport = {
+  sessions?: CcusageSessionRow[];
+  totals?: CcusageDailyReport["totals"];
+};
+
 type ProviderReport = ProviderSnapshot & {
   rows: CcusageDailyRow[];
+  sessions: CcusageSessionRow[];
   topModels: Map<string, number>;
   allTimeCost: number;
   sevenDayCost: number;
@@ -95,6 +157,7 @@ let settings: AppSettings = {
   launchAtLogin: false,
   petVisible: true,
   alwaysOnTop: true,
+  petTheme: "gold",
 };
 
 const POPOVER_SIZE = {
@@ -183,6 +246,14 @@ async function runCcusageDaily(provider: CcusageProviderId): Promise<CcusageDail
   return JSON.parse(stdout) as CcusageDailyReport;
 }
 
+async function runCcusageSession(provider: CcusageProviderId): Promise<CcusageSessionReport> {
+  const { stdout } = await execFileAsync(ccusageBinPath(), [provider, "session", "--json", "--offline"], {
+    maxBuffer: 20 * 1024 * 1024,
+  });
+
+  return JSON.parse(stdout) as CcusageSessionReport;
+}
+
 function providerLabel(provider: CcusageProviderId) {
   return provider === "codex" ? "Codex" : "Claude Code";
 }
@@ -191,8 +262,9 @@ async function loadProvider(provider: CcusageProviderId): Promise<ProviderReport
   const label = providerLabel(provider);
 
   try {
-    const report = await runCcusageDaily(provider);
+    const [report, sessionReport] = await Promise.all([runCcusageDaily(provider), runCcusageSession(provider)]);
     const rows = report.daily ?? [];
+    const sessions = sessionReport.sessions ?? [];
     const today = dateKey(new Date());
     const sevenDays = recentDateKeys(7);
 
@@ -240,6 +312,7 @@ async function loadProvider(provider: CcusageProviderId): Promise<ProviderReport
       sevenDayTokens,
       allTimeTokens,
       rows,
+      sessions,
       topModels,
       todayCost,
       sevenDayCost,
@@ -257,6 +330,7 @@ async function loadProvider(provider: CcusageProviderId): Promise<ProviderReport
       sevenDayTokens: 0,
       allTimeTokens: 0,
       rows: [],
+      sessions: [],
       topModels: new Map(),
       todayCost: 0,
       sevenDayCost: 0,
@@ -275,6 +349,7 @@ function emptyProvider(provider: ProviderId, label: string, status: ProviderStat
     sevenDayTokens: 0,
     allTimeTokens: 0,
     rows: [],
+    sessions: [],
     topModels: new Map(),
     todayCost: 0,
     sevenDayCost: 0,
@@ -313,6 +388,127 @@ function burnRate(todayTokens: number) {
   return "light";
 }
 
+function rowInputTokens(row: CcusageDailyRow) {
+  return Number((row as { inputTokens?: number }).inputTokens ?? 0);
+}
+
+function rowOutputTokens(row: CcusageDailyRow) {
+  return Number((row as { outputTokens?: number }).outputTokens ?? 0);
+}
+
+function rowCacheReadTokens(row: CcusageDailyRow) {
+  return Number((row as { cacheReadTokens?: number }).cacheReadTokens ?? 0);
+}
+
+function rowReasoningOutputTokens(row: CcusageDailyRow) {
+  return Number((row as { reasoningOutputTokens?: number }).reasoningOutputTokens ?? 0);
+}
+
+function topModelForRow(row: CcusageDailyRow) {
+  return [...rowModelTokens(row).entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "unknown";
+}
+
+function buildUsageAnalysis(providerReports: ProviderReport[]): UsageAnalysis {
+  const dailyByDate = new Map<string, DailyUsagePoint>();
+  const modelTotals = new Map<string, { tokens: number; cost: number }>();
+  const sessions: SessionUsagePoint[] = [];
+  const costStructure: CostStructure = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    reasoningOutputTokens: 0,
+  };
+
+  for (const provider of providerReports) {
+    for (const row of provider.rows) {
+      const date = rowDate(row);
+      if (!date) continue;
+
+      const current = dailyByDate.get(date) ?? {
+        date,
+        tokens: 0,
+        cost: 0,
+        inputTokens: 0,
+        outputTokens: 0,
+        cacheReadTokens: 0,
+        reasoningOutputTokens: 0,
+      };
+
+      const tokens = rowTokens(row);
+      const cost = rowCost(row);
+      current.tokens += tokens;
+      current.cost += cost;
+      current.inputTokens += rowInputTokens(row);
+      current.outputTokens += rowOutputTokens(row);
+      current.cacheReadTokens += rowCacheReadTokens(row);
+      current.reasoningOutputTokens += rowReasoningOutputTokens(row);
+      dailyByDate.set(date, current);
+
+      costStructure.inputTokens += rowInputTokens(row);
+      costStructure.outputTokens += rowOutputTokens(row);
+      costStructure.cacheReadTokens += rowCacheReadTokens(row);
+      costStructure.reasoningOutputTokens += rowReasoningOutputTokens(row);
+
+      for (const [model, modelTokens] of rowModelTokens(row)) {
+        const modelUsage = modelTotals.get(model) ?? { tokens: 0, cost: 0 };
+        modelUsage.tokens += modelTokens;
+        modelUsage.cost += tokens > 0 ? cost * (modelTokens / tokens) : 0;
+        modelTotals.set(model, modelUsage);
+      }
+    }
+
+    for (const session of provider.sessions) {
+      sessions.push({
+        id: session.sessionId ?? session.sessionFile ?? "session",
+        directory: session.directory ?? "local",
+        lastActivity: session.lastActivity ?? rowDate(session),
+        tokens: rowTokens(session),
+        cost: rowCost(session),
+        model: topModelForRow(session),
+        share: 0,
+      });
+    }
+  }
+
+  const daily = [...dailyByDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+  const totalTokens = daily.reduce((total, point) => total + point.tokens, 0);
+  const activeDays = daily.filter((point) => point.tokens > 0).length;
+  const observedDays = Math.max(activeDays, 1);
+  const dailyAverageTokens = Math.round(totalTokens / observedDays);
+  const inputAndCache = costStructure.inputTokens + costStructure.cacheReadTokens;
+  const cacheHitRate = inputAndCache > 0 ? costStructure.cacheReadTokens / inputAndCache : 0;
+
+  const models = [...modelTotals.entries()]
+    .map(([model, usage]) => ({
+      model,
+      tokens: usage.tokens,
+      cost: usage.cost,
+      share: totalTokens > 0 ? usage.tokens / totalTokens : 0,
+    }))
+    .sort((a, b) => b.tokens - a.tokens);
+
+  const sessionTotal = sessions.reduce((total, session) => total + session.tokens, 0);
+  const rankedSessions = sessions
+    .map((session) => ({
+      ...session,
+      share: sessionTotal > 0 ? session.tokens / sessionTotal : 0,
+    }))
+    .sort((a, b) => b.tokens - a.tokens);
+
+  return {
+    daily,
+    models,
+    sessions: rankedSessions,
+    costStructure,
+    activeDays,
+    sessionCount: sessions.length,
+    cacheHitRate,
+    dailyAverageTokens,
+    nextSevenDayForecast: dailyAverageTokens * 7,
+    nextThirtyDayForecast: dailyAverageTokens * 30,
+  };
+}
+
 async function loadUsageSnapshot(options: { force?: boolean } = {}): Promise<UsageSnapshot> {
   const now = Date.now();
   if (!options.force && usageCache && usageCache.expiresAt > now) {
@@ -327,6 +523,7 @@ async function loadUsageSnapshot(options: { force?: boolean } = {}): Promise<Usa
   const todayCost = providerReports.reduce((total, provider) => total + provider.todayCost, 0);
   const sevenDayCost = providerReports.reduce((total, provider) => total + provider.sevenDayCost, 0);
   const connected = providerReports.filter((provider) => provider.status === "connected");
+  const analysis = buildUsageAnalysis(providerReports);
 
   const snapshot: UsageSnapshot = {
     todayTokens,
@@ -339,7 +536,8 @@ async function loadUsageSnapshot(options: { force?: boolean } = {}): Promise<Usa
     burnRate: burnRate(todayTokens),
     status: connected.length > 0 ? "ccusage live" : "no usage found",
     generatedAt: new Date().toISOString(),
-    providers: sourceReports.map(({ rows: _rows, topModels: _topModels, ...provider }) => provider),
+    providers: sourceReports.map(({ rows: _rows, sessions: _sessions, topModels: _topModels, ...provider }) => provider),
+    analysis,
   };
 
   usageCache = {
@@ -511,9 +709,9 @@ function openConsoleWindow() {
   }
 
   consoleWindow = new BrowserWindow({
-    width: 760,
-    height: 660,
-    minWidth: 680,
+    width: 1180,
+    height: 860,
+    minWidth: 900,
     minHeight: 560,
     title: "QuotaPet Console",
     webPreferences: {
@@ -605,17 +803,26 @@ function setAlwaysOnTop(enabled: boolean) {
   applyAlwaysOnTop();
 }
 
-function setSetting(key: keyof AppSettings, enabled: boolean) {
+function setPetTheme(theme: AppSettings["petTheme"]) {
+  settings.petTheme = theme;
+  petWindow?.webContents.reload();
+}
+
+function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
   if (key === "launchAtLogin") {
-    setLaunchAtLogin(enabled);
+    setLaunchAtLogin(Boolean(value));
   }
 
   if (key === "petVisible") {
-    setPetVisible(enabled);
+    setPetVisible(Boolean(value));
   }
 
   if (key === "alwaysOnTop") {
-    setAlwaysOnTop(enabled);
+    setAlwaysOnTop(Boolean(value));
+  }
+
+  if (key === "petTheme") {
+    setPetTheme(value as AppSettings["petTheme"]);
   }
 
   return currentSettings();
@@ -769,7 +976,9 @@ ipcMain.handle("usage:refresh-snapshot", () => loadUsageSnapshot({ force: true }
 
 ipcMain.handle("app:get-settings", () => currentSettings());
 
-ipcMain.handle("app:set-setting", (_event, key: keyof AppSettings, enabled: boolean) => setSetting(key, enabled));
+ipcMain.handle("app:set-setting", (_event, key: keyof AppSettings, value: AppSettings[keyof AppSettings]) =>
+  setSetting(key, value),
+);
 
 ipcMain.on("pet:toggle-popover", () => {
   togglePopover();

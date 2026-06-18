@@ -14,6 +14,54 @@ type UsageSnapshot = {
   status: string;
   generatedAt: string;
   providers: ProviderSnapshot[];
+  analysis: UsageAnalysis;
+};
+
+type DailyUsagePoint = {
+  date: string;
+  tokens: number;
+  cost: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  reasoningOutputTokens: number;
+};
+
+type ModelUsagePoint = {
+  model: string;
+  tokens: number;
+  cost: number;
+  share: number;
+};
+
+type SessionUsagePoint = {
+  id: string;
+  directory: string;
+  lastActivity: string;
+  tokens: number;
+  cost: number;
+  model: string;
+  share: number;
+};
+
+type CostStructure = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  reasoningOutputTokens: number;
+};
+
+type UsageAnalysis = {
+  daily: DailyUsagePoint[];
+  models: ModelUsagePoint[];
+  sessions: SessionUsagePoint[];
+  costStructure: CostStructure;
+  activeDays: number;
+  sessionCount: number;
+  cacheHitRate: number;
+  dailyAverageTokens: number;
+  nextSevenDayForecast: number;
+  nextThirtyDayForecast: number;
 };
 
 type ProviderSnapshot = {
@@ -30,6 +78,7 @@ type AppSettings = {
   launchAtLogin: boolean;
   petVisible: boolean;
   alwaysOnTop: boolean;
+  petTheme: "gold" | "mint" | "rose" | "sky";
 };
 
 declare global {
@@ -38,7 +87,7 @@ declare global {
       getUsageSnapshot: () => Promise<UsageSnapshot>;
       refreshUsageSnapshot: () => Promise<UsageSnapshot>;
       getAppSettings: () => Promise<AppSettings>;
-      setAppSetting: (key: keyof AppSettings, enabled: boolean) => Promise<AppSettings>;
+      setAppSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<AppSettings>;
       openConsole: () => void;
       quit: () => void;
       togglePopover: () => void;
@@ -98,12 +147,30 @@ const fallbackUsage: UsageSnapshot = {
       allTimeTokens: 0,
     },
   ],
+  analysis: {
+    daily: [],
+    models: [],
+    sessions: [],
+    costStructure: {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      reasoningOutputTokens: 0,
+    },
+    activeDays: 0,
+    sessionCount: 0,
+    cacheHitRate: 0,
+    dailyAverageTokens: 0,
+    nextSevenDayForecast: 0,
+    nextThirtyDayForecast: 0,
+  },
 };
 
 const fallbackSettings: AppSettings = {
   launchAtLogin: false,
   petVisible: true,
   alwaysOnTop: true,
+  petTheme: "gold",
 };
 
 function compactNumber(value: number) {
@@ -191,6 +258,162 @@ function lastUpdated(isoDate: string) {
   }).format(date);
 }
 
+function percent(value: number) {
+  return new Intl.NumberFormat("en", {
+    style: "percent",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function shortDate(value: string) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en", { month: "2-digit", day: "2-digit" }).format(date);
+}
+
+function maxOf(values: number[]) {
+  return Math.max(1, ...values);
+}
+
+function SparkBars(props: { points: DailyUsagePoint[] }) {
+  const points = props.points.slice(-42);
+  const maxTokens = maxOf(points.map((point) => point.tokens));
+
+  return (
+    <div className="spark-bars" aria-label="Daily token trend">
+      {points.map((point) => (
+        <div className="spark-bar" key={point.date}>
+          <span style={{ height: `${Math.max(3, (point.tokens / maxTokens) * 100)}%` }} />
+          <small>{shortDate(point.date)}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ForecastLine(props: { points: DailyUsagePoint[]; forecast: number }) {
+  const history = props.points.slice(-14);
+  const projected = Array.from({ length: 7 }, (_value, index) => props.forecast / 7 + index * (props.forecast / 70));
+  const values = [...history.map((point) => point.tokens), ...projected];
+  const maxValue = maxOf(values);
+  const width = 360;
+  const height = 150;
+  const step = width / Math.max(values.length - 1, 1);
+  const path = values
+    .map((value, index) => {
+      const x = index * step;
+      const y = height - (value / maxValue) * (height - 18) - 8;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <svg className="forecast-line" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Token forecast line">
+      <path className="chart-gridline" d={`M 0 ${height - 8} L ${width} ${height - 8}`} />
+      <path className="chart-gridline" d={`M 0 ${height / 2} L ${width} ${height / 2}`} />
+      <path className="forecast-path" d={path} />
+    </svg>
+  );
+}
+
+function ActivityHeatmap(props: { points: DailyUsagePoint[] }) {
+  const cells = Array.from({ length: 7 }, () => Array.from({ length: 12 }, () => 0));
+  const points = props.points.slice(-84);
+  const maxTokens = maxOf(points.map((point) => point.tokens));
+
+  points.forEach((point, index) => {
+    const date = new Date(`${point.date}T00:00:00`);
+    const weekday = Number.isNaN(date.getTime()) ? index % 7 : date.getDay();
+    const bucket = Math.floor(index / 7);
+    if (bucket < 12) cells[weekday][bucket] += point.tokens;
+  });
+
+  return (
+    <div className="activity-heatmap">
+      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, rowIndex) => (
+        <React.Fragment key={day}>
+          <span className="heatmap-label">{day}</span>
+          {cells[rowIndex].map((value, colIndex) => (
+            <span
+              className="heatmap-cell"
+              data-level={Math.ceil((value / maxTokens) * 5)}
+              key={`${day}-${colIndex}`}
+            />
+          ))}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+function ModelUsageTable(props: { models: ModelUsagePoint[] }) {
+  return (
+    <div className="model-table">
+      {props.models.slice(0, 8).map((model, index) => (
+        <div className="model-row" key={model.model}>
+          <span>{index + 1}</span>
+          <strong>{model.model}</strong>
+          <div className="meter">
+            <span style={{ width: `${Math.max(2, model.share * 100)}%` }} />
+          </div>
+          <small>{compactNumber(model.tokens)}</small>
+          <small>{money(model.cost)}</small>
+          <small>{percent(model.share)}</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SessionBreakdown(props: { sessions: SessionUsagePoint[] }) {
+  return (
+    <div className="session-list">
+      {props.sessions.slice(0, 12).map((session) => (
+        <div className="session-row" key={session.id}>
+          <div>
+            <strong>{session.directory}</strong>
+            <small>{session.model} · {lastUpdated(session.lastActivity)}</small>
+          </div>
+          <div className="meter">
+            <span style={{ width: `${Math.max(2, session.share * 100)}%` }} />
+          </div>
+          <span>{compactNumber(session.tokens)}</span>
+          <span>{money(session.cost)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CostStructureBar(props: { structure: CostStructure }) {
+  const parts = [
+    { label: "Input", value: props.structure.inputTokens, className: "input" },
+    { label: "Output", value: props.structure.outputTokens, className: "output" },
+    { label: "Cache", value: props.structure.cacheReadTokens, className: "cache" },
+    { label: "Reasoning", value: props.structure.reasoningOutputTokens, className: "reasoning" },
+  ];
+  const total = parts.reduce((sum, part) => sum + part.value, 0) || 1;
+
+  return (
+    <div className="cost-structure">
+      <div className="stacked-bar">
+        {parts.map((part) => (
+          <span className={part.className} key={part.label} style={{ width: `${(part.value / total) * 100}%` }} />
+        ))}
+      </div>
+      <div className="cost-legend">
+        {parts.map((part) => (
+          <div key={part.label}>
+            <span className={`legend-dot ${part.className}`} />
+            <strong>{part.label}</strong>
+            <small>{compactNumber(part.value)} · {percent(part.value / total)}</small>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GoldCat() {
   return (
     <div className="cat" aria-hidden="true">
@@ -215,6 +438,7 @@ function GoldCat() {
 
 function PetApp() {
   const { usage } = useUsage();
+  const { settings } = useAppSettings();
   const [dragging, setDragging] = useState(false);
 
   function close(event: React.SyntheticEvent) {
@@ -243,7 +467,7 @@ function PetApp() {
 
   return (
     <main
-      className={`pet-stage ${dragging ? "is-dragging" : ""}`}
+      className={`pet-stage pet-theme-${settings.petTheme} ${dragging ? "is-dragging" : ""}`}
       onDoubleClick={() => window.quotapet.togglePopover()}
       onPointerDown={startDrag}
       onPointerUp={endDrag}
@@ -438,9 +662,228 @@ function MenuBarApp() {
   );
 }
 
+type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
+
+function MetricCard(props: { label: string; value: string; detail: string; tag?: string }) {
+  return (
+    <section className="metric-card">
+      <div>
+        <span>{props.label}</span>
+        {props.tag ? <em>{props.tag}</em> : null}
+      </div>
+      <strong>{props.value}</strong>
+      <small>{props.detail}</small>
+    </section>
+  );
+}
+
+function OverviewTab(props: { usage: UsageSnapshot }) {
+  const { usage } = props;
+  const analysis = usage.analysis;
+
+  return (
+    <>
+      <div className="analytics-grid">
+        <MetricCard label="Estimated cost" value={money(usage.todayCost + usage.sevenDayCost)} detail="local ccusage estimate" />
+        <MetricCard label="Total tokens" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
+        <MetricCard label="Input context" value={compactNumber(analysis.costStructure.inputTokens)} detail="raw input tokens" />
+        <MetricCard label="Output tokens" value={compactNumber(analysis.costStructure.outputTokens)} detail="assistant output" />
+        <MetricCard label="Active days" value={`${analysis.activeDays}`} detail="days with local usage" />
+        <MetricCard label="Cache hit rate" value={percent(analysis.cacheHitRate)} detail="cache / input+cache" />
+        <MetricCard label="Sessions" value={`${analysis.sessionCount}`} detail="local session records" />
+        <MetricCard label="Daily average" value={compactNumber(analysis.dailyAverageTokens)} detail="observed active days" />
+      </div>
+
+      <section className="console-section chart-section">
+        <div className="section-heading">
+          <strong>Daily Trend</strong>
+          <span>{analysis.daily.length} observed days</span>
+        </div>
+        <SparkBars points={analysis.daily} />
+      </section>
+
+      <div className="two-column">
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Token Consumption Forecast</strong>
+            <span>local baseline</span>
+          </div>
+          <ForecastLine points={analysis.daily} forecast={analysis.nextSevenDayForecast} />
+          <div className="forecast-stats">
+            <span>Daily average <strong>{compactNumber(analysis.dailyAverageTokens)}</strong></span>
+            <span>Next 7 days <strong>{compactNumber(analysis.nextSevenDayForecast)}</strong></span>
+            <span>Next 30 days <strong>{compactNumber(analysis.nextThirtyDayForecast)}</strong></span>
+            <span>Top model now <strong>{usage.topModel}</strong></span>
+          </div>
+        </section>
+
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Activity Heatmap</strong>
+            <span>recent local days</span>
+          </div>
+          <ActivityHeatmap points={analysis.daily} />
+        </section>
+      </div>
+    </>
+  );
+}
+
+function BreakdownTab(props: { usage: UsageSnapshot }) {
+  const { usage } = props;
+
+  return (
+    <>
+      <div className="two-column">
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Model Usage</strong>
+            <span>{usage.analysis.models.length} models</span>
+          </div>
+          <ModelUsageTable models={usage.analysis.models} />
+        </section>
+
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Tool Breakdown</strong>
+            <span>{usage.providers.length} sources</span>
+          </div>
+          <ProviderStatusRows providers={usage.providers} />
+        </section>
+      </div>
+
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Session Breakdown</strong>
+          <span>{usage.analysis.sessionCount} sessions</span>
+        </div>
+        <SessionBreakdown sessions={usage.analysis.sessions} />
+      </section>
+    </>
+  );
+}
+
+function CostTab(props: { usage: UsageSnapshot }) {
+  const { usage } = props;
+  const structure = usage.analysis.costStructure;
+  const totalTokens = structure.inputTokens + structure.outputTokens + structure.cacheReadTokens + structure.reasoningOutputTokens;
+  const costPerMillion = usage.allTimeTokens > 0 ? (usage.sevenDayCost / Math.max(usage.sevenDayTokens, 1)) * 1_000_000 : 0;
+
+  return (
+    <>
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Cost Structure</strong>
+          <span>Cache hit {percent(usage.analysis.cacheHitRate)}</span>
+        </div>
+        <CostStructureBar structure={structure} />
+      </section>
+
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Efficiency</strong>
+          <span>local estimates</span>
+        </div>
+        <div className="analytics-grid compact">
+          <MetricCard label="Cost / 1M tokens" value={money(costPerMillion)} detail="7 day blended rate" />
+          <MetricCard label="Reasoning share" value={percent(totalTokens > 0 ? structure.reasoningOutputTokens / totalTokens : 0)} detail="reasoning / token mix" />
+          <MetricCard label="Cache savings signal" value={compactNumber(structure.cacheReadTokens)} detail="cache read tokens" />
+          <MetricCard label="Output ratio" value={percent(totalTokens > 0 ? structure.outputTokens / totalTokens : 0)} detail="output / token mix" />
+        </div>
+      </section>
+
+      <section className="console-section">
+        <div className="section-heading">
+          <strong>Waste Radar</strong>
+          <span>largest local sessions</span>
+        </div>
+        <SessionBreakdown sessions={usage.analysis.sessions.slice(0, 6)} />
+      </section>
+    </>
+  );
+}
+
+function PetTab(props: { settings: AppSettings; setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void }) {
+  const themes: Array<{ id: AppSettings["petTheme"]; label: string }> = [
+    { id: "gold", label: "Gold" },
+    { id: "mint", label: "Mint" },
+    { id: "rose", label: "Rose" },
+    { id: "sky", label: "Sky" },
+  ];
+
+  return (
+    <section className="console-section pet-config-section">
+      <div className="section-heading">
+        <strong>Pet</strong>
+        <span>Basic appearance controls</span>
+      </div>
+      <div className="pet-config-grid">
+        <div className={`pet-preview pet-theme-${props.settings.petTheme}`}>
+          <GoldCat />
+        </div>
+        <div className="theme-options">
+          {themes.map((theme) => (
+            <button
+              className={props.settings.petTheme === theme.id ? "selected" : ""}
+              key={theme.id}
+              type="button"
+              onClick={() => props.setSetting("petTheme", theme.id)}
+            >
+              <span className={`theme-swatch pet-theme-${theme.id}`} />
+              {theme.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SettingsTab(props: {
+  settings: AppSettings;
+  setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
+}) {
+  return (
+    <section className="console-section">
+      <div className="section-heading">
+        <strong>Settings</strong>
+        <span>Applied immediately</span>
+      </div>
+      <div className="settings-list wide">
+        <SettingToggle
+          label="Launch at login"
+          detail="Start QuotaPet with macOS"
+          checked={props.settings.launchAtLogin}
+          onChange={(checked) => props.setSetting("launchAtLogin", checked)}
+        />
+        <SettingToggle
+          label="Show pet"
+          detail="Display the desktop companion"
+          checked={props.settings.petVisible}
+          onChange={(checked) => props.setSetting("petVisible", checked)}
+        />
+        <SettingToggle
+          label="Always on top"
+          detail="Keep the pet above other windows"
+          checked={props.settings.alwaysOnTop}
+          onChange={(checked) => props.setSetting("alwaysOnTop", checked)}
+        />
+      </div>
+    </section>
+  );
+}
+
 function ConsoleApp() {
   const { usage, refresh, loading } = useUsage();
   const { settings, setSetting } = useAppSettings();
+  const [activeTab, setActiveTab] = useState<ConsoleTab>("overview");
+  const tabs: Array<{ id: ConsoleTab; label: string }> = [
+    { id: "overview", label: "Overview" },
+    { id: "breakdown", label: "Breakdown" },
+    { id: "cost", label: "Cost & Efficiency" },
+    { id: "pet", label: "Pet" },
+    { id: "settings", label: "Settings" },
+  ];
 
   return (
     <main className="console-view">
@@ -454,47 +897,28 @@ function ConsoleApp() {
         </button>
       </header>
 
-      <div className="console-grid">
-        <StatCard label="Today" value={compactNumber(usage.todayTokens)} detail={money(usage.todayCost)} />
-        <StatCard label="7 days" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
-        <StatCard label="Local all time" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
-        <StatCard label="Top model" value={usage.topModel} detail={`top tool ${usage.topTool}`} />
-      </div>
+      <nav className="console-tabs" aria-label="Console sections">
+        {tabs.map((tab) => (
+          <button
+            className={activeTab === tab.id ? "active" : ""}
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-      <section className="console-section">
-        <div className="section-heading">
-          <strong>Source Status</strong>
-          <span>Codex, Claude Code, Cursor, and ccusage</span>
-        </div>
-        <ProviderStatusRows providers={usage.providers} />
-      </section>
-
-      <section className="console-section">
-        <div className="section-heading">
-          <strong>Pet Settings</strong>
-          <span>Applied immediately</span>
-        </div>
-        <div className="settings-list wide">
-          <SettingToggle
-            label="Launch at login"
-            detail="Start QuotaPet with macOS"
-            checked={settings.launchAtLogin}
-            onChange={(checked) => void setSetting("launchAtLogin", checked)}
-          />
-          <SettingToggle
-            label="Show pet"
-            detail="Display the desktop companion"
-            checked={settings.petVisible}
-            onChange={(checked) => void setSetting("petVisible", checked)}
-          />
-          <SettingToggle
-            label="Always on top"
-            detail="Keep the pet above other windows"
-            checked={settings.alwaysOnTop}
-            onChange={(checked) => void setSetting("alwaysOnTop", checked)}
-          />
-        </div>
-      </section>
+      {activeTab === "overview" ? <OverviewTab usage={usage} /> : null}
+      {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
+      {activeTab === "cost" ? <CostTab usage={usage} /> : null}
+      {activeTab === "pet" ? (
+        <PetTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
+      ) : null}
+      {activeTab === "settings" ? (
+        <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
+      ) : null}
     </main>
   );
 }
