@@ -1,8 +1,6 @@
 const petAssets = {
-  desktop: "assets/pets/cat-desktop.svg",
+  desktop: "assets/pets/cat-desktop.png",
   summary: "assets/pets/cat-summary.png",
-  menubar: "assets/pets/cat-menubar.png",
-  icon: "assets/pets/cat-icon.png",
 };
 
 export function GoldCat(props: { variant?: keyof typeof petAssets; className?: string }) {
