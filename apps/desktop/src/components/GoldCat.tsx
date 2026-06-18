@@ -1,5 +1,5 @@
 const petAssets = {
-  desktop: "assets/pets/cat-desktop.png",
+  desktop: "assets/pets/cat-desktop.svg",
   summary: "assets/pets/cat-summary.png",
   menubar: "assets/pets/cat-menubar.png",
   icon: "assets/pets/cat-icon.png",

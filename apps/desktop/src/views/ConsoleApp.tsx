@@ -173,7 +173,7 @@ function PetTab(props: { settings: AppSettings; setSetting: <K extends keyof App
       </div>
       <div className="pet-config-grid">
         <div className={`pet-preview pet-theme-${props.settings.petTheme}`}>
-          <GoldCat />
+          <GoldCat variant="summary" />
         </div>
         <div className="theme-options">
           {themes.map((theme) => (

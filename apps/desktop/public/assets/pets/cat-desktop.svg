@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 190" role="img" aria-label="QuotaPet golden cat">
+  <defs>
+    <radialGradient id="furLight" cx="38%" cy="30%" r="70%">
+      <stop offset="0" stop-color="#fff2a5"/>
+      <stop offset="0.45" stop-color="#ffd25e"/>
+      <stop offset="1" stop-color="#d8911d"/>
+    </radialGradient>
+    <radialGradient id="furDeep" cx="45%" cy="36%" r="78%">
+      <stop offset="0" stop-color="#ffe88f"/>
+      <stop offset="0.55" stop-color="#efad2e"/>
+      <stop offset="1" stop-color="#ad6816"/>
+    </radialGradient>
+    <linearGradient id="pawGold" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#ffe58c"/>
+      <stop offset="1" stop-color="#efb13b"/>
+    </linearGradient>
+    <linearGradient id="badgeFill" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fffdf5"/>
+      <stop offset="1" stop-color="#fff3cd"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="145%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#6f4310" flood-opacity="0.2"/>
+    </filter>
+    <filter id="badgeShadow" x="-20%" y="-30%" width="140%" height="170%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#644014" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#softShadow)">
+    <path fill="url(#furDeep)" d="M154 96c17-23 42-15 51 5 7 16 3 34-12 47-16 15-45 18-67 5-20-12-18-43 28-57Z"/>
+    <path fill="#c98218" d="M195 99c11 6 18 18 17 31-1 12-7 22-17 29 9-15 8-38-5-51-5-5-3-12 5-9Z" opacity=".72"/>
+
+    <ellipse cx="122" cy="98" rx="77" ry="52" fill="url(#furLight)"/>
+    <ellipse cx="103" cy="82" rx="60" ry="58" fill="url(#furLight)"/>
+
+    <path fill="url(#furLight)" stroke="#e7a72f" stroke-width="2" d="M57 49 45 16c-2-6 4-10 9-6l32 24Z"/>
+    <path fill="url(#furLight)" stroke="#e7a72f" stroke-width="2" d="M137 34 171 9c5-4 11 1 9 7l-12 36Z"/>
+    <path fill="#ffd6b2" d="M60 43 53 22l21 16Z" opacity=".9"/>
+    <path fill="#ffd6b2" d="M143 38 166 21l-8 24Z" opacity=".9"/>
+
+    <path fill="none" stroke="#d89322" stroke-linecap="round" stroke-width="5" d="M84 35c8 7 10 15 9 25M105 27c5 10 5 20 0 30M127 35c-7 8-9 16-8 25"/>
+    <path fill="none" stroke="#d89322" stroke-linecap="round" stroke-width="4" d="M52 82c-10 4-17 10-22 18M55 95c-10 2-18 7-24 13M154 84c11 3 19 9 25 18M150 97c10 2 19 7 25 14" opacity=".58"/>
+
+    <ellipse cx="78" cy="82" rx="12" ry="16" fill="#4a2b0b"/>
+    <ellipse cx="78" cy="82" rx="8" ry="12" fill="#17100a"/>
+    <circle cx="73" cy="75" r="4" fill="#fff8d8"/>
+    <ellipse cx="127" cy="82" rx="12" ry="16" fill="#4a2b0b"/>
+    <ellipse cx="127" cy="82" rx="8" ry="12" fill="#17100a"/>
+    <circle cx="122" cy="75" r="4" fill="#fff8d8"/>
+
+    <ellipse cx="101" cy="103" rx="6" ry="4" fill="#e78d52"/>
+    <path fill="none" stroke="#9a631a" stroke-linecap="round" stroke-width="2.2" d="M101 107c-6 9-17 8-22 2M102 107c6 9 17 8 22 2"/>
+
+    <path fill="#f6b13a" d="M143 73c10 11 24 19 39 22-10 5-27 2-41-12Z" opacity=".55"/>
+    <path fill="#f6b13a" d="M140 94c12 9 27 13 43 12-10 8-28 8-43-2Z" opacity=".48"/>
+    <path fill="#f6b13a" d="M143 114c12 7 25 9 39 6-9 8-26 10-42 2Z" opacity=".42"/>
+  </g>
+
+  <g filter="url(#badgeShadow)">
+    <rect x="62" y="126" width="116" height="43" rx="22" fill="url(#badgeFill)" stroke="#d7c8a5" stroke-width="2"/>
+  </g>
+
+  <g filter="url(#softShadow)">
+    <ellipse cx="80" cy="124" rx="24" ry="18" fill="url(#pawGold)"/>
+    <ellipse cx="139" cy="124" rx="24" ry="18" fill="url(#pawGold)"/>
+    <path fill="none" stroke="#d99728" stroke-linecap="round" stroke-width="2.4" d="M67 122c8 5 18 5 26 0M126 122c8 5 19 5 27 0"/>
+  </g>
+</svg>
