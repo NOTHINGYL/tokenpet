@@ -28,7 +28,7 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
 
           return (
             <div className={`spark-bar edge-${edge}`} key={point.date} style={{ "--bar-height": `${height}%` } as CSSProperties}>
-              <span style={{ height: `${height}%` }} />
+              <span className="spark-bar-fill" style={{ height: `${height}%` }} />
               <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
               <div className="trend-tooltip">
                 <span className="trend-tooltip-date">{shortDate(point.date)}</span>
