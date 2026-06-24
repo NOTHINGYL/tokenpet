@@ -225,6 +225,7 @@ function createMenuBarWindow() {
     y,
     frame: false,
     transparent: true,
+    backgroundColor: "#00000000",
     resizable: false,
     hasShadow: true,
     alwaysOnTop: true,
@@ -414,12 +415,13 @@ function createPetWindow() {
   const { width } = primaryDisplay.workAreaSize;
 
   petWindow = new BrowserWindow({
-    width: 190,
-    height: 190,
-    x: Math.max(24, width - 240),
+    width: 165,
+    height: 165,
+    x: Math.max(24, width - 215),
     y: 120,
     frame: false,
     transparent: true,
+    backgroundColor: "#00000000",
     resizable: false,
     hasShadow: false,
     alwaysOnTop: settings.alwaysOnTop,
