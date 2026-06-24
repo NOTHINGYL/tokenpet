@@ -1,8 +1,8 @@
-import type { QuotaPetBridge } from "./types";
+import type { TokenPetBridge } from "./types";
 
 declare global {
   interface Window {
-    quotapet: QuotaPetBridge;
+    tokenpet: TokenPetBridge;
   }
 }
 

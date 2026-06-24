@@ -206,7 +206,7 @@ function SettingsTab(props: {
       <div className="settings-list wide">
         <SettingToggle
           label="Launch at login"
-          detail="Start QuotaPet with macOS"
+          detail="Start TokenPet with macOS"
           checked={props.settings.launchAtLogin}
           onChange={(checked) => props.setSetting("launchAtLogin", checked)}
         />
@@ -243,7 +243,7 @@ export function ConsoleApp() {
     <main className="console-view">
       <header className="console-header">
         <div>
-          <strong>QuotaPet Console</strong>
+          <strong>TokenPet Console</strong>
           <span>v{APP_VERSION} · local token dashboard · updated {lastUpdated(usage.generatedAt)}</span>
         </div>
         <div className="console-header-actions">

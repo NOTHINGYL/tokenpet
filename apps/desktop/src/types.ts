@@ -79,7 +79,7 @@ export type AppSettings = {
 
 export type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
 
-export type QuotaPetBridge = {
+export type TokenPetBridge = {
   getUsageSnapshot: () => Promise<UsageSnapshot>;
   refreshUsageSnapshot: () => Promise<UsageSnapshot>;
   getAppSettings: () => Promise<AppSettings>;

@@ -1,8 +1,8 @@
-# QuotaPet
+# TokenPet
 
 A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.
 
-QuotaPet is a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.
+TokenPet is a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.
 
 ## Status
 
@@ -12,11 +12,11 @@ v0.5 prototype. The desktop pet now has a more polished macOS-style interface, p
 
 The screenshots below use bundled demo data for documentation only. The app itself reads local usage metadata from your machine.
 
-![QuotaPet console](docs/screenshots/console-v05.png)
+![TokenPet console](docs/screenshots/console-v05.png)
 
 <p>
-  <img src="docs/screenshots/menubar-v05.png" alt="QuotaPet menu bar panel" width="360" />
-  <img src="docs/screenshots/pet-v05.png" alt="QuotaPet desktop pet" width="260" />
+  <img src="docs/screenshots/menubar-v05.png" alt="TokenPet menu bar panel" width="360" />
+  <img src="docs/screenshots/pet-v05.png" alt="TokenPet desktop pet" width="260" />
 </p>
 
 ## v0.5 Features
@@ -37,7 +37,7 @@ The screenshots below use bundled demo data for documentation only. The app itse
 - Today, 7 days, Local all time, Top model, burn rate, and provider status
 - macOS-focused Electron prototype
 
-QuotaPet uses the local `node_modules/.bin/ccusage` installed with this project. It reads local usage metadata only; no prompts, code, paths, or session content are sent anywhere.
+TokenPet uses the local `node_modules/.bin/ccusage` installed with this project. It reads local usage metadata only; no prompts, code, paths, or session content are sent anywhere.
 
 ## Planned Scope
 
@@ -85,7 +85,7 @@ npm run build
 npm start
 ```
 
-Launch QuotaPet in the background so it keeps running after the terminal closes:
+Launch TokenPet in the background so it keeps running after the terminal closes:
 
 ```bash
 npm run launch

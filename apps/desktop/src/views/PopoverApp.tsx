@@ -12,7 +12,7 @@ export function PopoverApp() {
     <main className="popover">
       <header className="popover-header">
         <div>
-          <strong>QuotaPet</strong>
+          <strong>TokenPet</strong>
           <span>v{APP_VERSION} · local-first token companion</span>
         </div>
         <HealthBadge status={usage.status} loading={loading} error={error} />

@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
-contextBridge.exposeInMainWorld("quotapet", {
+contextBridge.exposeInMainWorld("tokenpet", {
   getUsageSnapshot: () => ipcRenderer.invoke("usage:get-snapshot"),
   refreshUsageSnapshot: () => ipcRenderer.invoke("usage:refresh-snapshot"),
   getAppSettings: () => ipcRenderer.invoke("app:get-settings"),

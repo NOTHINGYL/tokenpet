@@ -8,7 +8,7 @@ export function useAppSettings() {
   useEffect(() => {
     let active = true;
 
-    window.quotapet?.getAppSettings().then((nextSettings) => {
+    window.tokenpet?.getAppSettings().then((nextSettings) => {
       if (active) setSettings(nextSettings);
     });
 
@@ -18,7 +18,7 @@ export function useAppSettings() {
   }, []);
 
   const setSetting = useCallback(async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    const nextSettings = await window.quotapet.setAppSetting(key, value);
+    const nextSettings = await window.tokenpet.setAppSetting(key, value);
     setSettings(nextSettings);
   }, []);
 

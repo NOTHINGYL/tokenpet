@@ -79,7 +79,7 @@ const snapshot = {
       { model: "gpt-4.1", tokens: Math.round(totalTokens * 0.08), cost: 42.7, share: 0.08 },
     ],
     sessions: [
-      { id: "1", directory: "quotapet", lastActivity: "2026-06-17T20:20:00", tokens: 34_500_000, cost: 31.4, model: "gpt-5.5", share: 0.26 },
+      { id: "1", directory: "tokenpet", lastActivity: "2026-06-17T20:20:00", tokens: 34_500_000, cost: 31.4, model: "gpt-5.5", share: 0.26 },
       { id: "2", directory: "agent-dashboard", lastActivity: "2026-06-16T22:12:00", tokens: 25_800_000, cost: 24.1, model: "gpt-5.5", share: 0.19 },
       { id: "3", directory: "local-tools", lastActivity: "2026-06-15T18:04:00", tokens: 18_200_000, cost: 14.8, model: "gpt-5-codex", share: 0.14 },
       { id: "4", directory: "docs-site", lastActivity: "2026-06-14T13:18:00", tokens: 12_700_000, cost: 9.6, model: "gpt-5.5", share: 0.1 },
@@ -106,7 +106,7 @@ const settings = {
   petTheme: "gold",
 };
 
-contextBridge.exposeInMainWorld("quotapet", {
+contextBridge.exposeInMainWorld("tokenpet", {
   getUsageSnapshot: () => Promise.resolve(snapshot),
   refreshUsageSnapshot: () => Promise.resolve(snapshot),
   getAppSettings: () => Promise.resolve(settings),

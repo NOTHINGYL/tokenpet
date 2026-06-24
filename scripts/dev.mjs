@@ -81,7 +81,7 @@ await waitForPort(5173, "127.0.0.1");
 const electron = run("npm", ["exec", "electron", "--", "."], {
   env: {
     ...process.env,
-    QUOTAPET_DEV_SERVER_URL: devServerUrl,
+    TOKENPET_DEV_SERVER_URL: devServerUrl,
   },
 });
 

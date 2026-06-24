@@ -6,7 +6,7 @@ import { compactNumber, lastUpdated, maxOf, money, percent, shortDate } from "..
 export function SparkBars(props: { points: DailyUsagePoint[] }) {
   const points = props.points.slice(-42);
   if (points.length === 0) {
-    return <EmptyState title="No local trend yet" detail="QuotaPet will draw the daily trend after ccusage finds local records." />;
+    return <EmptyState title="No local trend yet" detail="TokenPet will draw the daily trend after ccusage finds local records." />;
   }
 
   const maxTokens = maxOf(points.map((point) => point.tokens));

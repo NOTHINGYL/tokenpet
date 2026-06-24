@@ -8,8 +8,8 @@ import { loadUsageSnapshot } from "./usage.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const isDev = process.env.QUOTAPET_DEV_SERVER_URL !== undefined;
-const devServerUrl = process.env.QUOTAPET_DEV_SERVER_URL;
+const isDev = process.env.TOKENPET_DEV_SERVER_URL !== undefined;
+const devServerUrl = process.env.TOKENPET_DEV_SERVER_URL;
 
 let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
@@ -64,17 +64,17 @@ async function loadWindow(window: BrowserWindow, view: "pet" | "popover" | "menu
 function verifyBridge(window: BrowserWindow, label: string) {
   window.webContents.once("did-finish-load", () => {
     window.webContents
-      .executeJavaScript("Boolean(window.quotapet)")
+      .executeJavaScript("Boolean(window.tokenpet)")
       .then((ready) => {
-        console.log(`[quotapet] ${label} preload bridge: ${ready ? "ready" : "missing"}`);
+        console.log(`[tokenpet] ${label} preload bridge: ${ready ? "ready" : "missing"}`);
       })
       .catch((error: unknown) => {
-        console.warn(`[quotapet] ${label} preload bridge check failed`, error);
+        console.warn(`[tokenpet] ${label} preload bridge check failed`, error);
       });
   });
 }
 
-function quitQuotaPet() {
+function quitTokenPet() {
   menuBarWindow?.close();
   consoleWindow?.close();
   popoverWindow?.close();
@@ -105,7 +105,7 @@ function readStoredSettings() {
   try {
     return JSON.parse(readFileSync(path, "utf8")) as Partial<AppSettings>;
   } catch (error) {
-    console.warn("[quotapet] failed to read settings", error);
+    console.warn("[tokenpet] failed to read settings", error);
     return {};
   }
 }
@@ -115,7 +115,7 @@ function writeStoredSettings() {
     mkdirSync(app.getPath("userData"), { recursive: true });
     writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
   } catch (error) {
-    console.warn("[quotapet] failed to write settings", error);
+    console.warn("[tokenpet] failed to write settings", error);
   }
 }
 
@@ -153,7 +153,7 @@ function createTrayIcon() {
 function updateTray(snapshot?: UsageSnapshot) {
   if (!tray) return;
 
-  tray.setToolTip("QuotaPet");
+  tray.setToolTip("TokenPet");
   if (process.platform === "darwin") {
     tray.setTitle(snapshot ? compactNumber(snapshot.todayTokens) : "");
   }
@@ -187,8 +187,8 @@ function createTray() {
         type: "separator",
       },
       {
-        label: "Quit QuotaPet",
-        click: () => quitQuotaPet(),
+        label: "Quit TokenPet",
+        click: () => quitTokenPet(),
       },
     ]).popup();
   });
@@ -272,7 +272,7 @@ function openConsoleWindow() {
     height: 860,
     minWidth: 900,
     minHeight: 560,
-    title: "QuotaPet Console",
+    title: "TokenPet Console",
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -399,8 +399,8 @@ function showPetContextMenu() {
       type: "separator",
     },
     {
-      label: "Quit QuotaPet",
-      click: () => quitQuotaPet(),
+      label: "Quit TokenPet",
+      click: () => quitTokenPet(),
     },
   ]).popup({ window: petWindow ?? undefined });
 }
@@ -547,7 +547,7 @@ ipcMain.on("pet:toggle-popover", () => {
 });
 
 ipcMain.on("pet:close", () => {
-  quitQuotaPet();
+  quitTokenPet();
 });
 
 ipcMain.on("app:open-console", () => {
@@ -555,7 +555,7 @@ ipcMain.on("app:open-console", () => {
 });
 
 ipcMain.on("app:quit", () => {
-  quitQuotaPet();
+  quitTokenPet();
 });
 
 function stopDrag() {

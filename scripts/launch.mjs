@@ -37,5 +37,5 @@ const child = spawn(electronCommand, ["."], {
 
 child.unref();
 
-console.log(`QuotaPet launched in the background. PID: ${child.pid}`);
+console.log(`TokenPet launched in the background. PID: ${child.pid}`);
 console.log("Quit from the pet close button, the right-click menu, or your system process manager.");

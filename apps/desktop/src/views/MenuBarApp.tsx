@@ -54,7 +54,7 @@ export function MenuBarApp() {
     <main className="menubar-panel">
       <header className="panel-header">
         <div className="panel-title">
-          <strong>QuotaPet</strong>
+          <strong>TokenPet</strong>
           <span className="panel-version">v{APP_VERSION}</span>
           <HealthBadge status={usage.status} loading={loading} error={error} />
         </div>
@@ -62,7 +62,7 @@ export function MenuBarApp() {
           <IconButton label="Refresh now" onClick={() => void refresh()} disabled={loading}>
             <RefreshIcon />
           </IconButton>
-          <IconButton label="Open settings" onClick={() => window.quotapet.openConsole()}>
+          <IconButton label="Open settings" onClick={() => window.tokenpet.openConsole()}>
             <SettingsIcon />
           </IconButton>
         </div>
@@ -114,7 +114,7 @@ export function MenuBarApp() {
           <span className="provider-dot connected" />
           Last updated {lastUpdated(usage.generatedAt)}
         </span>
-        <button type="button" onClick={() => window.quotapet.openConsole()}>
+        <button type="button" onClick={() => window.tokenpet.openConsole()}>
           Open Console →
         </button>
       </footer>

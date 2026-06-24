@@ -11,8 +11,8 @@ export function useUsage() {
     setLoading(true);
     setError(null);
     try {
-      if (!window.quotapet) return usage;
-      const snapshot = await window.quotapet.refreshUsageSnapshot();
+      if (!window.tokenpet) return usage;
+      const snapshot = await window.tokenpet.refreshUsageSnapshot();
       setUsage(snapshot);
       return snapshot;
     } catch (refreshError) {
@@ -27,12 +27,12 @@ export function useUsage() {
     let active = true;
 
     function load() {
-      if (!window.quotapet) {
+      if (!window.tokenpet) {
         setLoading(false);
         return;
       }
 
-      window.quotapet
+      window.tokenpet
         .getUsageSnapshot()
         .then((snapshot) => {
           if (active) {

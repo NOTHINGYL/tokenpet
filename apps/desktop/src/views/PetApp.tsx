@@ -12,7 +12,7 @@ export function PetApp() {
   function close(event: React.SyntheticEvent) {
     event.preventDefault();
     event.stopPropagation();
-    window.quotapet.close();
+    window.tokenpet.close();
   }
 
   async function startDrag(event: React.PointerEvent<HTMLElement>) {
@@ -23,36 +23,36 @@ export function PetApp() {
 
     event.currentTarget.setPointerCapture(event.pointerId);
     setDragging(true);
-    await window.quotapet.startDrag();
+    await window.tokenpet.startDrag();
   }
 
   async function endDrag() {
     if (!dragging) return;
 
     setDragging(false);
-    await window.quotapet.endDrag();
+    await window.tokenpet.endDrag();
   }
 
   return (
     <main
       className={`pet-stage pet-theme-${settings.petTheme} ${dragging ? "is-dragging" : ""}`}
-      onDoubleClick={() => window.quotapet.togglePopover()}
+      onDoubleClick={() => window.tokenpet.togglePopover()}
       onPointerDown={startDrag}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
     >
-      <div className="pet-drag-region" aria-label="Drag QuotaPet">
+      <div className="pet-drag-region" aria-label="Drag TokenPet">
         <GoldCat />
         <button
           className="token-pill"
           type="button"
-          aria-label="Open QuotaPet summary"
-          onClick={() => window.quotapet.togglePopover()}
+          aria-label="Open TokenPet summary"
+          onClick={() => window.tokenpet.togglePopover()}
         >
           {compactNumber(usage.todayTokens)}
         </button>
       </div>
-      <button className="pet-close" type="button" aria-label="Close QuotaPet" onPointerDown={close} onClick={close}>
+      <button className="pet-close" type="button" aria-label="Close TokenPet" onPointerDown={close} onClick={close}>
         x
       </button>
     </main>
