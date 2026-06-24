@@ -351,6 +351,7 @@
   padding: 4px 10px 0;
   border-radius: 8px;
   overflow: visible;
+  isolation: isolate;
   background:
     linear-gradient(to top, rgba(16, 24, 40, 0.1) 1px, transparent 1px) 0 4px / 100% calc((100% - 22px) / 4),
     #ffffff;
@@ -363,6 +364,7 @@
   height: 100%;
   align-items: stretch;
   gap: 0;
+  isolation: isolate;
 }
 
 .spark-bar::before {
@@ -406,21 +408,21 @@
 }
 
 .spark-bar:hover {
-  z-index: 100;
+  z-index: 1000;
 }
 
 .trend-tooltip {
   position: absolute;
-  bottom: calc(18px + var(--bar-height) - 6px);
-  left: calc(50% + 54px);
-  z-index: 200;
+  bottom: calc(18px + var(--bar-height) + 10px);
+  left: 50%;
+  z-index: 1001;
   display: flex;
-  min-width: 112px;
+  width: max-content;
+  min-width: 104px;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   padding: 9px 12px;
-  overflow: hidden;
   color: #101828;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 8px;
@@ -430,7 +432,7 @@
   opacity: 0;
   pointer-events: none;
   text-align: left;
-  transform: translate(0, 6px);
+  transform: translate(-50%, 6px);
   transition:
     opacity 120ms ease,
     transform 120ms ease;
@@ -439,7 +441,8 @@
 .trend-tooltip-date,
 .trend-tooltip-metric {
   display: block;
-  width: 100%;
+  width: auto;
+  min-width: 0;
   color: #101828;
   font-size: 11px;
   font-weight: 500;
@@ -449,16 +452,22 @@
 }
 
 .spark-bar.edge-end .trend-tooltip {
-  right: calc(50% + 54px);
+  right: 0;
   left: auto;
+  transform: translate(0, 6px);
+}
+
+.spark-bar.edge-start .trend-tooltip {
+  left: 0;
   transform: translate(0, 6px);
 }
 
 .spark-bar:hover .trend-tooltip {
   opacity: 1;
-  transform: translate(0, 0);
+  transform: translate(-50%, 0);
 }
 
+.spark-bar.edge-start:hover .trend-tooltip,
 .spark-bar.edge-end:hover .trend-tooltip {
   transform: translate(0, 0);
 }
