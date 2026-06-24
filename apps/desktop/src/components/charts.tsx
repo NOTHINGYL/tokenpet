@@ -31,8 +31,8 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
               <span style={{ height: `${height}%` }} />
               <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
               <div className="trend-tooltip">
-                <strong>{shortDate(point.date)}</strong>
-                <span>Tokens : {compactNumber(point.tokens)}</span>
+                <span className="trend-tooltip-date">{shortDate(point.date)}</span>
+                <span className="trend-tooltip-metric">Tokens: {compactNumber(point.tokens)}</span>
               </div>
             </div>
           );

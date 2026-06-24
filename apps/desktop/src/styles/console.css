@@ -350,6 +350,7 @@
   align-items: stretch;
   padding: 4px 10px 0;
   border-radius: 8px;
+  overflow: visible;
   background:
     linear-gradient(to top, rgba(16, 24, 40, 0.1) 1px, transparent 1px) 0 4px / 100% calc((100% - 22px) / 4),
     #ffffff;
@@ -405,20 +406,21 @@
 }
 
 .spark-bar:hover {
-  z-index: 12;
+  z-index: 100;
 }
 
 .trend-tooltip {
   position: absolute;
   bottom: calc(18px + var(--bar-height) - 6px);
-  left: calc(50% + 28px);
-  z-index: 40;
+  left: calc(50% + 54px);
+  z-index: 200;
   display: flex;
-  min-width: 104px;
+  min-width: 112px;
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
   padding: 9px 12px;
+  overflow: hidden;
   color: #101828;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 8px;
@@ -434,18 +436,20 @@
     transform 120ms ease;
 }
 
-.trend-tooltip strong,
-.trend-tooltip span {
+.trend-tooltip-date,
+.trend-tooltip-metric {
   display: block;
+  width: 100%;
   color: #101828;
   font-size: 11px;
   font-weight: 500;
   line-height: 1.25;
+  text-align: left;
   white-space: nowrap;
 }
 
 .spark-bar.edge-end .trend-tooltip {
-  right: calc(50% + 28px);
+  right: calc(50% + 54px);
   left: auto;
   transform: translate(0, 6px);
 }
