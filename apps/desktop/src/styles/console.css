@@ -404,15 +404,21 @@
   opacity: 1;
 }
 
+.spark-bar:hover {
+  z-index: 12;
+}
+
 .trend-tooltip {
   position: absolute;
   bottom: calc(18px + var(--bar-height) - 6px);
-  left: calc(50% + 13px);
-  z-index: 8;
-  display: grid;
-  min-width: 96px;
+  left: calc(50% + 28px);
+  z-index: 40;
+  display: flex;
+  min-width: 104px;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 6px;
-  padding: 9px 11px;
+  padding: 9px 12px;
   color: #101828;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 8px;
@@ -421,6 +427,7 @@
   font-size: 11px;
   opacity: 0;
   pointer-events: none;
+  text-align: left;
   transform: translate(0, 6px);
   transition:
     opacity 120ms ease,
@@ -438,7 +445,7 @@
 }
 
 .spark-bar.edge-end .trend-tooltip {
-  right: calc(50% + 13px);
+  right: calc(50% + 28px);
   left: auto;
   transform: translate(0, 6px);
 }
@@ -690,10 +697,16 @@
 
 .token-activity-grid {
   display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(7, 11px);
   justify-content: space-between;
   gap: 3px;
+}
+
+.activity-column {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(7, 11px);
+  gap: 3px;
+  width: 12px;
 }
 
 .activity-cell {
@@ -752,25 +765,35 @@
   white-space: nowrap;
 }
 
-.activity-cell.edge-start .activity-tooltip {
+.activity-cell.edge-start .activity-tooltip,
+.activity-column.edge-start .activity-tooltip {
   left: 0;
   transform: translate(0, 5px);
 }
 
-.activity-cell.edge-end .activity-tooltip {
+.activity-cell.edge-end .activity-tooltip,
+.activity-column.edge-end .activity-tooltip {
   right: 0;
   left: auto;
   transform: translate(0, 5px);
 }
 
-.activity-cell:hover .activity-tooltip {
+.activity-cell:hover .activity-tooltip,
+.activity-column:hover > .activity-tooltip {
   opacity: 1;
   transform: translate(-50%, 0);
 }
 
 .activity-cell.edge-start:hover .activity-tooltip,
-.activity-cell.edge-end:hover .activity-tooltip {
+.activity-cell.edge-end:hover .activity-tooltip,
+.activity-column.edge-start:hover > .activity-tooltip,
+.activity-column.edge-end:hover > .activity-tooltip {
   transform: translate(0, 0);
+}
+
+.column-tooltip {
+  max-width: none;
+  z-index: 12;
 }
 
 .token-activity-months {

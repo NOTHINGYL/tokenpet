@@ -62,36 +62,56 @@ export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
     });
   }
 
-  const days = useMemo(() => {
-    let cumulative = 0;
-    const totalTokens = rawDays.reduce((sum, day) => sum + day.tokens, 0);
-    const weeklyTotals = rawDays.map((item, itemIndex) => {
-      const startIndex = Math.max(0, itemIndex - item.date.getDay());
-      return rawDays.slice(startIndex, Math.min(startIndex + 7, rawDays.length)).reduce((sum, weekDay) => sum + weekDay.tokens, 0);
-    });
-    const maxWeekly = maxOf(weeklyTotals);
-
-    return rawDays.map((day, index) => {
-      cumulative += day.tokens;
-      const weekStart = Math.max(0, index - day.date.getDay());
-      const weekTokens = rawDays.slice(weekStart, Math.min(weekStart + 7, rawDays.length)).reduce((sum, item) => sum + item.tokens, 0);
-      const value = mode === "weekly" ? weekTokens : mode === "cumulative" ? cumulative : day.tokens;
-      const maxValue = mode === "weekly" ? maxWeekly : mode === "cumulative" ? Math.max(totalTokens, 1) : maxTokens;
-
-      return {
-        ...day,
-        displayTokens: value,
-        level: value === 0 ? 0 : Math.max(1, Math.ceil((value / maxValue) * 5)),
-      };
-    });
-  }, [maxTokens, mode, rawDays]);
-
-  const leadingBlanks = days[0]?.date.getDay() ?? 0;
+  const totalTokens = rawDays.reduce((sum, day) => sum + day.tokens, 0);
+  const dailyDays = rawDays.map((day) => ({
+    ...day,
+    displayTokens: day.tokens,
+    level: day.tokens === 0 ? 0 : Math.max(1, Math.ceil((day.tokens / maxTokens) * 5)),
+  }));
+  const leadingBlanks = dailyDays[0]?.date.getDay() ?? 0;
   const cells = [
     ...Array.from({ length: leadingBlanks }, (_value, index) => ({ key: `blank-${index}`, blank: true as const })),
-    ...days.map((day) => ({ ...day, blank: false as const })),
+    ...dailyDays.map((day) => ({ ...day, blank: false as const })),
   ];
   const columns = Math.ceil(cells.length / 7);
+  const weekColumns = useMemo(() => {
+    const base = Array.from({ length: columns }, (_value, columnIndex) => {
+      const columnCells = cells.slice(columnIndex * 7, columnIndex * 7 + 7);
+      const daysInColumn = columnCells.filter((cell) => !cell.blank);
+      const weekTokens = daysInColumn.reduce((sum, day) => sum + day.tokens, 0);
+      const weekStart = daysInColumn[0]?.date ?? start;
+      const weekEnd = daysInColumn[daysInColumn.length - 1]?.date ?? weekStart;
+      const cumulativeTokens = rawDays
+        .filter((day) => day.date <= weekEnd)
+        .reduce((sum, day) => sum + day.tokens, 0);
+
+      return {
+        cells: columnCells,
+        cumulativeTokens,
+        weekStart,
+        weekTokens,
+      };
+    });
+    const maxWeekTokens = maxOf(base.map((column) => column.weekTokens));
+
+    return base.map((column, index) => {
+      const columnValue = mode === "weekly" ? column.weekTokens : mode === "cumulative" ? column.cumulativeTokens : 0;
+      const columnMax = mode === "weekly" ? maxWeekTokens : Math.max(totalTokens, 1);
+      const columnLevel = columnValue === 0 ? 0 : Math.max(1, Math.ceil((columnValue / columnMax) * 5));
+      const edge = index < 4 ? "start" : index > columns - 5 ? "end" : "middle";
+      const dateLabel = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(column.weekStart);
+      const tooltip = mode === "weekly"
+        ? `${compactNumber(column.weekTokens)} tokens on week of ${dateLabel}`
+        : `${compactNumber(column.cumulativeTokens)} tokens through week of ${dateLabel}`;
+
+      return {
+        ...column,
+        columnLevel,
+        edge,
+        tooltip,
+      };
+    });
+  }, [cells, columns, mode, rawDays, start, totalTokens]);
   const monthLabels = cells.reduce<Array<{ label: string; column: number }>>((labels, cell, index) => {
     if (cell.blank) return labels;
     const isFirstDay = cell.date.getDate() <= 7;
@@ -113,22 +133,24 @@ export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
         </div>
       </div>
       <div className="token-activity-grid" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
-        {cells.map((cell, index) => {
-          const edge = Math.floor(index / 7) < 4 ? "start" : Math.floor(index / 7) > columns - 5 ? "end" : "middle";
-          return (
-            <span
-              className={cell.blank ? "activity-cell blank" : `activity-cell edge-${edge}`}
-              data-level={cell.blank ? undefined : cell.level}
-              key={cell.key}
-            >
-              {cell.blank ? null : (
-                <span className="activity-tooltip">
-                  {`${compactNumber(cell.displayTokens)} tokens on ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(cell.date)}`}
-                </span>
-              )}
-            </span>
-          );
-        })}
+        {weekColumns.map((column, columnIndex) => (
+          <span className={`activity-column edge-${column.edge}`} key={`week-${columnIndex}`}>
+            {mode !== "daily" && <span className="activity-tooltip column-tooltip">{column.tooltip}</span>}
+            {column.cells.map((cell) => (
+              <span
+                className={cell.blank ? "activity-cell blank" : "activity-cell"}
+                data-level={cell.blank ? undefined : mode === "daily" ? cell.level : column.columnLevel}
+                key={cell.key}
+              >
+                {mode === "daily" && !cell.blank ? (
+                  <span className="activity-tooltip">
+                    {`${compactNumber(cell.displayTokens)} tokens on ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(cell.date)}`}
+                  </span>
+                ) : null}
+              </span>
+            ))}
+          </span>
+        ))}
       </div>
       <div className="token-activity-months" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
         {monthLabels.map((month) => (
