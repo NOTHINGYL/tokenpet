@@ -11,6 +11,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
+  -webkit-app-region: drag;
   color: var(--qp-text);
   border: 1px solid rgba(16, 24, 40, 0.14);
   border-radius: 18px;
@@ -29,6 +30,15 @@
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.62)),
     #fbfaf7;
+}
+
+.console-sidebar .console-tabs,
+.console-sidebar button,
+.console-content,
+.console-header-actions,
+.console-section,
+.metric-card {
+  -webkit-app-region: no-drag;
 }
 
 .sidebar-brand {
@@ -164,6 +174,7 @@
 .console-header {
   flex: 0 0 auto;
   margin-bottom: 16px;
+  -webkit-app-region: drag;
 }
 
 .console-header strong {
@@ -176,6 +187,7 @@
 }
 
 .console-header-actions button {
+  -webkit-app-region: no-drag;
   min-height: 32px;
   padding: 0 12px;
   border: 1px solid var(--qp-border);
@@ -296,7 +308,7 @@
 }
 
 .chart-section {
-  min-height: 206px;
+  min-height: 198px;
 }
 
 .dashboard-chart-grid {
@@ -308,20 +320,38 @@
 
 .dashboard-bottom-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.95fr) minmax(260px, 1.1fr);
   gap: 10px;
+  margin-bottom: 10px;
+}
+
+.daily-trend {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  height: 180px;
+}
+
+.trend-axis {
+  display: grid;
+  grid-template-rows: repeat(5, 1fr);
+  padding: 4px 8px 18px 0;
+  color: #667085;
+  font-size: 11px;
+  line-height: 1;
+  text-align: right;
 }
 
 .spark-bars {
+  position: relative;
   display: grid;
   grid-template-rows: minmax(0, 1fr) 18px;
   column-gap: 2px;
-  height: 172px;
+  height: 180px;
   align-items: stretch;
-  padding: 12px 10px 0;
+  padding: 4px 10px 0;
   border-radius: 8px;
   background:
-    linear-gradient(to top, rgba(16, 24, 40, 0.08) 1px, transparent 1px) 0 0 / 100% 33.3%,
+    linear-gradient(to top, rgba(16, 24, 40, 0.1) 1px, transparent 1px) 0 4px / 100% calc((100% - 22px) / 4),
     #ffffff;
 }
 
@@ -334,15 +364,31 @@
   gap: 0;
 }
 
+.spark-bar::before {
+  position: absolute;
+  top: 0;
+  right: -1px;
+  bottom: 18px;
+  left: -1px;
+  z-index: 0;
+  content: "";
+  border-radius: 4px 4px 0 0;
+  background: linear-gradient(180deg, rgba(79, 126, 232, 0.11), rgba(79, 126, 232, 0.02));
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
 .spark-bar span {
+  position: relative;
+  z-index: 1;
   display: block;
-  width: 8px;
+  width: 6px;
   max-width: 100%;
   min-height: 3px;
   align-self: end;
   justify-self: center;
   border-radius: 3px 3px 2px 2px;
-  background: linear-gradient(180deg, #aed4ff, #72a7ff);
+  background: linear-gradient(180deg, #79b79a, #4f9a7c);
   transition:
     background 140ms ease,
     filter 140ms ease,
@@ -350,27 +396,29 @@
 }
 
 .spark-bar:hover span {
-  background: linear-gradient(180deg, #86bdff, #4f8ef5);
-  filter: drop-shadow(0 6px 8px rgba(79, 126, 232, 0.22));
-  transform: translateY(-3px);
+  background: linear-gradient(180deg, #77b195, #4f9a7c);
+  filter: drop-shadow(0 6px 8px rgba(47, 148, 97, 0.22));
 }
 
-.spark-bar::after {
+.spark-bar:hover::before {
+  opacity: 1;
+}
+
+.trend-tooltip {
   position: absolute;
-  bottom: calc(100% + 8px);
+  bottom: calc(18px + var(--bar-height) + 10px);
   left: 50%;
   z-index: 8;
-  width: max-content;
-  max-width: 160px;
-  padding: 7px 9px;
-  content: attr(data-tooltip);
-  color: #477ee5;
+  display: grid;
+  min-width: 118px;
+  gap: 8px;
+  padding: 13px 14px;
+  color: #101828;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 8px;
   background: #ffffff;
   box-shadow: 0 12px 32px rgba(16, 24, 40, 0.14);
-  font-size: 10px;
-  font-weight: 750;
+  font-size: 12px;
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 6px);
@@ -379,12 +427,37 @@
     transform 120ms ease;
 }
 
-.spark-bar:hover::after {
+.trend-tooltip strong,
+.trend-tooltip span {
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.spark-bar.edge-start .trend-tooltip {
+  left: 0;
+  transform: translate(0, 6px);
+}
+
+.spark-bar.edge-end .trend-tooltip {
+  right: 0;
+  left: auto;
+  transform: translate(0, 6px);
+}
+
+.spark-bar:hover .trend-tooltip {
   opacity: 1;
   transform: translate(-50%, 0);
 }
 
+.spark-bar.edge-start:hover .trend-tooltip,
+.spark-bar.edge-end:hover .trend-tooltip {
+  transform: translate(0, 0);
+}
+
 .spark-bar small {
+  position: relative;
+  z-index: 1;
   overflow: visible;
   width: max-content;
   align-self: end;
@@ -397,7 +470,7 @@
 }
 
 .donut-card {
-  min-height: 206px;
+  min-height: 198px;
 }
 
 .donut-layout {
@@ -542,8 +615,8 @@
 
 .recent-row {
   display: grid;
-  grid-template-columns: 18px minmax(76px, 0.9fr) minmax(70px, 0.8fr) minmax(80px, 1fr) 44px;
-  gap: 8px;
+  grid-template-columns: 18px minmax(60px, 0.72fr) minmax(76px, 0.85fr) minmax(72px, 0.8fr) minmax(44px, 0.5fr);
+  gap: 6px;
   align-items: center;
   min-height: 22px;
   font-size: 10px;
@@ -573,10 +646,96 @@
 }
 
 .recent-row em {
+  overflow: hidden;
   color: var(--qp-text);
   font-style: normal;
   font-weight: 800;
   text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.token-activity-section {
+  padding: 16px 18px 14px;
+}
+
+.token-activity-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.token-activity-header strong {
+  color: #20242c;
+  font-size: 16px;
+}
+
+.token-activity-header div {
+  display: flex;
+  gap: 18px;
+}
+
+.token-activity-header button {
+  padding: 0;
+  border: 0;
+  color: #8a8f96;
+  background: transparent;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.token-activity-header button.active {
+  color: #20242c;
+}
+
+.token-activity-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 11px);
+  justify-content: space-between;
+  gap: 3px;
+}
+
+.activity-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: #f0f0f2;
+}
+
+.activity-cell.blank {
+  opacity: 0;
+}
+
+.activity-cell[data-level="1"] {
+  background: #d8ebff;
+}
+
+.activity-cell[data-level="2"] {
+  background: #b8dcff;
+}
+
+.activity-cell[data-level="3"] {
+  background: #91c7ff;
+}
+
+.activity-cell[data-level="4"] {
+  background: #63adfb;
+}
+
+.activity-cell[data-level="5"] {
+  background: #2994f2;
+}
+
+.token-activity-months {
+  display: grid;
+  justify-content: space-between;
+  margin-top: 11px;
+  color: #8a8f96;
+  font-size: 13px;
 }
 
 .two-column {

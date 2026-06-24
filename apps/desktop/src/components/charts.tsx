@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, type CSSProperties } from "react";
 import { EmptyState } from "./ui";
 import type { CostStructure, DailyUsagePoint, ModelUsagePoint, SessionUsagePoint } from "../types";
 import { compactNumber, lastUpdated, maxOf, money, percent, shortDate } from "../utils/format";
@@ -11,16 +11,101 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
 
   const maxTokens = maxOf(points.map((point) => point.tokens));
   const labelEvery = Math.max(1, Math.ceil(points.length / 6));
+  const axisMax = Math.ceil(maxTokens / 20_000_000) * 20_000_000 || 20_000_000;
+  const axisLabels = [axisMax, axisMax * 0.75, axisMax * 0.5, axisMax * 0.25, 0];
 
   return (
-    <div className="spark-bars" aria-label="Daily token trend" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
-      {points.map((point, index) => (
-        <div className="spark-bar" data-tooltip={`${point.date} - ${compactNumber(point.tokens)} tokens - ${money(point.cost)}`} key={point.date}>
-          <span style={{ height: `${Math.max(3, (point.tokens / maxTokens) * 100)}%` }} />
-          <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
-        </div>
-      ))}
+    <div className="daily-trend" aria-label="Daily token trend">
+      <div className="trend-axis" aria-hidden="true">
+        {axisLabels.map((label) => (
+          <span key={label}>{label === 0 ? "0" : `${(label / 1_000_000).toFixed(1)}M`}</span>
+        ))}
+      </div>
+      <div className="spark-bars" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
+        {points.map((point, index) => {
+          const height = Math.max(3, (point.tokens / axisMax) * 100);
+          const edge = index < 3 ? "start" : index > points.length - 4 ? "end" : "middle";
+
+          return (
+            <div className={`spark-bar edge-${edge}`} key={point.date} style={{ "--bar-height": `${height}%` } as CSSProperties}>
+              <span style={{ height: `${height}%` }} />
+              <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
+              <div className="trend-tooltip">
+                <strong>{shortDate(point.date)}</strong>
+                <span>Tokens : {compactNumber(point.tokens)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
+  );
+}
+
+export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
+  const source = props.points.length > 0 ? props.points : [];
+  const maxTokens = maxOf(source.map((point) => point.tokens));
+  const byDate = new Map(source.map((point) => [point.date, point.tokens]));
+  const end = source.length > 0 ? new Date(`${source[source.length - 1].date}T00:00:00`) : new Date();
+  const start = new Date(end);
+  start.setDate(end.getDate() - 363);
+
+  const days: Array<{ date: Date; key: string; tokens: number; level: number }> = [];
+  for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
+    const key = date.toISOString().slice(0, 10);
+    const tokens = byDate.get(key) ?? 0;
+    days.push({
+      date: new Date(date),
+      key,
+      tokens,
+      level: tokens === 0 ? 0 : Math.max(1, Math.ceil((tokens / maxTokens) * 5)),
+    });
+  }
+
+  const leadingBlanks = days[0]?.date.getDay() ?? 0;
+  const cells = [
+    ...Array.from({ length: leadingBlanks }, (_value, index) => ({ key: `blank-${index}`, blank: true as const })),
+    ...days.map((day) => ({ ...day, blank: false as const })),
+  ];
+  const columns = Math.ceil(cells.length / 7);
+  const monthLabels = cells.reduce<Array<{ label: string; column: number }>>((labels, cell, index) => {
+    if (cell.blank) return labels;
+    const isFirstDay = cell.date.getDate() <= 7;
+    const label = new Intl.DateTimeFormat("en", { month: "short" }).format(cell.date);
+    if (isFirstDay && labels[labels.length - 1]?.label !== label) {
+      labels.push({ label, column: Math.floor(index / 7) + 1 });
+    }
+    return labels;
+  }, []);
+
+  return (
+    <section className="console-section token-activity-section">
+      <div className="token-activity-header">
+        <strong>Token activity</strong>
+        <div aria-label="Activity granularity">
+          <button className="active" type="button">Daily</button>
+          <button type="button">Weekly</button>
+          <button type="button">Cumulative</button>
+        </div>
+      </div>
+      <div className="token-activity-grid" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
+        {cells.map((cell) => (
+          <span
+            className={cell.blank ? "activity-cell blank" : "activity-cell"}
+            data-level={cell.blank ? undefined : cell.level}
+            key={cell.key}
+            title={cell.blank ? undefined : `${shortDate(cell.key)} - ${compactNumber(cell.tokens)} tokens`}
+          />
+        ))}
+      </div>
+      <div className="token-activity-months" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
+        {monthLabels.map((month) => (
+          <span key={`${month.label}-${month.column}`} style={{ gridColumn: month.column }}>
+            {month.label}
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }
 

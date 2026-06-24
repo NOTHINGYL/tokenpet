@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars } from "../components/charts";
+import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars, TokenActivityGrid } from "../components/charts";
 import { GoldCat } from "../components/GoldCat";
 import { APP_VERSION } from "../constants";
-import { HealthBadge, MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
+import { MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import type { AppSettings, ConsoleTab, UsageSnapshot } from "../types";
@@ -193,6 +193,8 @@ function OverviewTab(props: { usage: UsageSnapshot }) {
           <RecentActivity usage={usage} />
         </section>
       </div>
+
+      <TokenActivityGrid points={analysis.daily} />
     </>
   );
 }
@@ -398,7 +400,6 @@ export function ConsoleApp() {
             <span>Your local AI token activity at a glance.</span>
           </div>
           <div className="console-header-actions">
-            <HealthBadge status={usage.status} loading={loading} error={error} />
             <button className="range-button" type="button">
               Last 30 Days
             </button>
