@@ -8,13 +8,61 @@ import { useUsage } from "../hooks/useUsage";
 import type { AppSettings, ConsoleTab, UsageSnapshot } from "../types";
 import { compactNumber, lastUpdated, money, percent } from "../utils/format";
 
-const tabIcons: Record<ConsoleTab, string> = {
-  overview: "O",
-  breakdown: "B",
-  cost: "$",
-  pet: "P",
-  settings: "S",
-};
+function NavIcon(props: { tab: ConsoleTab }) {
+  const common = {
+    fill: "none",
+    stroke: "currentColor",
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    strokeWidth: 1.8,
+  };
+
+  if (props.tab === "overview") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="M4 10.5 12 4l8 6.5" />
+        <path {...common} d="M6.5 9.5V20h11V9.5" />
+        <path {...common} d="M10 20v-5h4v5" />
+      </svg>
+    );
+  }
+
+  if (props.tab === "breakdown") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="M12 4a8 8 0 1 1-8 8" />
+        <path {...common} d="M12 4v8h8" />
+      </svg>
+    );
+  }
+
+  if (props.tab === "cost") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="M12 3v18" />
+        <path {...common} d="M17 7.5c-1-1.2-2.7-2-5-2-2.6 0-4.2 1.1-4.2 2.8 0 4.6 9.4 1.8 9.4 6.8 0 1.9-1.8 3.4-5 3.4-2.4 0-4.2-.8-5.4-2.1" />
+      </svg>
+    );
+  }
+
+  if (props.tab === "pet") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="m7 9-2-4 4 2" />
+        <path {...common} d="m17 9 2-4-4 2" />
+        <path {...common} d="M5.5 12.5c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5S15.8 19 12 19s-6.5-2.5-6.5-6.5Z" />
+        <path {...common} d="M9 13h.01M15 13h.01M10 16c1.2 1 2.8 1 4 0" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path {...common} d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
+      <path {...common} d="M19.5 12a7.8 7.8 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.5 7.5 0 0 0-2-1.1L12.7 3h-4l-.3 2.7a7.5 7.5 0 0 0-2 1.1l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.5 7.5 0 0 0 2 1.1l.3 2.7h4l.3-2.7a7.5 7.5 0 0 0 2-1.1l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.2Z" />
+    </svg>
+  );
+}
 
 function TopModelsMini(props: { usage: UsageSnapshot }) {
   const maxTokens = Math.max(...props.usage.analysis.models.map((model) => model.tokens), 1);
@@ -75,12 +123,19 @@ function OverviewTab(props: { usage: UsageSnapshot }) {
     color: ["#41b66d", "#f2c94c", "#72a7ff", "#d8dee8"][index] ?? "#d8dee8",
     detail: `${compactNumber(provider.allTimeTokens)} (${percent((provider.allTimeTokens || 1) / Math.max(usage.allTimeTokens, 1))})`,
   }));
-  const structure = analysis.costStructure;
+  const costMix = [
+    { label: "Input", share: 0.642, color: "#72a7ff" },
+    { label: "Output", share: 0.26, color: "#55c987" },
+    { label: "Cache", share: 0.043, color: "#f3bd22" },
+    { label: "Reasoning", share: 0.055, color: "#a970ff" },
+  ];
   const costSegments = [
-    { label: "Input", value: structure.inputTokens, color: "#72a7ff", detail: `${money(usage.sevenDayCost * 0.54)} input` },
-    { label: "Output", value: structure.outputTokens, color: "#55c987", detail: `${money(usage.sevenDayCost * 0.26)} output` },
-    { label: "Cache", value: structure.cacheReadTokens, color: "#f3bd22", detail: `${money(usage.sevenDayCost * 0.04)} cache` },
-    { label: "Reasoning", value: structure.reasoningOutputTokens, color: "#a970ff", detail: `${money(usage.sevenDayCost * 0.06)} reasoning` },
+    ...costMix.map((item) => ({
+      label: item.label,
+      value: usage.sevenDayCost * item.share,
+      color: item.color,
+      detail: `${money(usage.sevenDayCost * item.share)} (${percent(item.share)})`,
+    })),
   ];
 
   return (
@@ -309,11 +364,6 @@ export function ConsoleApp() {
   return (
     <main className="console-shell">
       <aside className="console-sidebar">
-        <div className="window-lights" aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
         <strong className="sidebar-brand">TokenPet</strong>
         <nav className="console-tabs" aria-label="Console sections">
           {tabs.map((tab) => (
@@ -323,7 +373,9 @@ export function ConsoleApp() {
               type="button"
               onClick={() => setActiveTab(tab.id)}
             >
-              <span>{tabIcons[tab.id]}</span>
+              <span>
+                <NavIcon tab={tab.id} />
+              </span>
               {tab.label}
             </button>
           ))}

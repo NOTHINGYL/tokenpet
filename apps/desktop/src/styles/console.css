@@ -7,7 +7,7 @@
 
 .console-shell {
   display: grid;
-  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-columns: 172px minmax(0, 1fr);
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -23,48 +23,26 @@
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px 12px;
+  gap: 18px;
+  padding: 52px 10px 16px;
   border-right: 1px solid rgba(16, 24, 40, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.62)),
     #fbfaf7;
 }
 
-.window-lights {
-  display: flex;
-  gap: 8px;
-  height: 12px;
-}
-
-.window-lights span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.window-lights span:nth-child(1) {
-  background: #ff5f57;
-}
-
-.window-lights span:nth-child(2) {
-  background: #ffbd2e;
-}
-
-.window-lights span:nth-child(3) {
-  background: #28c840;
-}
-
 .sidebar-brand {
-  padding: 2px 4px;
-  font-size: 15px;
+  padding: 0 5px;
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 800;
   line-height: 1;
 }
 
 .console-sidebar .console-tabs {
   position: static;
   display: grid;
-  gap: 6px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   border: 0;
@@ -76,12 +54,12 @@
   display: flex;
   min-height: 34px;
   align-items: center;
-  gap: 8px;
-  padding: 0 9px;
+  gap: 9px;
+  padding: 0 8px;
   border-radius: 7px;
-  color: var(--qp-text);
-  font-size: 11px;
-  font-weight: 750;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 620;
   text-align: left;
 }
 
@@ -90,13 +68,17 @@
   width: 16px;
   height: 16px;
   place-items: center;
-  color: #6b7280;
-  font-size: 10px;
-  font-weight: 900;
+  color: #5f6878;
+}
+
+.console-sidebar .console-tabs button span svg {
+  width: 15px;
+  height: 15px;
 }
 
 .console-sidebar .console-tabs button.active {
-  background: rgba(16, 24, 40, 0.06);
+  background: rgba(16, 24, 40, 0.055);
+  font-weight: 720;
 }
 
 .console-sidebar .console-tabs button.active::after {
@@ -106,9 +88,9 @@
 .sidebar-status {
   position: relative;
   display: grid;
-  min-height: 160px;
+  min-height: 152px;
   margin-top: auto;
-  padding: 12px 10px 0;
+  padding: 11px 10px 0;
   overflow: hidden;
   align-content: start;
   gap: 4px;
@@ -155,9 +137,9 @@
 .sidebar-status .cat-image {
   position: absolute;
   right: 6px;
-  bottom: -32px;
-  left: 14px;
-  width: 104px;
+  bottom: -34px;
+  left: 18px;
+  width: 98px;
   max-width: none;
 }
 
@@ -166,14 +148,16 @@
   min-width: 0;
   height: 100%;
   flex-direction: column;
-  padding: 20px 20px 18px;
+  padding: 24px 20px 18px;
   overflow: hidden;
+  overflow-x: hidden;
   background: #f6f8fb;
 }
 
 .console-content {
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 2px;
 }
 
@@ -312,7 +296,7 @@
 }
 
 .chart-section {
-  min-height: 188px;
+  min-height: 206px;
 }
 
 .dashboard-chart-grid {
@@ -330,11 +314,11 @@
 
 .spark-bars {
   display: grid;
-  grid-template-columns: repeat(42, minmax(5px, 1fr));
-  gap: 4px;
-  height: 152px;
-  align-items: end;
-  padding: 10px 8px 0;
+  grid-template-rows: minmax(0, 1fr) 18px;
+  column-gap: 2px;
+  height: 172px;
+  align-items: stretch;
+  padding: 12px 10px 0;
   border-radius: 8px;
   background:
     linear-gradient(to top, rgba(16, 24, 40, 0.08) 1px, transparent 1px) 0 0 / 100% 33.3%,
@@ -344,14 +328,19 @@
 .spark-bar {
   position: relative;
   display: grid;
+  grid-template-rows: minmax(0, 1fr) 18px;
   height: 100%;
-  align-items: end;
-  gap: 4px;
+  align-items: stretch;
+  gap: 0;
 }
 
 .spark-bar span {
   display: block;
+  width: 8px;
+  max-width: 100%;
   min-height: 3px;
+  align-self: end;
+  justify-self: center;
   border-radius: 3px 3px 2px 2px;
   background: linear-gradient(180deg, #aed4ff, #72a7ff);
   transition:
@@ -398,6 +387,7 @@
 .spark-bar small {
   overflow: visible;
   width: max-content;
+  align-self: end;
   justify-self: center;
   height: 12px;
   color: #7b8494;
@@ -407,7 +397,7 @@
 }
 
 .donut-card {
-  min-height: 188px;
+  min-height: 206px;
 }
 
 .donut-layout {

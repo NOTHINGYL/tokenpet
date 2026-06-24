@@ -273,6 +273,12 @@ function openConsoleWindow() {
     minWidth: 900,
     minHeight: 560,
     title: "TokenPet Console",
+    ...(process.platform === "darwin"
+      ? {
+          titleBarStyle: "hiddenInset" as const,
+          trafficLightPosition: { x: 18, y: 18 },
+        }
+      : {}),
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,

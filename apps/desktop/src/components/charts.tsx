@@ -10,10 +10,10 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
   }
 
   const maxTokens = maxOf(points.map((point) => point.tokens));
-  const labelEvery = Math.max(1, Math.ceil(points.length / 7));
+  const labelEvery = Math.max(1, Math.ceil(points.length / 6));
 
   return (
-    <div className="spark-bars" aria-label="Daily token trend">
+    <div className="spark-bars" aria-label="Daily token trend" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
       {points.map((point, index) => (
         <div className="spark-bar" data-tooltip={`${point.date} - ${compactNumber(point.tokens)} tokens - ${money(point.cost)}`} key={point.date}>
           <span style={{ height: `${Math.max(3, (point.tokens / maxTokens) * 100)}%` }} />
