@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties } from "react";
+import { Fragment, useMemo, useState, type CSSProperties } from "react";
 import { EmptyState } from "./ui";
 import type { CostStructure, DailyUsagePoint, ModelUsagePoint, SessionUsagePoint } from "../types";
 import { compactNumber, lastUpdated, maxOf, money, percent, shortDate } from "../utils/format";
@@ -43,6 +43,7 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
 }
 
 export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
+  const [mode, setMode] = useState<"daily" | "weekly" | "cumulative">("daily");
   const source = props.points.length > 0 ? props.points : [];
   const maxTokens = maxOf(source.map((point) => point.tokens));
   const byDate = new Map(source.map((point) => [point.date, point.tokens]));
@@ -50,17 +51,40 @@ export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
   const start = new Date(end);
   start.setDate(end.getDate() - 363);
 
-  const days: Array<{ date: Date; key: string; tokens: number; level: number }> = [];
+  const rawDays: Array<{ date: Date; key: string; tokens: number }> = [];
   for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
     const key = date.toISOString().slice(0, 10);
     const tokens = byDate.get(key) ?? 0;
-    days.push({
+    rawDays.push({
       date: new Date(date),
       key,
       tokens,
-      level: tokens === 0 ? 0 : Math.max(1, Math.ceil((tokens / maxTokens) * 5)),
     });
   }
+
+  const days = useMemo(() => {
+    let cumulative = 0;
+    const totalTokens = rawDays.reduce((sum, day) => sum + day.tokens, 0);
+    const weeklyTotals = rawDays.map((item, itemIndex) => {
+      const startIndex = Math.max(0, itemIndex - item.date.getDay());
+      return rawDays.slice(startIndex, Math.min(startIndex + 7, rawDays.length)).reduce((sum, weekDay) => sum + weekDay.tokens, 0);
+    });
+    const maxWeekly = maxOf(weeklyTotals);
+
+    return rawDays.map((day, index) => {
+      cumulative += day.tokens;
+      const weekStart = Math.max(0, index - day.date.getDay());
+      const weekTokens = rawDays.slice(weekStart, Math.min(weekStart + 7, rawDays.length)).reduce((sum, item) => sum + item.tokens, 0);
+      const value = mode === "weekly" ? weekTokens : mode === "cumulative" ? cumulative : day.tokens;
+      const maxValue = mode === "weekly" ? maxWeekly : mode === "cumulative" ? Math.max(totalTokens, 1) : maxTokens;
+
+      return {
+        ...day,
+        displayTokens: value,
+        level: value === 0 ? 0 : Math.max(1, Math.ceil((value / maxValue) * 5)),
+      };
+    });
+  }, [maxTokens, mode, rawDays]);
 
   const leadingBlanks = days[0]?.date.getDay() ?? 0;
   const cells = [
@@ -83,20 +107,28 @@ export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
       <div className="token-activity-header">
         <strong>Token activity</strong>
         <div aria-label="Activity granularity">
-          <button className="active" type="button">Daily</button>
-          <button type="button">Weekly</button>
-          <button type="button">Cumulative</button>
+          <button className={mode === "daily" ? "active" : ""} type="button" onClick={() => setMode("daily")}>Daily</button>
+          <button className={mode === "weekly" ? "active" : ""} type="button" onClick={() => setMode("weekly")}>Weekly</button>
+          <button className={mode === "cumulative" ? "active" : ""} type="button" onClick={() => setMode("cumulative")}>Cumulative</button>
         </div>
       </div>
       <div className="token-activity-grid" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
-        {cells.map((cell) => (
-          <span
-            className={cell.blank ? "activity-cell blank" : "activity-cell"}
-            data-level={cell.blank ? undefined : cell.level}
-            key={cell.key}
-            title={cell.blank ? undefined : `${shortDate(cell.key)} - ${compactNumber(cell.tokens)} tokens`}
-          />
-        ))}
+        {cells.map((cell, index) => {
+          const edge = Math.floor(index / 7) < 4 ? "start" : Math.floor(index / 7) > columns - 5 ? "end" : "middle";
+          return (
+            <span
+              className={cell.blank ? "activity-cell blank" : `activity-cell edge-${edge}`}
+              data-level={cell.blank ? undefined : cell.level}
+              key={cell.key}
+            >
+              {cell.blank ? null : (
+                <span className="activity-tooltip">
+                  {`${compactNumber(cell.displayTokens)} tokens on ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(cell.date)}`}
+                </span>
+              )}
+            </span>
+          );
+        })}
       </div>
       <div className="token-activity-months" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
         {monthLabels.map((month) => (
