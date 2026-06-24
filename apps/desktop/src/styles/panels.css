@@ -61,7 +61,7 @@
   background: rgba(255, 255, 255, 0.68);
   font-size: 12px;
   font-weight: 850;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .health-badge > span {
@@ -73,8 +73,14 @@
 }
 
 .health-badge.connected {
-  color: var(--qp-green);
-  background: var(--qp-green-soft);
+  color: #237a45;
+  border-color: #c7ead3;
+  background: #e4f7eb;
+}
+
+.panel-header .health-badge.connected,
+.console-header .health-badge.connected {
+  color: #15803d;
 }
 
 .health-badge.loading,

@@ -375,7 +375,7 @@ export async function loadUsageSnapshot(options: { force?: boolean } = {}): Prom
     topModel: topModelFromProviders(providerReports),
     topTool: connected.sort((a, b) => b.sevenDayTokens - a.sevenDayTokens)[0]?.label ?? "none",
     burnRate: burnRate(todayTokens),
-    status: connected.length > 0 ? "ccusage live" : "no usage found",
+    status: connected.length > 0 ? "ready" : "no usage found",
     generatedAt: new Date().toISOString(),
     providers: sourceReports.map(({ rows: _rows, sessions: _sessions, topModels: _topModels, ...provider }) => provider),
     analysis,
