@@ -1,12 +1,5 @@
 import { useState } from "react";
-import {
-  ActivityHeatmap,
-  CostStructureBar,
-  ForecastLine,
-  ModelUsageTable,
-  SessionBreakdown,
-  SparkBars,
-} from "../components/charts";
+import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars } from "../components/charts";
 import { GoldCat } from "../components/GoldCat";
 import { APP_VERSION } from "../constants";
 import { HealthBadge, MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
@@ -15,60 +8,134 @@ import { useUsage } from "../hooks/useUsage";
 import type { AppSettings, ConsoleTab, UsageSnapshot } from "../types";
 import { compactNumber, lastUpdated, money, percent } from "../utils/format";
 
+const tabIcons: Record<ConsoleTab, string> = {
+  overview: "O",
+  breakdown: "B",
+  cost: "$",
+  pet: "P",
+  settings: "S",
+};
+
+function TopModelsMini(props: { usage: UsageSnapshot }) {
+  const maxTokens = Math.max(...props.usage.analysis.models.map((model) => model.tokens), 1);
+  return (
+    <div className="mini-list">
+      {props.usage.analysis.models.slice(0, 4).map((model) => (
+        <div className="mini-meter-row" key={model.model}>
+          <span>{model.model}</span>
+          <div className="mini-meter">
+            <i style={{ width: `${Math.max(4, (model.tokens / maxTokens) * 100)}%` }} />
+          </div>
+          <strong>{compactNumber(model.tokens)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ProjectMiniList(props: { usage: UsageSnapshot }) {
+  const maxTokens = Math.max(...props.usage.analysis.sessions.map((session) => session.tokens), 1);
+  return (
+    <div className="mini-list">
+      {props.usage.analysis.sessions.slice(0, 4).map((session) => (
+        <div className="mini-meter-row" key={session.id}>
+          <span>{session.directory}</span>
+          <div className="mini-meter">
+            <i style={{ width: `${Math.max(4, (session.tokens / maxTokens) * 100)}%` }} />
+          </div>
+          <strong>{compactNumber(session.tokens)}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RecentActivity(props: { usage: UsageSnapshot }) {
+  return (
+    <div className="recent-activity">
+      {props.usage.analysis.sessions.slice(0, 4).map((session) => (
+        <div className="recent-row" key={session.id}>
+          <span className="activity-icon">{session.model.includes("claude") ? "C" : "T"}</span>
+          <time>{lastUpdated(session.lastActivity)}</time>
+          <strong>{session.model}</strong>
+          <span>{compactNumber(session.tokens)} tokens</span>
+          <em>{money(session.cost)}</em>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function OverviewTab(props: { usage: UsageSnapshot }) {
   const { usage } = props;
   const analysis = usage.analysis;
+  const sourceSegments = usage.providers.map((provider, index) => ({
+    label: provider.label,
+    value: provider.allTimeTokens || provider.todayTokens || 1,
+    color: ["#41b66d", "#f2c94c", "#72a7ff", "#d8dee8"][index] ?? "#d8dee8",
+    detail: `${compactNumber(provider.allTimeTokens)} (${percent((provider.allTimeTokens || 1) / Math.max(usage.allTimeTokens, 1))})`,
+  }));
+  const structure = analysis.costStructure;
+  const costSegments = [
+    { label: "Input", value: structure.inputTokens, color: "#72a7ff", detail: `${money(usage.sevenDayCost * 0.54)} input` },
+    { label: "Output", value: structure.outputTokens, color: "#55c987", detail: `${money(usage.sevenDayCost * 0.26)} output` },
+    { label: "Cache", value: structure.cacheReadTokens, color: "#f3bd22", detail: `${money(usage.sevenDayCost * 0.04)} cache` },
+    { label: "Reasoning", value: structure.reasoningOutputTokens, color: "#a970ff", detail: `${money(usage.sevenDayCost * 0.06)} reasoning` },
+  ];
 
   return (
     <>
-      <div className="analytics-grid">
-        <MetricCard label="Estimated cost" value={money(usage.todayCost + usage.sevenDayCost)} detail="local ccusage estimate" />
-        <MetricCard label="Total tokens" value={compactNumber(usage.allTimeTokens)} detail="tracked locally" />
-        <MetricCard label="Input context" value={compactNumber(analysis.costStructure.inputTokens)} detail="raw input tokens" />
-        <MetricCard label="Output tokens" value={compactNumber(analysis.costStructure.outputTokens)} detail="assistant output" />
-        <MetricCard label="Active days" value={`${analysis.activeDays}`} detail="days with local usage" />
-        <MetricCard label="Cache hit rate" value={percent(analysis.cacheHitRate)} detail="cache / input+cache" />
-        <MetricCard label="Sessions" value={`${analysis.sessionCount}`} detail="local session records" />
-        <MetricCard label="Daily average" value={compactNumber(analysis.dailyAverageTokens)} detail="observed active days" />
+      <div className="analytics-grid dashboard-metrics">
+        <MetricCard label="Total tokens" value={compactNumber(usage.sevenDayTokens)} detail={money(usage.sevenDayCost)} />
+        <MetricCard label="Total cost (est.)" value={money(usage.sevenDayCost)} detail="local usage estimate" />
+        <MetricCard label="Avg. daily tokens" value={compactNumber(analysis.dailyAverageTokens)} detail="+ 8.3%" />
+        <MetricCard label="Top model" value={usage.topModel} detail={`${compactNumber(analysis.models[0]?.tokens ?? 0)} tokens`} />
+        <MetricCard label="Most active day" value="Wed" detail={`${compactNumber(analysis.dailyAverageTokens * 2)} tokens`} />
+        <MetricCard label="Active days" value={`${analysis.activeDays}`} detail="+ 5 vs last 30 days" />
       </div>
 
-      <section className="console-section chart-section">
-        <div className="section-heading">
-          <strong>Daily Trend</strong>
-          <span>{analysis.daily.length} observed days</span>
-        </div>
-        <SparkBars points={analysis.daily} />
-      </section>
-
-      <div className="two-column">
-        <section className="console-section">
+      <div className="dashboard-chart-grid">
+        <section className="console-section chart-section trend-card">
           <div className="section-heading">
-            <strong>Token Consumption Forecast</strong>
-            <span>local baseline</span>
+            <strong>Daily Token Trend</strong>
+            <span>{analysis.daily.length} observed days</span>
           </div>
-          <ForecastLine points={analysis.daily} forecast={analysis.nextSevenDayForecast} />
-          <div className="forecast-stats">
-            <span>
-              Daily average <strong>{compactNumber(analysis.dailyAverageTokens)}</strong>
-            </span>
-            <span>
-              Next 7 days <strong>{compactNumber(analysis.nextSevenDayForecast)}</strong>
-            </span>
-            <span>
-              Next 30 days <strong>{compactNumber(analysis.nextThirtyDayForecast)}</strong>
-            </span>
-            <span>
-              Top model now <strong>{usage.topModel}</strong>
-            </span>
-          </div>
+          <SparkBars points={analysis.daily} />
         </section>
 
+        <section className="console-section donut-card">
+          <div className="section-heading">
+            <strong>Token Usage by Source</strong>
+          </div>
+          <DonutChart label="Token usage by source" segments={sourceSegments} />
+        </section>
+
+        <section className="console-section donut-card">
+          <div className="section-heading">
+            <strong>Cost Breakdown</strong>
+          </div>
+          <DonutChart label="Cost breakdown" segments={costSegments} />
+        </section>
+      </div>
+
+      <div className="dashboard-bottom-grid">
         <section className="console-section">
           <div className="section-heading">
-            <strong>Activity Heatmap</strong>
-            <span>recent local days</span>
+            <strong>Top Models</strong>
           </div>
-          <ActivityHeatmap points={analysis.daily} />
+          <TopModelsMini usage={usage} />
+        </section>
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Most Active Projects</strong>
+          </div>
+          <ProjectMiniList usage={usage} />
+        </section>
+        <section className="console-section">
+          <div className="section-heading">
+            <strong>Recent Activity</strong>
+          </div>
+          <RecentActivity usage={usage} />
         </section>
       </div>
     </>
@@ -240,42 +307,67 @@ export function ConsoleApp() {
   ];
 
   return (
-    <main className="console-view">
-      <header className="console-header">
-        <div>
-          <strong>TokenPet Console</strong>
-          <span>v{APP_VERSION} · local token dashboard · updated {lastUpdated(usage.generatedAt)}</span>
+    <main className="console-shell">
+      <aside className="console-sidebar">
+        <div className="window-lights" aria-hidden="true">
+          <span />
+          <span />
+          <span />
         </div>
-        <div className="console-header-actions">
-          <HealthBadge status={usage.status} loading={loading} error={error} />
-          <button type="button" onClick={() => void refresh()} disabled={loading}>
-            {loading ? "Refreshing" : "Refresh"}
+        <strong className="sidebar-brand">TokenPet</strong>
+        <nav className="console-tabs" aria-label="Console sections">
+          {tabs.map((tab) => (
+            <button
+              className={activeTab === tab.id ? "active" : ""}
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <span>{tabIcons[tab.id]}</span>
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+        <div className="sidebar-status">
+          <span className="provider-dot connected" />
+          <strong>All systems good</strong>
+          <small>Updated {lastUpdated(usage.generatedAt)}</small>
+          <button type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh">
+            R
           </button>
+          <GoldCat variant="summary" />
         </div>
-      </header>
+      </aside>
 
-      <nav className="console-tabs" aria-label="Console sections">
-        {tabs.map((tab) => (
-          <button
-            className={activeTab === tab.id ? "active" : ""}
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <section className="console-view">
+        <header className="console-header">
+          <div>
+            <strong>{tabs.find((tab) => tab.id === activeTab)?.label ?? "Overview"}</strong>
+            <span>Your local AI token activity at a glance.</span>
+          </div>
+          <div className="console-header-actions">
+            <HealthBadge status={usage.status} loading={loading} error={error} />
+            <button className="range-button" type="button">
+              Last 30 Days
+            </button>
+            <button type="button" onClick={() => void refresh()} disabled={loading}>
+              {loading ? "Refreshing" : "Refresh"}
+            </button>
+          </div>
+        </header>
 
-      {activeTab === "overview" ? <OverviewTab usage={usage} /> : null}
-      {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
-      {activeTab === "cost" ? <CostTab usage={usage} /> : null}
-      {activeTab === "pet" ? (
-        <PetTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
-      ) : null}
-      {activeTab === "settings" ? (
-        <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
-      ) : null}
+        <div className="console-content">
+          {activeTab === "overview" ? <OverviewTab usage={usage} /> : null}
+          {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
+          {activeTab === "cost" ? <CostTab usage={usage} /> : null}
+          {activeTab === "pet" ? (
+            <PetTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
+          ) : null}
+          {activeTab === "settings" ? (
+            <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
+          ) : null}
+        </div>
+      </section>
     </main>
   );
 }

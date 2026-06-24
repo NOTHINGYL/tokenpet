@@ -10,15 +10,61 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
   }
 
   const maxTokens = maxOf(points.map((point) => point.tokens));
+  const labelEvery = Math.max(1, Math.ceil(points.length / 7));
 
   return (
     <div className="spark-bars" aria-label="Daily token trend">
-      {points.map((point) => (
-        <div className="spark-bar" key={point.date}>
+      {points.map((point, index) => (
+        <div className="spark-bar" data-tooltip={`${point.date} - ${compactNumber(point.tokens)} tokens - ${money(point.cost)}`} key={point.date}>
           <span style={{ height: `${Math.max(3, (point.tokens / maxTokens) * 100)}%` }} />
-          <small>{shortDate(point.date)}</small>
+          <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
         </div>
       ))}
+    </div>
+  );
+}
+
+export function DonutChart(props: {
+  segments: Array<{ label: string; value: number; color: string; detail?: string }>;
+  label?: string;
+}) {
+  const total = props.segments.reduce((sum, segment) => sum + segment.value, 0) || 1;
+  let offset = 25;
+
+  return (
+    <div className="donut-layout">
+      <svg className="donut-chart" viewBox="0 0 42 42" role="img" aria-label={props.label ?? "Donut chart"}>
+        <circle className="donut-track" cx="21" cy="21" r="15.9" />
+        {props.segments.map((segment) => {
+          const share = (segment.value / total) * 100;
+          const dash = `${share} ${100 - share}`;
+          const currentOffset = offset;
+          offset -= share;
+          return (
+            <circle
+              className="donut-segment"
+              cx="21"
+              cy="21"
+              key={segment.label}
+              r="15.9"
+              stroke={segment.color}
+              strokeDasharray={dash}
+              strokeDashoffset={currentOffset}
+            >
+              <title>{`${segment.label}: ${compactNumber(segment.value)} - ${percent(segment.value / total)}`}</title>
+            </circle>
+          );
+        })}
+      </svg>
+      <div className="donut-legend">
+        {props.segments.map((segment) => (
+          <div className="donut-legend-row" key={segment.label}>
+            <span style={{ background: segment.color }} />
+            <strong>{segment.label}</strong>
+            <small>{segment.detail ?? `${compactNumber(segment.value)} (${percent(segment.value / total)})`}</small>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -121,7 +167,7 @@ export function SessionBreakdown(props: { sessions: SessionUsagePoint[] }) {
           <div>
             <strong>{session.directory}</strong>
             <small>
-              {session.model} · {lastUpdated(session.lastActivity)}
+              {session.model} - {lastUpdated(session.lastActivity)}
             </small>
           </div>
           <div className="meter">
@@ -157,7 +203,7 @@ export function CostStructureBar(props: { structure: CostStructure }) {
             <span className={`legend-dot ${part.className}`} />
             <strong>{part.label}</strong>
             <small>
-              {compactNumber(part.value)} · {percent(part.value / total)}
+              {compactNumber(part.value)} - {percent(part.value / total)}
             </small>
           </div>
         ))}
