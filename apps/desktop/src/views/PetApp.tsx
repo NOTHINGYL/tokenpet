@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
-import { GoldCat } from "../components/GoldCat";
+import { useCallback, useState } from "react";
+import { PetSprite } from "../components/PetSprite";
+import type { PetAction } from "../components/petAnimations";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import { compactNumber } from "../utils/format";
@@ -34,6 +35,7 @@ export function PetApp() {
   const { settings } = useAppSettings();
   const [dragging, setDragging] = useState(false);
   const [summoning, setSummoning] = useState(false);
+  const [petAction, setPetAction] = useState<PetAction>("idle");
   const mood = getPetMood(usage);
 
   function close(event: React.SyntheticEvent) {
@@ -46,9 +48,20 @@ export function PetApp() {
     event?.preventDefault();
     event?.stopPropagation();
     setSummoning(true);
+    setPetAction("wave");
     window.setTimeout(() => setSummoning(false), 560);
     window.tokenpet.togglePopover();
   }
+
+  function playHoverAction() {
+    setPetAction((currentAction) => (currentAction === "idle" ? "blinkLook" : currentAction));
+  }
+
+  const completeAction = useCallback((action: PetAction) => {
+    if (action !== "idle") {
+      setPetAction("idle");
+    }
+  }, []);
 
   async function startDrag(event: React.PointerEvent<HTMLElement>) {
     if (event.button !== 0) return;
@@ -83,12 +96,11 @@ export function PetApp() {
       onPointerDown={startDrag}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onMouseEnter={playHoverAction}
     >
       <div className="pet-drag-region" aria-label="Drag TokenPet">
         <div className="pet-motion-shell">
-          <GoldCat />
-          <span className="pet-eye-lid pet-eye-left" aria-hidden="true" />
-          <span className="pet-eye-lid pet-eye-right" aria-hidden="true" />
+          <PetSprite action={petAction} onActionComplete={completeAction} />
           <span className="pet-tail-wag" aria-hidden="true" />
           <span className="pet-mood-chip" aria-hidden="true">
             {moodLabels[mood]}

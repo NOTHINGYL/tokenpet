@@ -6,7 +6,7 @@ TokenPet is a local-first desktop companion for AI coding workflows. The pet liv
 
 ## Status
 
-v0.6 prototype. The desktop pet now has a more playful motion system, burn-rate-aware mood states, adjustable size/opacity, persistent settings, and real local token usage through the bundled `ccusage` dependency.
+v0.6.1 prototype. The desktop pet now has a frame-based action system, matching cat animation assets, burn-rate-aware mood states, adjustable size/opacity, persistent settings, and real local token usage through the bundled `ccusage` dependency.
 
 ## Preview
 
@@ -19,10 +19,11 @@ The screenshots below use bundled demo data for documentation only. The app itse
   <img src="docs/screenshots/pet-v05.png" alt="TokenPet desktop pet" width="260" />
 </p>
 
-## v0.6 Features
+## v0.6.1 Features
 
 - Transparent always-on-top desktop pet window
-- Draggable yellow-gold cat companion with idle breathing, hover blink, and hover tail-wag feedback
+- Draggable yellow-gold cat companion with frame-based idle breathing, blink/look, and wave actions
+- Reproducible action-frame assets generated from the current cat artwork
 - Live token counter displayed on the pet
 - Click or double-click to open the usage summary popover, with a feedback animation
 - Burn-rate-aware pet mood states: sleepy, focused, and hot
