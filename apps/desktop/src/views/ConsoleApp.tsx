@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useState } from "react";
 import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars, TokenActivityGrid } from "../components/charts";
 import { GoldCat } from "../components/GoldCat";
@@ -288,29 +289,67 @@ function PetTab(props: { settings: AppSettings; setSetting: <K extends keyof App
     { id: "rose", label: "Rose" },
     { id: "sky", label: "Sky" },
   ];
+  const petScalePercent = Math.round(props.settings.petScale * 100);
+  const petOpacityPercent = Math.round(props.settings.petOpacity * 100);
 
   return (
     <section className="console-section pet-config-section">
       <div className="section-heading">
         <strong>Pet</strong>
-        <span>Basic appearance controls</span>
+        <span>Appearance and motion controls</span>
       </div>
       <div className="pet-config-grid">
-        <div className={`pet-preview pet-theme-${props.settings.petTheme}`}>
+        <div
+          className={`pet-preview pet-theme-${props.settings.petTheme}`}
+          style={
+            {
+              "--pet-scale": props.settings.petScale.toString(),
+              "--pet-opacity": props.settings.petOpacity.toString(),
+            } as CSSProperties
+          }
+        >
           <GoldCat variant="summary" />
         </div>
-        <div className="theme-options">
-          {themes.map((theme) => (
-            <button
-              className={props.settings.petTheme === theme.id ? "selected" : ""}
-              key={theme.id}
-              type="button"
-              onClick={() => props.setSetting("petTheme", theme.id)}
-            >
-              <span className={`theme-swatch pet-theme-${theme.id}`} />
-              {theme.label}
-            </button>
-          ))}
+        <div className="pet-control-stack">
+          <div className="theme-options" aria-label="Pet color theme">
+            {themes.map((theme) => (
+              <button
+                className={props.settings.petTheme === theme.id ? "selected" : ""}
+                key={theme.id}
+                type="button"
+                onClick={() => props.setSetting("petTheme", theme.id)}
+              >
+                <span className={`theme-swatch pet-theme-${theme.id}`} />
+                {theme.label}
+              </button>
+            ))}
+          </div>
+          <label className="pet-range-control">
+            <span>
+              <strong>Size</strong>
+              <small>{petScalePercent}%</small>
+            </span>
+            <input
+              type="range"
+              min="75"
+              max="115"
+              value={petScalePercent}
+              onChange={(event) => props.setSetting("petScale", Number(event.currentTarget.value) / 100)}
+            />
+          </label>
+          <label className="pet-range-control">
+            <span>
+              <strong>Opacity</strong>
+              <small>{petOpacityPercent}%</small>
+            </span>
+            <input
+              type="range"
+              min="45"
+              max="100"
+              value={petOpacityPercent}
+              onChange={(event) => props.setSetting("petOpacity", Number(event.currentTarget.value) / 100)}
+            />
+          </label>
         </div>
       </div>
     </section>

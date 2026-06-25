@@ -73,4 +73,6 @@ export const fallbackSettings: AppSettings = {
   petVisible: true,
   alwaysOnTop: true,
   petTheme: "gold",
+  petScale: 0.92,
+  petOpacity: 1,
 };

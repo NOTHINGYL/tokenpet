@@ -79,6 +79,8 @@ export type AppSettings = {
   petVisible: boolean;
   alwaysOnTop: boolean;
   petTheme: "gold" | "mint" | "rose" | "sky";
+  petScale: number;
+  petOpacity: number;
 };
 
 export type CcusageDailyRow = {

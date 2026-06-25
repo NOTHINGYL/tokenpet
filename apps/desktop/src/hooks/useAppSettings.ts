@@ -12,8 +12,13 @@ export function useAppSettings() {
       if (active) setSettings(nextSettings);
     });
 
+    const unsubscribe = window.tokenpet?.onAppSettingsChanged((nextSettings) => {
+      if (active) setSettings(nextSettings);
+    });
+
     return () => {
       active = false;
+      unsubscribe?.();
     };
   }, []);
 

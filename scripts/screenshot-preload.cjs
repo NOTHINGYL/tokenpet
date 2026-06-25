@@ -104,6 +104,8 @@ const settings = {
   petVisible: true,
   alwaysOnTop: true,
   petTheme: "gold",
+  petScale: 0.92,
+  petOpacity: 1,
 };
 
 contextBridge.exposeInMainWorld("tokenpet", {
@@ -114,6 +116,7 @@ contextBridge.exposeInMainWorld("tokenpet", {
     settings[key] = value;
     return Promise.resolve(settings);
   },
+  onAppSettingsChanged: () => () => undefined,
   openConsole: () => undefined,
   quit: () => undefined,
   togglePopover: () => undefined,

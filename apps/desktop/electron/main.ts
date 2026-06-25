@@ -32,6 +32,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   petVisible: true,
   alwaysOnTop: true,
   petTheme: "gold",
+  petScale: 0.92,
+  petOpacity: 1,
 };
 
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
@@ -370,7 +372,12 @@ function setAlwaysOnTop(enabled: boolean) {
 
 function setPetTheme(theme: AppSettings["petTheme"]) {
   settings.petTheme = theme;
-  petWindow?.webContents.reload();
+}
+
+function publishSettings(nextSettings: AppSettings) {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    window.webContents.send("app:settings-updated", nextSettings);
+  });
 }
 
 function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
@@ -390,8 +397,17 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
     setPetTheme(value as AppSettings["petTheme"]);
   }
 
+  if (key === "petScale") {
+    settings.petScale = clamp(Number(value), 0.75, 1.15);
+  }
+
+  if (key === "petOpacity") {
+    settings.petOpacity = clamp(Number(value), 0.45, 1);
+  }
+
   const nextSettings = currentSettings();
   writeStoredSettings();
+  publishSettings(nextSettings);
   return nextSettings;
 }
 
@@ -421,9 +437,9 @@ function createPetWindow() {
   const { width } = primaryDisplay.workAreaSize;
 
   petWindow = new BrowserWindow({
-    width: 165,
-    height: 165,
-    x: Math.max(24, width - 215),
+    width: 188,
+    height: 188,
+    x: Math.max(24, width - 238),
     y: 120,
     frame: false,
     transparent: true,

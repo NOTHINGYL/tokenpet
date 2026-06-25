@@ -6,7 +6,7 @@ TokenPet is a local-first desktop companion for AI coding workflows. The pet liv
 
 ## Status
 
-v0.5 prototype. The desktop pet now has a more polished macOS-style interface, persistent settings, clearer loading/empty states, README screenshots, and real local token usage through the bundled `ccusage` dependency.
+v0.6 prototype. The desktop pet now has a more playful motion system, burn-rate-aware mood states, adjustable size/opacity, persistent settings, and real local token usage through the bundled `ccusage` dependency.
 
 ## Preview
 
@@ -19,15 +19,16 @@ The screenshots below use bundled demo data for documentation only. The app itse
   <img src="docs/screenshots/pet-v05.png" alt="TokenPet desktop pet" width="260" />
 </p>
 
-## v0.5 Features
+## v0.6 Features
 
 - Transparent always-on-top desktop pet window
-- Draggable yellow-gold cat companion with subtle breathing and blink animation
+- Draggable yellow-gold cat companion with idle breathing, hover blink, and hover tail-wag feedback
 - Live token counter displayed on the pet
-- Click-to-open usage summary popover
+- Click or double-click to open the usage summary popover, with a feedback animation
+- Burn-rate-aware pet mood states: sleepy, focused, and hot
 - macOS menu bar icon with a richer status panel
 - Refresh, open console, and quit controls from the menu bar panel
-- Persistent settings for launch at login, pet visibility, always-on-top mode, and pet theme
+- Persistent settings for launch at login, pet visibility, always-on-top mode, pet theme, pet size, and pet opacity
 - Tabbed console with Overview, Breakdown, Cost & Efficiency, Pet, and Settings views
 - Daily trend, forecast, model breakdown, session breakdown, cost structure, and activity heatmap charts
 - Polished card styling, status badges, empty states, and loading/error handling

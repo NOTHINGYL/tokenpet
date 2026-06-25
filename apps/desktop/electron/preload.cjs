@@ -5,6 +5,11 @@ contextBridge.exposeInMainWorld("tokenpet", {
   refreshUsageSnapshot: () => ipcRenderer.invoke("usage:refresh-snapshot"),
   getAppSettings: () => ipcRenderer.invoke("app:get-settings"),
   setAppSetting: (key, enabled) => ipcRenderer.invoke("app:set-setting", key, enabled),
+  onAppSettingsChanged: (callback) => {
+    const listener = (_event, settings) => callback(settings);
+    ipcRenderer.on("app:settings-updated", listener);
+    return () => ipcRenderer.removeListener("app:settings-updated", listener);
+  },
   openConsole: () => ipcRenderer.send("app:open-console"),
   quit: () => ipcRenderer.send("app:quit"),
   togglePopover: () => ipcRenderer.send("pet:toggle-popover"),

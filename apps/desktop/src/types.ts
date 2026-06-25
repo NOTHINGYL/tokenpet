@@ -75,6 +75,8 @@ export type AppSettings = {
   petVisible: boolean;
   alwaysOnTop: boolean;
   petTheme: "gold" | "mint" | "rose" | "sky";
+  petScale: number;
+  petOpacity: number;
 };
 
 export type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
@@ -84,6 +86,7 @@ export type TokenPetBridge = {
   refreshUsageSnapshot: () => Promise<UsageSnapshot>;
   getAppSettings: () => Promise<AppSettings>;
   setAppSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<AppSettings>;
+  onAppSettingsChanged: (callback: (settings: AppSettings) => void) => () => void;
   openConsole: () => void;
   quit: () => void;
   togglePopover: () => void;
