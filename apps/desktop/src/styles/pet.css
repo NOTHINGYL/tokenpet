@@ -114,7 +114,6 @@
   height: auto;
   pointer-events: none;
   user-select: none;
-  filter: drop-shadow(0 15px 18px rgba(86, 56, 11, 0.18));
   transition:
     filter 180ms ease,
     transform 160ms ease;
@@ -215,9 +214,7 @@
 }
 
 .pet-state-focused .cat-image {
-  filter:
-    drop-shadow(0 15px 18px rgba(86, 56, 11, 0.18))
-    drop-shadow(0 0 14px var(--pet-state-glow));
+  filter: saturate(1.02);
 }
 
 .pet-state-hot {
@@ -229,9 +226,7 @@
 .pet-state-hot .cat-image {
   filter:
     saturate(1.12)
-    brightness(1.03)
-    drop-shadow(0 15px 18px rgba(86, 56, 11, 0.18))
-    drop-shadow(0 0 16px var(--pet-state-glow));
+    brightness(1.03);
 }
 
 .pet-state-hot .pet-motion-shell {
@@ -247,9 +242,7 @@
 .pet-state-sleepy .cat-image {
   filter:
     saturate(0.86)
-    brightness(0.98)
-    drop-shadow(0 15px 18px rgba(86, 56, 11, 0.16))
-    drop-shadow(0 0 12px var(--pet-state-glow));
+    brightness(0.98);
 }
 
 .pet-state-sleepy .pet-motion-shell {
