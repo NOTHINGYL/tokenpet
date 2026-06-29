@@ -269,11 +269,16 @@ function openConsoleWindow() {
     return;
   }
 
+  const display = screen.getPrimaryDisplay();
+  const consoleWidth = Math.min(1280, Math.max(980, display.workAreaSize.width - 160));
+  const consoleHeight = Math.min(860, Math.max(760, display.workAreaSize.height - 120));
+
   consoleWindow = new BrowserWindow({
-    width: 1536,
-    height: 1024,
-    minWidth: 1120,
-    minHeight: 720,
+    width: consoleWidth,
+    height: consoleHeight,
+    minWidth: 980,
+    minHeight: 760,
+    center: true,
     title: "TokenPet Console",
     ...(process.platform === "darwin"
       ? {

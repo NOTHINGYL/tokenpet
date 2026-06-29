@@ -20,8 +20,7 @@ export const catTypes = [
     id: "golden-british",
     label: "Golden British",
     image: appearanceAsset("cat-types/golden-british.png"),
-    badge: "Equipped",
-    selected: true,
+    badge: "Ready",
   },
   {
     id: "ragdoll",
@@ -47,9 +46,8 @@ export const skinThemes: Array<{
   id: AppSettings["petTheme"] | "midnight" | "custom";
   label: string;
   className: string;
-  selected?: boolean;
 }> = [
-  { id: "gold", label: "Gold", className: "gold", selected: true },
+  { id: "gold", label: "Gold", className: "gold" },
   { id: "mint", label: "Mint", className: "mint" },
   { id: "rose", label: "Rose", className: "rose" },
   { id: "sky", label: "Sky", className: "sky" },
@@ -134,7 +132,6 @@ export const tokenBubbleOptions = [
     label: "Pill",
     detail: "Large and friendly",
     icon: "pill",
-    selected: true,
   },
   {
     id: "compact",
