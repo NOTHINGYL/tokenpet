@@ -1,8 +1,7 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
 import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars, TokenActivityGrid } from "../components/charts";
 import { GoldCat } from "../components/GoldCat";
-import { APP_VERSION } from "../constants";
+import { AppearancePanel } from "../features/pet-appearance/AppearancePanel";
 import { MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
@@ -282,80 +281,6 @@ function CostTab(props: { usage: UsageSnapshot }) {
   );
 }
 
-function PetTab(props: { settings: AppSettings; setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void }) {
-  const themes: Array<{ id: AppSettings["petTheme"]; label: string }> = [
-    { id: "gold", label: "Gold" },
-    { id: "mint", label: "Mint" },
-    { id: "rose", label: "Rose" },
-    { id: "sky", label: "Sky" },
-  ];
-  const petScalePercent = Math.round(props.settings.petScale * 100);
-  const petOpacityPercent = Math.round(props.settings.petOpacity * 100);
-
-  return (
-    <section className="console-section pet-config-section">
-      <div className="section-heading">
-        <strong>Pet</strong>
-        <span>Appearance and motion controls</span>
-      </div>
-      <div className="pet-config-grid">
-        <div
-          className={`pet-preview pet-theme-${props.settings.petTheme}`}
-          style={
-            {
-              "--pet-scale": props.settings.petScale.toString(),
-              "--pet-opacity": props.settings.petOpacity.toString(),
-            } as CSSProperties
-          }
-        >
-          <GoldCat variant="summary" />
-        </div>
-        <div className="pet-control-stack">
-          <div className="theme-options" aria-label="Pet color theme">
-            {themes.map((theme) => (
-              <button
-                className={props.settings.petTheme === theme.id ? "selected" : ""}
-                key={theme.id}
-                type="button"
-                onClick={() => props.setSetting("petTheme", theme.id)}
-              >
-                <span className={`theme-swatch pet-theme-${theme.id}`} />
-                {theme.label}
-              </button>
-            ))}
-          </div>
-          <label className="pet-range-control">
-            <span>
-              <strong>Size</strong>
-              <small>{petScalePercent}%</small>
-            </span>
-            <input
-              type="range"
-              min="75"
-              max="115"
-              value={petScalePercent}
-              onChange={(event) => props.setSetting("petScale", Number(event.currentTarget.value) / 100)}
-            />
-          </label>
-          <label className="pet-range-control">
-            <span>
-              <strong>Opacity</strong>
-              <small>{petOpacityPercent}%</small>
-            </span>
-            <input
-              type="range"
-              min="45"
-              max="100"
-              value={petOpacityPercent}
-              onChange={(event) => props.setSetting("petOpacity", Number(event.currentTarget.value) / 100)}
-            />
-          </label>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function SettingsTab(props: {
   settings: AppSettings;
   setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
@@ -401,6 +326,13 @@ export function ConsoleApp() {
     { id: "pet", label: "Pet" },
     { id: "settings", label: "Settings" },
   ];
+  const subtitles: Record<ConsoleTab, string> = {
+    overview: "Your local AI token activity at a glance.",
+    breakdown: "Inspect token sources, sessions, and models.",
+    cost: "Understand spend and efficiency signals.",
+    pet: "Tune your token companion.",
+    settings: "Manage TokenPet desktop behavior.",
+  };
 
   return (
     <main className="console-shell">
@@ -436,7 +368,7 @@ export function ConsoleApp() {
         <header className="console-header">
           <div>
             <strong>{tabs.find((tab) => tab.id === activeTab)?.label ?? "Overview"}</strong>
-            <span>Your local AI token activity at a glance.</span>
+            <span>{subtitles[activeTab]}</span>
           </div>
           <div className="console-header-actions">
             <button className="range-button" type="button">
@@ -453,7 +385,7 @@ export function ConsoleApp() {
           {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
           {activeTab === "cost" ? <CostTab usage={usage} /> : null}
           {activeTab === "pet" ? (
-            <PetTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />
+            <AppearancePanel settings={settings} usage={usage} setSetting={(key, value) => void setSetting(key, value)} />
           ) : null}
           {activeTab === "settings" ? (
             <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />

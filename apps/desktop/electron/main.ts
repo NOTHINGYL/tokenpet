@@ -32,8 +32,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   petVisible: true,
   alwaysOnTop: true,
   petTheme: "gold",
-  petScale: 0.92,
-  petOpacity: 1,
+  petScale: 1,
+  petOpacity: 0.92,
 };
 
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
@@ -270,10 +270,10 @@ function openConsoleWindow() {
   }
 
   consoleWindow = new BrowserWindow({
-    width: 1180,
-    height: 860,
-    minWidth: 900,
-    minHeight: 560,
+    width: 1536,
+    height: 1024,
+    minWidth: 1120,
+    minHeight: 720,
     title: "TokenPet Console",
     ...(process.platform === "darwin"
       ? {
