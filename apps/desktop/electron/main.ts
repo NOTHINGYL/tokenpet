@@ -271,7 +271,7 @@ function openConsoleWindow() {
 
   const display = screen.getPrimaryDisplay();
   const consoleWidth = Math.min(1280, Math.max(980, display.workAreaSize.width - 160));
-  const consoleHeight = Math.min(860, Math.max(760, display.workAreaSize.height - 120));
+  const consoleHeight = Math.max(760, display.workAreaSize.height - 8);
 
   consoleWindow = new BrowserWindow({
     width: consoleWidth,

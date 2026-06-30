@@ -357,9 +357,6 @@ export function ConsoleApp() {
           <span className="provider-dot connected" />
           <strong>All systems good</strong>
           <small>Updated {lastUpdated(usage.generatedAt)}</small>
-          <button type="button" onClick={() => void refresh()} disabled={loading} aria-label="Refresh">
-            R
-          </button>
           <GoldCat variant="summary" />
         </div>
       </aside>
@@ -370,14 +367,16 @@ export function ConsoleApp() {
             <strong>{tabs.find((tab) => tab.id === activeTab)?.label ?? "Overview"}</strong>
             <span>{subtitles[activeTab]}</span>
           </div>
-          <div className="console-header-actions">
-            <button className="range-button" type="button">
-              Last 30 Days
-            </button>
-            <button type="button" onClick={() => void refresh()} disabled={loading}>
-              {loading ? "Refreshing" : "Refresh"}
-            </button>
-          </div>
+          {activeTab === "pet" ? null : (
+            <div className="console-header-actions">
+              <button className="range-button" type="button">
+                Last 30 Days
+              </button>
+              <button type="button" onClick={() => void refresh()} disabled={loading}>
+                {loading ? "Refreshing" : "Refresh"}
+              </button>
+            </div>
+          )}
         </header>
 
         <div className="console-content">

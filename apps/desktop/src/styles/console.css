@@ -129,21 +129,6 @@
   font-size: 11px;
 }
 
-.sidebar-status button {
-  position: absolute;
-  top: 33px;
-  right: 15px;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: 0;
-  color: var(--qp-muted);
-  background: transparent;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 900;
-}
-
 .sidebar-status .cat-image {
   position: absolute;
   right: 11px;
@@ -1068,7 +1053,7 @@
   background: transparent;
   cursor: default;
   font-size: clamp(12px, 1.05vw, 14px);
-  font-weight: 720;
+  font-weight: 690;
   letter-spacing: 0;
   white-space: nowrap;
 }
@@ -1161,9 +1146,9 @@
 }
 
 .pet-card-header strong {
-  color: var(--qp-text);
+  color: #1f2937;
   font-size: clamp(13px, 1.25vw, 16px);
-  font-weight: 850;
+  font-weight: 720;
   line-height: 1.08;
 }
 
@@ -1188,7 +1173,7 @@
   background: transparent;
   cursor: default;
   font-size: clamp(10px, 0.95vw, 12px);
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .pet-preview-card {
@@ -1237,7 +1222,7 @@
   background: rgba(225, 246, 232, 0.92);
   color: #176c3a;
   font-size: clamp(12px, 1.1vw, 14px);
-  font-weight: 900;
+  font-weight: 760;
   line-height: 1;
   transform: translateX(-50%);
 }
@@ -1263,7 +1248,7 @@
   color: #0b4f7c;
   box-shadow: 0 10px 20px rgba(30, 41, 59, 0.07);
   font-size: clamp(20px, 2.3vw, 28px);
-  font-weight: 900;
+  font-weight: 850;
   line-height: 1;
   text-align: center;
   transform: translateX(-50%);
@@ -1289,7 +1274,7 @@
   color: #0f1b33;
   background: #ffffff;
   font-size: clamp(9px, 0.9vw, 11px);
-  font-weight: 820;
+  font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1379,7 +1364,7 @@
   overflow: hidden;
   max-width: 100%;
   font-size: clamp(10px, 0.9vw, 12px);
-  font-weight: 850;
+  font-weight: 720;
   line-height: 1.1;
   text-align: center;
   text-overflow: ellipsis;
@@ -1401,7 +1386,7 @@
   background: rgba(79, 126, 232, 0.12);
   font-size: clamp(8.5px, 0.8vw, 10px);
   font-style: normal;
-  font-weight: 900;
+  font-weight: 760;
   line-height: 1;
 }
 
@@ -1450,7 +1435,7 @@
   overflow: hidden;
   color: #0f1b33;
   font-size: clamp(10px, 0.9vw, 12px);
-  font-weight: 850;
+  font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1465,7 +1450,7 @@
 .pet-range-control small {
   color: #25375d;
   font-size: clamp(9px, 0.85vw, 11px);
-  font-weight: 750;
+  font-weight: 650;
   text-align: right;
 }
 
@@ -1536,7 +1521,7 @@
   background: #ffffff;
   color: #0f1b33;
   font-size: clamp(9.5px, 0.85vw, 11px);
-  font-weight: 850;
+  font-weight: 720;
 }
 
 .skin-grid button.selected {
@@ -1638,7 +1623,7 @@
   display: block;
   overflow: hidden;
   font-size: clamp(11px, 0.95vw, 13px);
-  font-weight: 850;
+  font-weight: 730;
   line-height: 1.1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1697,7 +1682,7 @@
 .mood-badge-row strong {
   color: #0f1b33;
   font-size: clamp(10px, 0.9vw, 12px);
-  font-weight: 850;
+  font-weight: 720;
 }
 
 .mood-badge-row small {
@@ -1782,7 +1767,7 @@
 .mood-look-title strong {
   overflow: hidden;
   font-size: clamp(10px, 0.9vw, 12px);
-  font-weight: 850;
+  font-weight: 720;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1918,7 +1903,7 @@
   color: #536383;
   background: transparent;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 @media (max-width: 900px) {
