@@ -1013,7 +1013,7 @@
 }
 
 .pet-appearance-panel {
-  --pet-gap: clamp(8px, 1.15vh, 12px);
+  --pet-gap: clamp(6px, 1.15vh, 12px);
   --pet-subnav-h: clamp(42px, 5vh, 50px);
   --pet-top-h: clamp(392px, 51.5vh, 534px);
   --pet-bottom-h: clamp(168px, 22.8vh, 237px);
@@ -1090,7 +1090,7 @@
 
 .pet-appearance-grid {
   display: grid;
-  grid-template-columns: minmax(210px, 0.72fr) minmax(320px, 1.16fr) minmax(190px, 0.66fr);
+  grid-template-columns: minmax(190px, 0.7fr) minmax(350px, 1.25fr) minmax(175px, 0.6fr);
   grid-template-areas:
     "preview main side"
     "bottom bottom bottom";
@@ -1310,7 +1310,7 @@
 
 .cat-type-option {
   min-height: 0;
-  grid-template-rows: minmax(60px, 1fr) 22px 21px;
+  grid-template-rows: minmax(56px, 1fr) 28px 21px;
   justify-items: center;
   padding: clamp(7px, 1vh, 10px) 7px 7px;
 }
@@ -1361,18 +1361,21 @@
 
 .cat-type-option strong,
 .accessory-option strong {
+  display: grid;
   overflow: hidden;
+  min-height: 22px;
   max-width: 100%;
+  place-items: center;
   font-size: clamp(10px, 0.9vw, 12px);
   font-weight: 720;
-  line-height: 1.1;
+  line-height: 1.05;
   text-align: center;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .accessory-option strong {
-  font-size: 11px;
+  font-size: clamp(9px, 0.72vw, 11px);
 }
 
 .cat-type-option em,
@@ -1399,7 +1402,7 @@
 
 .pet-lower-controls {
   display: grid;
-  grid-template-columns: minmax(0, 1.86fr) minmax(126px, 0.94fr);
+  grid-template-columns: minmax(0, 1.42fr) minmax(150px, 0.98fr);
   gap: var(--pet-gap);
   min-height: 0;
 }
@@ -1417,8 +1420,8 @@
 
 .pet-range-row {
   display: grid;
-  grid-template-columns: clamp(86px, 8.8vw, 108px) minmax(0, 1fr);
-  gap: clamp(8px, 1vw, 13px);
+  grid-template-columns: clamp(74px, 7.8vw, 108px) minmax(0, 1fr);
+  gap: clamp(6px, 0.9vw, 13px);
   align-items: center;
   min-height: 26px;
 }
@@ -1442,8 +1445,8 @@
 
 .pet-range-control {
   display: grid;
-  grid-template-columns: minmax(54px, 1fr) 31px;
-  gap: 8px;
+  grid-template-columns: minmax(44px, 1fr) 28px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -1514,13 +1517,13 @@
   min-height: clamp(34px, 4.4vh, 43px);
   align-items: center;
   justify-content: flex-start;
-  gap: 7px;
-  padding: 0 7px;
+  gap: 4px;
+  padding: 0 5px;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 8px;
   background: #ffffff;
   color: #0f1b33;
-  font-size: clamp(9.5px, 0.85vw, 11px);
+  font-size: clamp(9px, 0.72vw, 11px);
   font-weight: 720;
 }
 
@@ -1529,8 +1532,8 @@
 }
 
 .skin-swatch {
-  width: 17px;
-  height: 17px;
+  width: clamp(14px, 1.1vw, 17px);
+  height: clamp(14px, 1.1vw, 17px);
   flex: 0 0 auto;
   border-radius: 50%;
   box-shadow: 0 0 0 4px rgba(16, 24, 40, 0.05);
@@ -1723,7 +1726,7 @@
 .pet-bottom-row {
   grid-area: bottom;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(280px, 0.82fr) minmax(0, 1.18fr);
   gap: var(--pet-gap);
   min-width: 0;
 }
@@ -1825,15 +1828,15 @@
 .accessory-grid {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: clamp(6px, 0.75vw, 8px);
+  gap: clamp(5px, 0.65vw, 8px);
   height: calc(100% - clamp(39px, 5vh, 48px));
 }
 
 .accessory-option {
   min-height: 0;
-  grid-template-rows: 22px minmax(46px, 1fr) 21px;
+  grid-template-rows: 28px minmax(38px, 1fr) 21px;
   justify-items: center;
-  padding: clamp(6px, 0.9vh, 10px) 6px;
+  padding: clamp(6px, 0.9vh, 10px) 4px;
 }
 
 .accessory-option img {
@@ -1938,5 +1941,15 @@
 
   .cat-type-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .skin-grid button {
+    flex-direction: column;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px;
+    text-align: center;
   }
 }
