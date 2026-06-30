@@ -1,42 +1,16 @@
 import type { CSSProperties } from "react";
-import { useCallback, useState } from "react";
-import { PetSprite } from "../components/PetSprite";
-import type { PetAction } from "../components/petAnimations";
+import { useState } from "react";
+import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
+import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
-import { compactNumber } from "../utils/format";
-import type { UsageSnapshot } from "../types";
-
-type PetMood = "sleepy" | "focused" | "hot";
-
-const moodLabels: Record<PetMood, string> = {
-  sleepy: "sleepy",
-  focused: "focus",
-  hot: "hot",
-};
-
-function getPetMood(usage: UsageSnapshot): PetMood {
-  const burnRate = usage.burnRate.toLowerCase();
-  const dailyAverage = usage.sevenDayTokens > 0 ? usage.sevenDayTokens / 7 : usage.analysis.dailyAverageTokens;
-
-  if (burnRate.includes("hot") || usage.todayTokens > Math.max(8_000_000, dailyAverage * 1.45)) {
-    return "hot";
-  }
-
-  if (usage.todayTokens <= 0 || burnRate.includes("idle") || burnRate.includes("sleep")) {
-    return "sleepy";
-  }
-
-  return "focused";
-}
 
 export function PetApp() {
   const { usage } = useUsage();
   const { settings } = useAppSettings();
   const [dragging, setDragging] = useState(false);
   const [summoning, setSummoning] = useState(false);
-  const [petAction, setPetAction] = useState<PetAction>("idle");
-  const mood = getPetMood(usage);
+  const appearance = normalizePetAppearance(settings);
 
   function close(event: React.SyntheticEvent) {
     event.preventDefault();
@@ -48,20 +22,9 @@ export function PetApp() {
     event?.preventDefault();
     event?.stopPropagation();
     setSummoning(true);
-    setPetAction("wave");
     window.setTimeout(() => setSummoning(false), 560);
     window.tokenpet.togglePopover();
   }
-
-  function playHoverAction() {
-    setPetAction((currentAction) => (currentAction === "idle" ? "blinkLook" : currentAction));
-  }
-
-  const completeAction = useCallback((action: PetAction) => {
-    if (action !== "idle") {
-      setPetAction("idle");
-    }
-  }, []);
 
   async function startDrag(event: React.PointerEvent<HTMLElement>) {
     if (event.button !== 0) return;
@@ -82,13 +45,14 @@ export function PetApp() {
   }
 
   const stageStyle = {
-    "--pet-scale": settings.petScale.toString(),
-    "--pet-opacity": settings.petOpacity.toString(),
+    "--pet-scale": appearance.size.toString(),
+    "--pet-opacity": appearance.opacity.toString(),
+    "--pet-shadow-opacity": appearance.shadow.toString(),
   } as CSSProperties;
 
   return (
     <main
-      className={`pet-stage pet-theme-${settings.petTheme} pet-state-${mood} ${dragging ? "is-dragging" : ""} ${
+      className={`pet-stage pet-theme-${appearance.themeId} pet-state-${appearance.moodId} ${dragging ? "is-dragging" : ""} ${
         summoning ? "is-summoning" : ""
       }`}
       style={stageStyle}
@@ -96,24 +60,9 @@ export function PetApp() {
       onPointerDown={startDrag}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
-      onMouseEnter={playHoverAction}
     >
       <div className="pet-drag-region" aria-label="Drag TokenPet">
-        <div className="pet-motion-shell">
-          <PetSprite action={petAction} onActionComplete={completeAction} />
-          <span className="pet-tail-wag" aria-hidden="true" />
-          <span className="pet-mood-chip" aria-hidden="true">
-            {moodLabels[mood]}
-          </span>
-        </div>
-        <button
-          className="token-pill"
-          type="button"
-          aria-label="Open TokenPet summary"
-          onClick={openSummary}
-        >
-          {compactNumber(usage.todayTokens)}
-        </button>
+        <PetAppearanceVisual appearance={appearance} usage={usage} moodId={appearance.moodId} surface="desktop" onBubbleClick={openSummary} />
       </div>
       <button className="pet-close" type="button" aria-label="Close TokenPet" onPointerDown={close} onClick={close}>
         x

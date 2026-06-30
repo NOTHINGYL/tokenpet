@@ -1,4 +1,5 @@
 import type { AppSettings, UsageSnapshot } from "../types";
+import { defaultPetAppearance } from "../features/pet-appearance/appearanceState";
 
 export const fallbackUsage: UsageSnapshot = {
   todayTokens: 128420,
@@ -75,4 +76,5 @@ export const fallbackSettings: AppSettings = {
   petTheme: "gold",
   petScale: 1,
   petOpacity: 0.92,
+  petAppearance: defaultPetAppearance,
 };

@@ -1,8 +1,14 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
-import { GoldCat } from "../../components/GoldCat";
-import type { AppSettings, UsageSnapshot } from "../../types";
-import { compactNumber } from "../../utils/format";
+import type {
+  AccessoryId,
+  AppSettings,
+  CatTypeId,
+  MoodLookId,
+  PetAppearanceSettings,
+  PetThemeId,
+  TokenBubbleId,
+  UsageSnapshot,
+} from "../../types";
 import {
   accessories,
   catTypes,
@@ -12,20 +18,16 @@ import {
   skinThemes,
   tokenBubbleOptions,
 } from "./catalog";
+import { exportPetPreview } from "./previewExport";
+import { PetAppearanceVisual } from "./PetAppearanceVisual";
 import { PetIcon } from "./icons";
+import { useAppearanceController } from "./useAppearanceController";
 
 type AppearancePanelProps = {
   settings: AppSettings;
   setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   usage: UsageSnapshot;
 };
-
-const petThemeIds: AppSettings["petTheme"][] = ["gold", "mint", "rose", "sky"];
-const defaultMoodBadgeState = Object.fromEntries(moodBadgeOptions.map((option) => [option.id, option.enabled]));
-
-function isPetTheme(theme: (typeof skinThemes)[number]["id"]): theme is AppSettings["petTheme"] {
-  return petThemeIds.includes(theme as AppSettings["petTheme"]);
-}
 
 function HeaderAction(props: { label: string }) {
   return (
@@ -54,42 +56,39 @@ function PetSubnav() {
   );
 }
 
-function PetPreview(props: { settings: AppSettings; usage: UsageSnapshot }) {
+function PetPreview(props: {
+  appearance: PetAppearanceSettings;
+  usage: UsageSnapshot;
+  canUndo: boolean;
+  onCapture: () => void;
+  onReset: () => void;
+  onUndo: () => void;
+}) {
   return (
-    <section
-      className="pet-preview-card"
-      style={
-        {
-          "--preview-scale": props.settings.petScale.toString(),
-          "--preview-opacity": props.settings.petOpacity.toString(),
-        } as CSSProperties
-      }
-    >
+    <section className="pet-preview-card">
       <div className="pet-card-header">
         <div>
           <strong>Pet Preview</strong>
         </div>
-        <button className="pet-icon-button" type="button" aria-label="Preview camera">
+        <button className="pet-icon-button" type="button" aria-label="Capture preview" onClick={props.onCapture}>
           <PetIcon name="camera" />
         </button>
       </div>
 
       <div className="pet-preview-stage">
-        <span className="pet-preview-mood">focused</span>
-        <GoldCat className="pet-preview-cat" />
-        <span className="pet-preview-token">{compactNumber(props.usage.sevenDayTokens || props.usage.todayTokens)}</span>
+        <PetAppearanceVisual appearance={props.appearance} usage={props.usage} surface="preview" />
       </div>
 
       <div className="pet-preview-actions">
-        <button type="button">
+        <button type="button" onClick={props.onCapture}>
           <PetIcon name="capture" />
-          Capture
+          Capture preview
         </button>
-        <button type="button">
+        <button type="button" onClick={props.onReset}>
           <PetIcon name="reset" />
-          Reset
+          Reset to default
         </button>
-        <button type="button">
+        <button type="button" onClick={props.onUndo} disabled={!props.canUndo}>
           <PetIcon name="undo" />
           Undo
         </button>
@@ -98,7 +97,7 @@ function PetPreview(props: { settings: AppSettings; usage: UsageSnapshot }) {
   );
 }
 
-function CatTypeCard(props: { selectedCat: string; onSelectCat: (catId: string) => void }) {
+function CatTypeCard(props: { selectedCat: CatTypeId; onSelectCat: (catId: CatTypeId) => void }) {
   return (
     <section className="pet-card cat-type-card">
       <div className="pet-card-header">
@@ -114,6 +113,7 @@ function CatTypeCard(props: { selectedCat: string; onSelectCat: (catId: string) 
             className={`cat-type-option ${props.selectedCat === cat.id ? "selected" : ""}`}
             key={cat.id}
             type="button"
+            data-cat-id={cat.id}
             onClick={() => props.onSelectCat(cat.id)}
           >
             <span className="cat-type-image-wrap">
@@ -137,7 +137,7 @@ function RangeControl(props: {
   value: number;
   min?: number;
   max?: number;
-  onChange?: (value: number) => void;
+  onChange: (value: number) => void;
 }) {
   const min = props.min ?? 0;
   const max = props.max ?? 100;
@@ -151,31 +151,26 @@ function RangeControl(props: {
         <strong>{props.label}</strong>
       </span>
       <span className="pet-range-control">
-        {props.onChange ? (
-          <input
-            type="range"
-            min={min}
-            max={max}
-            value={props.value}
-            onChange={(event) => props.onChange?.(Number(event.currentTarget.value))}
-            style={{ "--range-progress": `${progress}%` } as CSSProperties}
-            aria-label={props.label}
-          />
-        ) : (
-          <span className="pet-static-range" style={{ "--range-progress": `${progress}%` } as CSSProperties}>
-            <span />
-          </span>
-        )}
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={props.value}
+          data-range-id={props.label.toLowerCase().replace(/\s+/g, "-")}
+          onChange={(event) => props.onChange(Number(event.currentTarget.value))}
+          style={{ "--range-progress": `${progress}%` } as CSSProperties}
+          aria-label={props.label}
+        />
         <small>{props.value}%</small>
       </span>
     </label>
   );
 }
 
-function DisplayCard(props: AppearancePanelProps) {
-  const size = Math.round(props.settings.petScale * 100);
-  const opacity = Math.round(props.settings.petOpacity * 100);
-
+function DisplayCard(props: {
+  appearance: PetAppearanceSettings;
+  onPatchAppearance: (patch: Partial<PetAppearanceSettings>) => void;
+}) {
   return (
     <section className="pet-card display-card">
       <div className="pet-card-header">
@@ -190,25 +185,37 @@ function DisplayCard(props: AppearancePanelProps) {
           label="Size"
           min={75}
           max={115}
-          value={size}
-          onChange={(value) => props.setSetting("petScale", value / 100)}
+          value={Math.round(props.appearance.size * 100)}
+          onChange={(value) => props.onPatchAppearance({ size: value / 100 })}
         />
         <RangeControl
           icon="opacity"
           label="Opacity"
           min={45}
           max={100}
-          value={opacity}
-          onChange={(value) => props.setSetting("petOpacity", value / 100)}
+          value={Math.round(props.appearance.opacity * 100)}
+          onChange={(value) => props.onPatchAppearance({ opacity: value / 100 })}
         />
-        <RangeControl icon="shadow" label="Shadow" value={60} />
-        <RangeControl icon="bubble" label="Bubble scale" value={100} />
+        <RangeControl
+          icon="shadow"
+          label="Shadow"
+          value={Math.round(props.appearance.shadow * 100)}
+          onChange={(value) => props.onPatchAppearance({ shadow: value / 100 })}
+        />
+        <RangeControl
+          icon="bubble"
+          label="Bubble scale"
+          min={70}
+          max={125}
+          value={Math.round(props.appearance.bubbleScale * 100)}
+          onChange={(value) => props.onPatchAppearance({ bubbleScale: value / 100 })}
+        />
       </div>
     </section>
   );
 }
 
-function SkinCard(props: AppearancePanelProps & { selectedSkin: string; onSelectSkin: (skinId: string) => void }) {
+function SkinCard(props: { selectedSkin: PetThemeId; onSelectSkin: (skinId: PetThemeId) => void }) {
   return (
     <section className="pet-card skin-card">
       <div className="pet-card-header">
@@ -223,10 +230,8 @@ function SkinCard(props: AppearancePanelProps & { selectedSkin: string; onSelect
             className={props.selectedSkin === theme.id ? "selected" : ""}
             key={theme.id}
             type="button"
-            onClick={() => {
-              props.onSelectSkin(theme.id);
-              if (isPetTheme(theme.id)) props.setSetting("petTheme", theme.id);
-            }}
+            data-skin-id={theme.id}
+            onClick={() => props.onSelectSkin(theme.id)}
           >
             <span className={`skin-swatch ${theme.className}`} />
             {theme.label}
@@ -237,7 +242,7 @@ function SkinCard(props: AppearancePanelProps & { selectedSkin: string; onSelect
   );
 }
 
-function TokenBubbleCard(props: { selectedBubble: string; onSelectBubble: (bubbleId: string) => void }) {
+function TokenBubbleCard(props: { selectedBubble: TokenBubbleId; onSelectBubble: (bubbleId: TokenBubbleId) => void }) {
   return (
     <section className="pet-card token-bubble-card">
       <div className="pet-card-header">
@@ -252,6 +257,7 @@ function TokenBubbleCard(props: { selectedBubble: string; onSelectBubble: (bubbl
             className={props.selectedBubble === option.id ? "selected" : ""}
             key={option.id}
             type="button"
+            data-bubble-id={option.id}
             onClick={() => props.onSelectBubble(option.id)}
           >
             <span className="bubble-option-icon">
@@ -270,9 +276,15 @@ function TokenBubbleCard(props: { selectedBubble: string; onSelectBubble: (bubbl
 }
 
 function MoodBadgeCard(props: {
-  moodBadgeState: Record<string, boolean>;
-  onToggleMoodBadge: (optionId: string) => void;
+  appearance: PetAppearanceSettings;
+  onPatchAppearance: (patch: Partial<PetAppearanceSettings>) => void;
 }) {
+  const stateByOption = {
+    "show-mood": props.appearance.moodBadge.showMood,
+    "color-state": props.appearance.moodBadge.colorByState,
+    "focus-mode": props.appearance.moodBadge.hideInFocusMode,
+  };
+
   return (
     <section className="pet-card mood-badge-card">
       <div className="pet-card-header">
@@ -283,12 +295,27 @@ function MoodBadgeCard(props: {
       </div>
       <div className="mood-badge-list">
         {moodBadgeOptions.map((option) => (
-          <button className="mood-badge-row" key={option.id} type="button" onClick={() => props.onToggleMoodBadge(option.id)}>
+          <button
+            className="mood-badge-row"
+            key={option.id}
+            type="button"
+            data-mood-badge-id={option.id}
+            onClick={() => {
+              const nextEnabled = !stateByOption[option.id];
+              const nextMoodBadge = {
+                ...props.appearance.moodBadge,
+                ...(option.id === "show-mood" ? { showMood: nextEnabled } : {}),
+                ...(option.id === "color-state" ? { colorByState: nextEnabled } : {}),
+                ...(option.id === "focus-mode" ? { hideInFocusMode: nextEnabled } : {}),
+              };
+              props.onPatchAppearance({ moodBadge: nextMoodBadge });
+            }}
+          >
             <span>
               <strong>{option.label}</strong>
               <small>{option.detail}</small>
             </span>
-            <span className={`pet-switch ${props.moodBadgeState[option.id] ? "on" : ""}`} aria-hidden="true" />
+            <span className={`pet-switch ${stateByOption[option.id] ? "on" : ""}`} aria-hidden="true" />
           </button>
         ))}
       </div>
@@ -296,7 +323,7 @@ function MoodBadgeCard(props: {
   );
 }
 
-function MoodLooksCard(props: { selectedMood: string; onSelectMood: (moodId: string) => void }) {
+function MoodLooksCard(props: { selectedMood: MoodLookId; onSelectMood: (moodId: MoodLookId) => void }) {
   return (
     <section className="pet-card mood-looks-card">
       <div className="pet-card-header">
@@ -312,6 +339,7 @@ function MoodLooksCard(props: { selectedMood: string; onSelectMood: (moodId: str
             className={`mood-look-option ${mood.id} ${props.selectedMood === mood.id ? "selected" : ""}`}
             key={mood.id}
             type="button"
+            data-mood-id={mood.id}
             onClick={() => props.onSelectMood(mood.id)}
           >
             <span className="mood-look-title">
@@ -327,7 +355,7 @@ function MoodLooksCard(props: { selectedMood: string; onSelectMood: (moodId: str
   );
 }
 
-function AccessoriesCard(props: { selectedAccessories: string[]; onToggleAccessory: (accessoryId: string) => void }) {
+function AccessoriesCard(props: { selectedAccessories: AccessoryId[]; onToggleAccessory: (accessoryId: AccessoryId) => void }) {
   return (
     <section className="pet-card accessories-card">
       <div className="pet-card-header">
@@ -345,6 +373,7 @@ function AccessoriesCard(props: { selectedAccessories: string[]; onToggleAccesso
             }`}
             key={accessory.id}
             type="button"
+            data-accessory-id={accessory.id}
             onClick={() => {
               if (!accessory.locked) props.onToggleAccessory(accessory.id);
             }}
@@ -352,11 +381,7 @@ function AccessoriesCard(props: { selectedAccessories: string[]; onToggleAccesso
           >
             <strong>{accessory.label}</strong>
             <img src={accessory.image} alt="" draggable={false} aria-hidden="true" />
-            <em
-              className={
-                accessory.locked ? "locked" : props.selectedAccessories.includes(accessory.id) ? "equipped" : ""
-              }
-            >
+            <em className={accessory.locked ? "locked" : props.selectedAccessories.includes(accessory.id) ? "equipped" : ""}>
               {accessory.locked ? <PetIcon name="lock" /> : null}
               {props.selectedAccessories.includes(accessory.id) ? "Equipped" : accessory.badge}
             </em>
@@ -368,55 +393,48 @@ function AccessoriesCard(props: { selectedAccessories: string[]; onToggleAccesso
 }
 
 export function AppearancePanel(props: AppearancePanelProps) {
-  const [selectedCat, setSelectedCat] = useState("golden-british");
-  const [selectedBubble, setSelectedBubble] = useState("pill");
-  const [selectedSkin, setSelectedSkin] = useState(props.settings.petTheme);
-  const [selectedMood, setSelectedMood] = useState("focused");
-  const [selectedAccessories, setSelectedAccessories] = useState(["collar", "ribbon"]);
-  const [moodBadgeState, setMoodBadgeState] = useState<Record<string, boolean>>(defaultMoodBadgeState);
+  const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(
+    props.settings,
+    props.setSetting,
+  );
 
-  const resetAppearance = () => {
-    setSelectedCat("golden-british");
-    setSelectedBubble("pill");
-    setSelectedSkin("gold");
-    setSelectedMood("focused");
-    setSelectedAccessories(["collar", "ribbon"]);
-    setMoodBadgeState(defaultMoodBadgeState);
-    props.setSetting("petTheme", "gold");
-    props.setSetting("petScale", 1);
-    props.setSetting("petOpacity", 0.92);
-  };
-
-  const toggleAccessory = (accessoryId: string) => {
-    setSelectedAccessories((current) =>
-      current.includes(accessoryId) ? current.filter((id) => id !== accessoryId) : [...current, accessoryId],
-    );
+  const toggleAccessory = (accessoryId: AccessoryId) => {
+    patchAppearance({
+      accessoryIds: appearance.accessoryIds.includes(accessoryId)
+        ? appearance.accessoryIds.filter((id) => id !== accessoryId)
+        : [...appearance.accessoryIds, accessoryId],
+    });
   };
 
   return (
     <div className="pet-appearance-panel">
       <PetSubnav />
       <div className="pet-appearance-grid">
-        <PetPreview settings={props.settings} usage={props.usage} />
+        <PetPreview
+          appearance={appearance}
+          usage={props.usage}
+          canUndo={canUndo}
+          onCapture={() => void exportPetPreview(appearance, props.usage)}
+          onReset={resetAppearance}
+          onUndo={undoAppearance}
+        />
         <div className="pet-main-column">
-          <CatTypeCard selectedCat={selectedCat} onSelectCat={setSelectedCat} />
+          <CatTypeCard selectedCat={appearance.catTypeId} onSelectCat={(catTypeId) => patchAppearance({ catTypeId })} />
           <div className="pet-lower-controls">
-            <DisplayCard {...props} />
-            <SkinCard {...props} selectedSkin={selectedSkin} onSelectSkin={setSelectedSkin} />
+            <DisplayCard appearance={appearance} onPatchAppearance={patchAppearance} />
+            <SkinCard selectedSkin={appearance.themeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
           </div>
         </div>
         <div className="pet-side-column">
-          <TokenBubbleCard selectedBubble={selectedBubble} onSelectBubble={setSelectedBubble} />
-          <MoodBadgeCard
-            moodBadgeState={moodBadgeState}
-            onToggleMoodBadge={(optionId) =>
-              setMoodBadgeState((current) => ({ ...current, [optionId]: !current[optionId] }))
-            }
+          <TokenBubbleCard
+            selectedBubble={appearance.tokenBubbleId}
+            onSelectBubble={(tokenBubbleId) => patchAppearance({ tokenBubbleId })}
           />
+          <MoodBadgeCard appearance={appearance} onPatchAppearance={patchAppearance} />
         </div>
         <div className="pet-bottom-row">
-          <MoodLooksCard selectedMood={selectedMood} onSelectMood={setSelectedMood} />
-          <AccessoriesCard selectedAccessories={selectedAccessories} onToggleAccessory={toggleAccessory} />
+          <MoodLooksCard selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} />
+          <AccessoriesCard selectedAccessories={appearance.accessoryIds} onToggleAccessory={toggleAccessory} />
         </div>
       </div>
       <footer className="pet-appearance-footer">

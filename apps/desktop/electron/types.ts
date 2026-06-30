@@ -74,13 +74,39 @@ export type UsageSnapshot = {
   analysis: UsageAnalysis;
 };
 
+export type CatTypeId = "golden-british" | "ragdoll" | "silver-tabby" | "black-cat";
+export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom";
+export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
+export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
+export type AccessoryId = "collar" | "ribbon" | "focus-crown" | "tiny-scarf" | "halo" | "desk-mat";
+
+export type MoodBadgeSettings = {
+  showMood: boolean;
+  colorByState: boolean;
+  hideInFocusMode: boolean;
+};
+
+export type PetAppearanceSettings = {
+  catTypeId: CatTypeId;
+  themeId: PetThemeId;
+  tokenBubbleId: TokenBubbleId;
+  size: number;
+  opacity: number;
+  shadow: number;
+  bubbleScale: number;
+  moodId: MoodLookId;
+  moodBadge: MoodBadgeSettings;
+  accessoryIds: AccessoryId[];
+};
+
 export type AppSettings = {
   launchAtLogin: boolean;
   petVisible: boolean;
   alwaysOnTop: boolean;
-  petTheme: "gold" | "mint" | "rose" | "sky";
+  petTheme: PetThemeId;
   petScale: number;
   petOpacity: number;
+  petAppearance: PetAppearanceSettings;
 };
 
 export type CcusageDailyRow = {

@@ -4,6 +4,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AppSettings, UsageSnapshot } from "./types.js";
+import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
 import { loadUsageSnapshot } from "./usage.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   petTheme: "gold",
   petScale: 1,
   petOpacity: 0.92,
+  petAppearance: defaultPetAppearance,
 };
 
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
@@ -122,11 +124,13 @@ function writeStoredSettings() {
 }
 
 function hydrateSettings() {
-  settings = {
+  const storedSettings = readStoredSettings();
+  const appearance = normalizePetAppearance(storedSettings);
+  settings = syncLegacyAppearanceFields({
     ...DEFAULT_SETTINGS,
-    ...readStoredSettings(),
+    ...storedSettings,
     launchAtLogin: app.getLoginItemSettings().openAtLogin,
-  };
+  }, appearance) as AppSettings;
 }
 
 function createTrayIcon() {
@@ -377,6 +381,13 @@ function setAlwaysOnTop(enabled: boolean) {
 
 function setPetTheme(theme: AppSettings["petTheme"]) {
   settings.petTheme = theme;
+  settings.petAppearance = normalizePetAppearance({
+    ...settings,
+    petAppearance: {
+      ...settings.petAppearance,
+      themeId: theme,
+    },
+  });
 }
 
 function publishSettings(nextSettings: AppSettings) {
@@ -404,11 +415,34 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
 
   if (key === "petScale") {
     settings.petScale = clamp(Number(value), 0.75, 1.15);
+    settings.petAppearance = normalizePetAppearance({
+      ...settings,
+      petAppearance: {
+        ...settings.petAppearance,
+        size: settings.petScale,
+      },
+    });
   }
 
   if (key === "petOpacity") {
     settings.petOpacity = clamp(Number(value), 0.45, 1);
+    settings.petAppearance = normalizePetAppearance({
+      ...settings,
+      petAppearance: {
+        ...settings.petAppearance,
+        opacity: settings.petOpacity,
+      },
+    });
   }
+
+  if (key === "petAppearance") {
+    settings.petAppearance = normalizePetAppearance({
+      ...settings,
+      petAppearance: value as AppSettings["petAppearance"],
+    });
+  }
+
+  settings = syncLegacyAppearanceFields(settings, settings.petAppearance) as AppSettings;
 
   const nextSettings = currentSettings();
   writeStoredSettings();

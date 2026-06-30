@@ -1211,6 +1211,13 @@
   place-items: center;
 }
 
+.pet-appearance-visual-preview {
+  --pet-visual-cat-width: clamp(168px, 17.2vw, 250px);
+  --pet-visual-cat-y: clamp(-38px, -4.2vh, -18px);
+  --pet-visual-token-bottom: clamp(82px, 10vh, 122px);
+  --pet-visual-mood-top: clamp(4px, 1.2vh, 12px);
+}
+
 .pet-preview-mood {
   position: absolute;
   top: clamp(4px, 1.2vh, 12px);
@@ -1264,10 +1271,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 4px;
   min-width: 0;
-  min-height: clamp(30px, 3.5vh, 35px);
-  padding: 0 7px;
+  min-height: clamp(34px, 4vh, 40px);
+  padding: 0 4px;
   overflow: hidden;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 7px;
@@ -1275,14 +1282,15 @@
   background: #ffffff;
   font-size: clamp(9px, 0.9vw, 11px);
   font-weight: 720;
+  line-height: 1.05;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .pet-preview-actions svg {
   flex: 0 0 auto;
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
 .cat-type-card {
@@ -1951,5 +1959,13 @@
     gap: 3px;
     padding: 3px;
     text-align: center;
+  }
+
+  .pet-preview-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pet-preview-actions button:last-child {
+    grid-column: 1 / -1;
   }
 }
