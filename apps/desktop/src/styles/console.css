@@ -1014,7 +1014,7 @@
 
 .pet-appearance-panel {
   --pet-gap: clamp(6px, 1.15vh, 12px);
-  --pet-subnav-h: clamp(42px, 5vh, 50px);
+  --pet-subnav-h: clamp(48px, 5.7vh, 56px);
   --pet-top-h: clamp(392px, 51.5vh, 534px);
   --pet-bottom-h: clamp(168px, 22.8vh, 237px);
   --pet-footer-h: clamp(32px, 3.9vh, 38px);
@@ -1027,15 +1027,16 @@
 }
 
 .pet-console-subnav {
-  display: grid;
-  grid-template-columns: minmax(118px, 1.05fr) minmax(98px, 0.9fr) minmax(160px, 1.35fr) minmax(92px, 0.85fr) minmax(104px, 0.95fr) minmax(0, 1fr);
+  display: flex;
   align-items: stretch;
+  gap: clamp(20px, 3.45vw, 58px);
   min-height: var(--pet-subnav-h);
+  padding: 0 clamp(18px, 2.15vw, 36px);
   overflow: hidden;
-  border: 1px solid rgba(16, 24, 40, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 1px 0 rgba(16, 24, 40, 0.03);
+  border: 1px solid rgba(16, 24, 40, 0.09);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.035);
   -webkit-app-region: no-drag;
 }
 
@@ -1043,36 +1044,53 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: clamp(9px, 1.05vw, 13px);
+  flex: 0 0 auto;
   min-width: 0;
   min-height: var(--pet-subnav-h);
-  padding: 0 10px;
+  padding: 0 clamp(2px, 0.65vw, 10px);
   border: 0;
   color: #25375d;
   background: transparent;
   cursor: default;
-  font-size: clamp(12px, 1.05vw, 14px);
-  font-weight: 690;
+  font-size: clamp(13px, 1.14vw, 15px);
+  font-weight: 560;
   letter-spacing: 0;
   white-space: nowrap;
 }
 
 .pet-console-subnav button.active {
   color: var(--qp-green);
+  font-weight: 650;
 }
 
 .pet-console-subnav button.active::after {
   position: absolute;
-  right: 0;
+  right: clamp(-8px, -0.45vw, -3px);
   bottom: 0;
-  left: 0;
-  height: 2px;
+  left: clamp(-8px, -0.45vw, -3px);
+  height: 3px;
   content: "";
   background: var(--qp-green);
+  border-radius: 999px 999px 0 0;
 }
 
-.pet-console-subnav svg,
+.pet-console-subnav svg {
+  width: clamp(18px, 1.55vw, 22px);
+  height: clamp(18px, 1.55vw, 22px);
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.85;
+}
+
+.pet-console-subnav button.active svg {
+  stroke-width: 2;
+}
+
 .pet-icon-button svg,
 .pet-preview-actions svg,
 .pet-section-action svg,
@@ -1937,6 +1955,21 @@
   .mood-look-grid,
   .accessory-grid {
     grid-template-columns: 1fr;
+  }
+
+  .pet-console-subnav {
+    gap: clamp(14px, 2.3vw, 22px);
+    padding: 0 14px;
+  }
+
+  .pet-console-subnav button {
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  .pet-console-subnav svg {
+    width: 17px;
+    height: 17px;
   }
 
   .pet-appearance-grid {
