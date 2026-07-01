@@ -1281,7 +1281,7 @@
 
 .pet-preview-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.23fr) minmax(0, 0.61fr);
+  grid-template-columns: minmax(72px, 0.82fr) minmax(116px, 1.45fr) minmax(62px, 0.77fr);
   gap: 4px;
 }
 
@@ -2006,6 +2006,10 @@
     gap: 2px;
     padding: 0 1px;
     font-size: 7.5px;
+  }
+
+  .pet-preview-actions {
+    grid-template-columns: minmax(52px, 0.86fr) minmax(82px, 1.35fr) minmax(40px, 0.71fr);
   }
 
   .pet-preview-actions svg {
