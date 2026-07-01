@@ -82,15 +82,17 @@ function PetPreview(props: {
       <div className="pet-preview-actions">
         <button type="button" onClick={props.onCapture}>
           <PetIcon name="capture" />
-          Capture preview
+          <span className="pet-preview-action-label-full">Capture preview</span>
+          <span className="pet-preview-action-label-short">Capture</span>
         </button>
         <button type="button" onClick={props.onReset}>
           <PetIcon name="reset" />
-          Reset to default
+          <span className="pet-preview-action-label-full">Reset to default</span>
+          <span className="pet-preview-action-label-short">Reset</span>
         </button>
         <button type="button" onClick={props.onUndo} disabled={!props.canUndo}>
           <PetIcon name="undo" />
-          Undo
+          <span>Undo</span>
         </button>
       </div>
     </section>

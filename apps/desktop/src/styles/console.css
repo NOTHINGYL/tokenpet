@@ -1281,34 +1281,46 @@
 
 .pet-preview-actions {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 0.75fr);
-  gap: 6px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.23fr) minmax(0, 0.61fr);
+  gap: 4px;
 }
 
 .pet-preview-actions button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
-  min-height: clamp(34px, 4vh, 40px);
-  padding: 0 4px;
+  min-height: clamp(30px, 3.6vh, 36px);
+  padding: 0 clamp(2px, 0.35vw, 5px);
   overflow: hidden;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 7px;
   color: #0f1b33;
   background: #ffffff;
-  font-size: clamp(9px, 0.9vw, 11px);
-  font-weight: 720;
-  line-height: 1.05;
+  font-size: clamp(9px, 0.72vw, 10px);
+  font-weight: 660;
+  line-height: 1;
   text-overflow: ellipsis;
-  white-space: normal;
+  white-space: nowrap;
+}
+
+.pet-preview-actions button span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-preview-action-label-short {
+  display: none;
 }
 
 .pet-preview-actions svg {
   flex: 0 0 auto;
-  width: 14px;
-  height: 14px;
+  width: clamp(14px, 1.05vw, 16px);
+  height: clamp(14px, 1.05vw, 16px);
+  stroke-width: 2;
 }
 
 .cat-type-card {
@@ -1994,11 +2006,22 @@
     text-align: center;
   }
 
-  .pet-preview-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .pet-preview-actions button {
+    gap: 2px;
+    padding: 0 1px;
+    font-size: 7.5px;
   }
 
-  .pet-preview-actions button:last-child {
-    grid-column: 1 / -1;
+  .pet-preview-action-label-full {
+    display: none;
+  }
+
+  .pet-preview-action-label-short {
+    display: inline;
+  }
+
+  .pet-preview-actions svg {
+    width: 12px;
+    height: 12px;
   }
 }
