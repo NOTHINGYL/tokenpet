@@ -1312,10 +1312,6 @@
   white-space: nowrap;
 }
 
-.pet-preview-action-label-short {
-  display: none;
-}
-
 .pet-preview-actions svg {
   flex: 0 0 auto;
   width: clamp(14px, 1.05vw, 16px);
@@ -2010,14 +2006,6 @@
     gap: 2px;
     padding: 0 1px;
     font-size: 7.5px;
-  }
-
-  .pet-preview-action-label-full {
-    display: none;
-  }
-
-  .pet-preview-action-label-short {
-    display: inline;
   }
 
   .pet-preview-actions svg {
