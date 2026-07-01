@@ -90,6 +90,11 @@
   --pet-visual-cat-y: -16px;
   --pet-visual-token-bottom: 38px;
   --pet-visual-mood-top: 22px;
+  --cat-fur-softness: 0px;
+  --cat-pattern-contrast: 1;
+  --cat-pattern-saturation: 1;
+  --cat-eye-opacity: 0;
+  --cat-eye-tint: rgba(224, 157, 24, 0.9);
   position: relative;
   display: grid;
   width: 100%;
@@ -118,16 +123,37 @@
     transform 180ms ease;
 }
 
+.pet-visual-cat-wrap::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: var(--cat-eye-opacity);
+  background:
+    radial-gradient(circle at 42% 43%, var(--cat-eye-tint) 0 2.2%, transparent 3.7%),
+    radial-gradient(circle at 58% 43%, var(--cat-eye-tint) 0 2.2%, transparent 3.7%);
+  filter: blur(0.2px);
+  mix-blend-mode: color;
+}
+
 .pet-visual-cat {
+  position: relative;
+  z-index: 1;
   display: block;
   width: 100%;
   height: auto;
   user-select: none;
-  filter: drop-shadow(0 calc(18px * var(--pet-visual-shadow)) calc(24px * var(--pet-visual-shadow)) rgba(30, 41, 59, 0.2));
+  filter:
+    drop-shadow(0 0 var(--cat-fur-softness) rgba(255, 255, 255, 0.58))
+    drop-shadow(0 calc(18px * var(--pet-visual-shadow)) calc(24px * var(--pet-visual-shadow)) rgba(30, 41, 59, 0.2))
+    saturate(var(--cat-pattern-saturation))
+    contrast(var(--cat-pattern-contrast));
 }
 
 .pet-visual-accessory {
   position: absolute;
+  z-index: 3;
   left: 50%;
   width: 38%;
   height: auto;

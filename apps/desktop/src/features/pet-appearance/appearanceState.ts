@@ -2,14 +2,32 @@ import type {
   AccessoryId,
   AppSettings,
   CatTypeId,
+  CatBreedDetails,
   MoodBadgeSettings,
   MoodLookId,
   PetAppearanceSettings,
   PetThemeId,
   TokenBubbleId,
 } from "../../types";
+import { catEyeColors, getDefaultCatDetails } from "./catalog";
 
-export const catTypeIds: CatTypeId[] = ["golden-british", "ragdoll", "silver-tabby", "black-cat"];
+export const catTypeIds: CatTypeId[] = [
+  "golden-british",
+  "ragdoll",
+  "silver-tabby",
+  "black-cat",
+  "calico",
+  "siamese",
+  "maine-coon",
+  "white-cat",
+  "orange-tabby",
+  "tuxedo",
+  "scottish-fold",
+  "bengal",
+  "persian",
+  "russian-blue",
+  "sphynx",
+];
 export const petThemeIds: PetThemeId[] = ["gold", "mint", "rose", "sky", "midnight", "custom"];
 export const tokenBubbleIds: TokenBubbleId[] = ["pill", "compact", "hidden", "cost"];
 export const moodLookIds: MoodLookId[] = ["sleepy", "focused", "hot", "overdrive"];
@@ -23,6 +41,7 @@ export const defaultMoodBadgeSettings: MoodBadgeSettings = {
 
 export const defaultPetAppearance: PetAppearanceSettings = {
   catTypeId: "golden-british",
+  catDetails: getDefaultCatDetails("golden-british"),
   themeId: "gold",
   tokenBubbleId: "pill",
   size: 1,
@@ -49,11 +68,25 @@ function normalizeAccessories(value: unknown) {
   return value.filter((id): id is AccessoryId => accessoryIds.includes(id as AccessoryId));
 }
 
-export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppearanceSettings {
-  const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
+function normalizeCatDetails(value: unknown, catTypeId: CatTypeId): CatBreedDetails {
+  const defaults = getDefaultCatDetails(catTypeId);
+  const source = (value && typeof value === "object" ? value : {}) as Partial<CatBreedDetails>;
+  const eyeColorIds = catEyeColors.map((color) => color.id);
 
   return {
-    catTypeId: pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId),
+    furLength: clampNumber(source.furLength, 0, 100, defaults.furLength),
+    eyeColor: pickKnown(source.eyeColor, eyeColorIds, defaults.eyeColor),
+    patternIntensity: clampNumber(source.patternIntensity, 0, 100, defaults.patternIntensity),
+  };
+}
+
+export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppearanceSettings {
+  const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
+  const catTypeId = pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId);
+
+  return {
+    catTypeId,
+    catDetails: normalizeCatDetails(source.catDetails, catTypeId),
     themeId: pickKnown(source.themeId ?? settings.petTheme, petThemeIds, defaultPetAppearance.themeId),
     tokenBubbleId: pickKnown(source.tokenBubbleId, tokenBubbleIds, defaultPetAppearance.tokenBubbleId),
     size: clampNumber(source.size ?? settings.petScale, 0.75, 1.15, defaultPetAppearance.size),

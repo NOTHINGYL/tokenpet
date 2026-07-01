@@ -15,7 +15,9 @@ type IconName =
   | "hidden"
   | "cost"
   | "spark"
-  | "lock";
+  | "lock"
+  | "back"
+  | "info";
 
 const iconPaths: Record<IconName, string[]> = {
   appearance: [
@@ -101,6 +103,8 @@ const iconPaths: Record<IconName, string[]> = {
     "M7 10V8a5 5 0 0 1 10 0v2",
     "M6 10h12v10H6V10Z",
   ],
+  back: ["M15 6 9 12l6 6", "M9 12h11"],
+  info: ["M12 17v-6", "M12 7.5h.01", "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"],
 };
 
 export function PetIcon(props: { name: IconName; className?: string }) {

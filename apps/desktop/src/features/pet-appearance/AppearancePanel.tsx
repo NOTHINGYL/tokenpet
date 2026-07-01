@@ -1,8 +1,8 @@
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import type {
   AccessoryId,
   AppSettings,
-  CatTypeId,
   MoodLookId,
   PetAppearanceSettings,
   PetThemeId,
@@ -11,13 +11,15 @@ import type {
 } from "../../types";
 import {
   accessories,
-  catTypes,
+  getDefaultCatDetails,
   moodBadgeOptions,
   moodLooks,
   petConsoleSections,
   skinThemes,
   tokenBubbleOptions,
 } from "./catalog";
+import { CatTypePage } from "./CatTypePage";
+import { CatTypeCard } from "./CatTypePicker";
 import { exportPetPreview } from "./previewExport";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
 import { PetIcon } from "./icons";
@@ -92,40 +94,6 @@ function PetPreview(props: {
           <PetIcon name="undo" />
           <span>Undo</span>
         </button>
-      </div>
-    </section>
-  );
-}
-
-function CatTypeCard(props: { selectedCat: CatTypeId; onSelectCat: (catId: CatTypeId) => void }) {
-  return (
-    <section className="pet-card cat-type-card">
-      <div className="pet-card-header">
-        <div>
-          <strong>Cat Type</strong>
-          <span>Choose your companion's breed.</span>
-        </div>
-        <HeaderAction label="View all" />
-      </div>
-      <div className="cat-type-grid">
-        {catTypes.map((cat) => (
-          <button
-            className={`cat-type-option ${props.selectedCat === cat.id ? "selected" : ""}`}
-            key={cat.id}
-            type="button"
-            data-cat-id={cat.id}
-            onClick={() => props.onSelectCat(cat.id)}
-          >
-            <span className="cat-type-image-wrap">
-              <img src={cat.image} alt="" draggable={false} aria-hidden="true" />
-              {props.selectedCat === cat.id ? <span className="cat-selected-check" aria-hidden="true" /> : null}
-            </span>
-            <strong>{cat.label}</strong>
-            <em className={props.selectedCat === cat.id ? "equipped" : ""}>
-              {props.selectedCat === cat.id ? "Equipped" : cat.badge}
-            </em>
-          </button>
-        ))}
       </div>
     </section>
   );
@@ -393,6 +361,7 @@ function AccessoriesCard(props: { selectedAccessories: AccessoryId[]; onToggleAc
 }
 
 export function AppearancePanel(props: AppearancePanelProps) {
+  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type">("appearance");
   const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(
     props.settings,
     props.setSetting,
@@ -405,6 +374,29 @@ export function AppearancePanel(props: AppearancePanelProps) {
         : [...appearance.accessoryIds, accessoryId],
     });
   };
+
+  const selectCatType = (catTypeId: PetAppearanceSettings["catTypeId"]) => {
+    patchAppearance({
+      catTypeId,
+      catDetails: getDefaultCatDetails(catTypeId),
+    });
+  };
+
+  if (activeAppearancePage === "cat-type") {
+    return (
+      <div className="pet-appearance-panel pet-cat-type-panel">
+        <PetSubnav />
+        <CatTypePage
+          appearance={appearance}
+          usage={props.usage}
+          canUndo={canUndo}
+          onBack={() => setActiveAppearancePage("appearance")}
+          onPatchAppearance={patchAppearance}
+          onUndo={undoAppearance}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="pet-appearance-panel">
@@ -419,7 +411,11 @@ export function AppearancePanel(props: AppearancePanelProps) {
           onUndo={undoAppearance}
         />
         <div className="pet-main-column">
-          <CatTypeCard selectedCat={appearance.catTypeId} onSelectCat={(catTypeId) => patchAppearance({ catTypeId })} />
+          <CatTypeCard
+            selectedCat={appearance.catTypeId}
+            onSelectCat={selectCatType}
+            onViewAll={() => setActiveAppearancePage("cat-type")}
+          />
           <div className="pet-lower-controls">
             <DisplayCard appearance={appearance} onPatchAppearance={patchAppearance} />
             <SkinCard selectedSkin={appearance.themeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
