@@ -25,9 +25,12 @@ export type CatTypeOption = {
   hairLength: CatHairLength;
   eyeColor: CatEyeColor;
   patternIntensity: number;
+  visualScale?: number;
   classic?: boolean;
   rare?: boolean;
 };
+
+const generatedCatVisualScale = 1.59;
 
 export const catEyeColors: Array<{
   id: CatEyeColor;
@@ -68,6 +71,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "long",
     eyeColor: "blue",
     patternIntensity: 38,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -77,6 +81,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 74,
+    visualScale: generatedCatVisualScale,
     classic: true,
   },
   {
@@ -86,6 +91,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 22,
+    visualScale: generatedCatVisualScale,
     classic: true,
   },
   {
@@ -95,6 +101,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 80,
+    visualScale: generatedCatVisualScale,
     classic: true,
   },
   {
@@ -104,6 +111,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "blue",
     patternIntensity: 42,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -113,6 +121,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "long",
     eyeColor: "green",
     patternIntensity: 72,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -122,6 +131,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "blue",
     patternIntensity: 18,
+    visualScale: generatedCatVisualScale,
   },
   {
     id: "orange-tabby",
@@ -130,6 +140,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 70,
+    visualScale: generatedCatVisualScale,
     classic: true,
   },
   {
@@ -139,6 +150,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 48,
+    visualScale: generatedCatVisualScale,
     classic: true,
   },
   {
@@ -148,6 +160,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "gold",
     patternIntensity: 62,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -157,6 +170,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "green",
     patternIntensity: 92,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -166,6 +180,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "long",
     eyeColor: "gold",
     patternIntensity: 28,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -175,6 +190,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "green",
     patternIntensity: 18,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
   {
@@ -184,6 +200,7 @@ export const catTypes: CatTypeOption[] = [
     hairLength: "short",
     eyeColor: "blue",
     patternIntensity: 10,
+    visualScale: generatedCatVisualScale,
     rare: true,
   },
 ];

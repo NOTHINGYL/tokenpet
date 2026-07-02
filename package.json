@@ -1,6 +1,6 @@
 {
   "name": "tokenpet",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "private": true,
   "description": "A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.",
   "license": "MIT",

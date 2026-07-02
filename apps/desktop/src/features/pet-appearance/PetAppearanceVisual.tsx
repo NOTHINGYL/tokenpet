@@ -26,6 +26,8 @@ export function PetAppearanceVisual(props: PetAppearanceVisualProps) {
   const furLength = props.appearance.catDetails.furLength / 100;
   const patternIntensity = props.appearance.catDetails.patternIntensity / 100;
   const eyeColorChanged = props.appearance.catDetails.eyeColor !== baseCat.eyeColor;
+  const effectiveCatScale = props.appearance.size * (cat.visualScale ?? 1);
+  const previewRelief = props.surface === "preview" ? Math.max(0, props.appearance.size - 1) * 80 : 0;
 
   return (
     <div
@@ -34,10 +36,11 @@ export function PetAppearanceVisual(props: PetAppearanceVisualProps) {
       } ${props.appearance.moodBadge.colorByState ? "pet-mood-color-state" : ""} pet-bubble-${props.appearance.tokenBubbleId}`}
       style={
         {
-          "--pet-visual-scale": props.appearance.size.toString(),
+          "--pet-visual-scale": effectiveCatScale.toString(),
           "--pet-visual-opacity": props.appearance.opacity.toString(),
           "--pet-visual-shadow": props.appearance.shadow.toString(),
           "--pet-bubble-scale": props.appearance.bubbleScale.toString(),
+          "--pet-size-y-relief": `${previewRelief.toFixed(1)}px`,
           "--cat-fur-softness": `${Math.max(0, (furLength - 0.25) * 3.6).toFixed(2)}px`,
           "--cat-pattern-contrast": (0.94 + patternIntensity * 0.18).toFixed(3),
           "--cat-pattern-saturation": (0.96 + patternIntensity * 0.18).toFixed(3),

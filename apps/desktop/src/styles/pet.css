@@ -90,6 +90,7 @@
   --pet-visual-cat-y: -16px;
   --pet-visual-token-bottom: 38px;
   --pet-visual-mood-top: 22px;
+  --pet-size-y-relief: 0px;
   --cat-fur-softness: 0px;
   --cat-pattern-contrast: 1;
   --cat-pattern-saturation: 1;
@@ -116,8 +117,8 @@
   left: 50%;
   width: var(--pet-visual-cat-width);
   opacity: var(--pet-visual-opacity);
-  transform: translate(-50%, calc(-50% + var(--pet-visual-cat-y))) scale(var(--pet-visual-scale));
-  transform-origin: center bottom;
+  transform: translate(-50%, calc(-50% + var(--pet-visual-cat-y) + var(--pet-size-y-relief))) scale(var(--pet-visual-scale));
+  transform-origin: center;
   transition:
     opacity 180ms ease,
     transform 180ms ease;
@@ -287,8 +288,8 @@
 .pet-drag-region {
   position: relative;
   display: grid;
-  width: 162px;
-  height: 162px;
+  width: 242px;
+  height: 242px;
   padding: 0;
   place-items: center;
   background: transparent;

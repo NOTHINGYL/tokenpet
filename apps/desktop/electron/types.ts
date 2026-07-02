@@ -74,11 +74,33 @@ export type UsageSnapshot = {
   analysis: UsageAnalysis;
 };
 
-export type CatTypeId = "golden-british" | "ragdoll" | "silver-tabby" | "black-cat";
+export type CatTypeId =
+  | "golden-british"
+  | "ragdoll"
+  | "silver-tabby"
+  | "black-cat"
+  | "calico"
+  | "siamese"
+  | "maine-coon"
+  | "white-cat"
+  | "orange-tabby"
+  | "tuxedo"
+  | "scottish-fold"
+  | "bengal"
+  | "persian"
+  | "russian-blue"
+  | "sphynx";
 export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom";
 export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
 export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
 export type AccessoryId = "collar" | "ribbon" | "focus-crown" | "tiny-scarf" | "halo" | "desk-mat";
+export type CatEyeColor = "gold" | "green" | "blue" | "slate";
+
+export type CatBreedDetails = {
+  furLength: number;
+  eyeColor: CatEyeColor;
+  patternIntensity: number;
+};
 
 export type MoodBadgeSettings = {
   showMood: boolean;
@@ -88,6 +110,7 @@ export type MoodBadgeSettings = {
 
 export type PetAppearanceSettings = {
   catTypeId: CatTypeId;
+  catDetails: CatBreedDetails;
   themeId: PetThemeId;
   tokenBubbleId: TokenBubbleId;
   size: number;

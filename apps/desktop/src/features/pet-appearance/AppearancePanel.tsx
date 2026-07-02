@@ -125,7 +125,7 @@ function RangeControl(props: {
           max={max}
           value={props.value}
           data-range-id={props.label.toLowerCase().replace(/\s+/g, "-")}
-          onChange={(event) => props.onChange(Number(event.currentTarget.value))}
+          onInput={(event) => props.onChange(Number(event.currentTarget.value))}
           style={{ "--range-progress": `${progress}%` } as CSSProperties}
           aria-label={props.label}
         />
@@ -152,7 +152,7 @@ function DisplayCard(props: {
           icon="screen"
           label="Size"
           min={75}
-          max={115}
+          max={125}
           value={Math.round(props.appearance.size * 100)}
           onChange={(value) => props.onPatchAppearance({ size: value / 100 })}
         />

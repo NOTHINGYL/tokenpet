@@ -89,7 +89,7 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
     catDetails: normalizeCatDetails(source.catDetails, catTypeId),
     themeId: pickKnown(source.themeId ?? settings.petTheme, petThemeIds, defaultPetAppearance.themeId),
     tokenBubbleId: pickKnown(source.tokenBubbleId, tokenBubbleIds, defaultPetAppearance.tokenBubbleId),
-    size: clampNumber(source.size ?? settings.petScale, 0.75, 1.15, defaultPetAppearance.size),
+    size: clampNumber(source.size ?? settings.petScale, 0.75, 1.25, defaultPetAppearance.size),
     opacity: clampNumber(source.opacity ?? settings.petOpacity, 0.45, 1, defaultPetAppearance.opacity),
     shadow: clampNumber(source.shadow, 0, 1, defaultPetAppearance.shadow),
     bubbleScale: clampNumber(source.bubbleScale, 0.7, 1.25, defaultPetAppearance.bubbleScale),

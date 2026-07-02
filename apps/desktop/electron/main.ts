@@ -53,6 +53,11 @@ const MENUBAR_SIZE = {
   height: 360,
 };
 
+const PET_WINDOW_SIZE = {
+  width: 260,
+  height: 260,
+};
+
 function rendererUrl(view: "pet" | "popover" | "menubar" | "console") {
   if (isDev && devServerUrl) {
     return `${devServerUrl}/?view=${view}`;
@@ -414,7 +419,7 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
   }
 
   if (key === "petScale") {
-    settings.petScale = clamp(Number(value), 0.75, 1.15);
+    settings.petScale = clamp(Number(value), 0.75, 1.25);
     settings.petAppearance = normalizePetAppearance({
       ...settings,
       petAppearance: {
@@ -476,9 +481,9 @@ function createPetWindow() {
   const { width } = primaryDisplay.workAreaSize;
 
   petWindow = new BrowserWindow({
-    width: 188,
-    height: 188,
-    x: Math.max(24, width - 238),
+    width: PET_WINDOW_SIZE.width,
+    height: PET_WINDOW_SIZE.height,
+    x: Math.max(24, width - PET_WINDOW_SIZE.width - 50),
     y: 120,
     frame: false,
     transparent: true,
