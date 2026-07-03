@@ -1,4 +1,16 @@
-import type { AccessoryId, CatBreedDetails, CatEyeColor, CatTypeId, MoodLookId, PetThemeId, TokenBubbleId } from "../../types";
+import type {
+  AccessoryChoiceId,
+  AccessoryColorId,
+  AccessoryId,
+  AccessoryPosition,
+  CatBreedDetails,
+  CatEyeColor,
+  CatTypeId,
+  MoodLookId,
+  PetThemeId,
+  TokenBubbleId,
+  TokenFrameId,
+} from "../../types";
 
 const appearanceAsset = (path: string) => `assets/pets/appearance/${path}`;
 
@@ -28,6 +40,17 @@ export type CatTypeOption = {
   visualScale?: number;
   classic?: boolean;
   rare?: boolean;
+};
+
+export type TokenBubbleLayoutMode = "embedded" | "external" | "floating";
+
+export type TokenBubbleLayout = {
+  mode: TokenBubbleLayoutMode;
+  anchorX: number;
+  anchorY: number;
+  width: number;
+  height: number;
+  textOnly?: boolean;
 };
 
 const generatedCatVisualScale = 1.59;
@@ -207,6 +230,33 @@ export const catTypes: CatTypeOption[] = [
 
 export const featuredCatTypes = catTypes.slice(0, 4);
 
+export const defaultExternalTokenBubbleLayout: TokenBubbleLayout = {
+  mode: "external",
+  anchorX: 0.5,
+  anchorY: 0.84,
+  width: 118,
+  height: 48,
+};
+
+export const catTokenBubbleLayouts: Partial<Record<CatTypeId, TokenBubbleLayout>> = {
+  "golden-british": {
+    mode: "embedded",
+    anchorX: 0.5,
+    anchorY: 0.815,
+    width: 118,
+    height: 48,
+    textOnly: true,
+  },
+  ragdoll: { ...defaultExternalTokenBubbleLayout, anchorY: 0.86, width: 124 },
+  "silver-tabby": { ...defaultExternalTokenBubbleLayout, anchorY: 0.85 },
+  "black-cat": { ...defaultExternalTokenBubbleLayout, anchorY: 0.85 },
+  calico: { ...defaultExternalTokenBubbleLayout, anchorY: 0.85 },
+  siamese: { ...defaultExternalTokenBubbleLayout, anchorY: 0.86 },
+  "maine-coon": { ...defaultExternalTokenBubbleLayout, anchorY: 0.87, width: 126 },
+  persian: { ...defaultExternalTokenBubbleLayout, anchorY: 0.87, width: 126 },
+  sphynx: { ...defaultExternalTokenBubbleLayout, anchorY: 0.86, width: 108 },
+};
+
 export function getCatTypeOption(catTypeId: CatTypeId) {
   return catTypes.find((cat) => cat.id === catTypeId) ?? catTypes[0];
 }
@@ -264,43 +314,262 @@ export const moodLooks = [
   },
 ];
 
-export const accessories = [
+export type AccessoryCategoryId = "neck" | "head" | "base" | "effects";
+
+export type AccessoryOption = {
+  id: AccessoryId;
+  label: string;
+  category: AccessoryCategoryId;
+  image: string;
+  badge: string;
+  locked?: boolean;
+};
+
+export type AccessoryChoiceOption = {
+  id: AccessoryChoiceId;
+  label: string;
+  image?: string;
+  locked?: boolean;
+};
+
+export const accessoryCatalog: AccessoryOption[] = [
   {
     id: "collar" as AccessoryId,
     label: "Collar",
+    category: "neck",
     image: appearanceAsset("accessories/collar.png"),
     badge: "Equipped",
   },
   {
     id: "ribbon" as AccessoryId,
     label: "Ribbon",
+    category: "neck",
     image: appearanceAsset("accessories/ribbon.png"),
     badge: "Equipped",
   },
   {
-    id: "focus-crown" as AccessoryId,
-    label: "Focus crown",
-    image: appearanceAsset("accessories/focus-crown.png"),
+    id: "bow-tie" as AccessoryId,
+    label: "Bow tie",
+    category: "neck",
+    image: appearanceAsset("accessories/bow-tie.png"),
     badge: "Unlocked",
   },
   {
     id: "tiny-scarf" as AccessoryId,
     label: "Tiny scarf",
+    category: "neck",
     image: appearanceAsset("accessories/tiny-scarf.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "bandana" as AccessoryId,
+    label: "Bandana",
+    category: "neck",
+    image: appearanceAsset("accessories/bandana.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "focus-crown" as AccessoryId,
+    label: "Focus crown",
+    category: "head",
+    image: appearanceAsset("accessories/focus-crown.png"),
     badge: "Unlocked",
   },
   {
     id: "halo" as AccessoryId,
     label: "Halo",
+    category: "head",
     image: appearanceAsset("accessories/halo.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "study-glasses" as AccessoryId,
+    label: "Study glasses",
+    category: "head",
+    image: appearanceAsset("accessories/study-glasses.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "sleep-cap" as AccessoryId,
+    label: "Sleep cap",
+    category: "head",
+    image: appearanceAsset("accessories/sleep-cap.png"),
     badge: "Unlocked",
   },
   {
     id: "desk-mat" as AccessoryId,
     label: "Desk mat",
+    category: "base",
     image: appearanceAsset("accessories/desk-mat.png"),
     badge: "Locked",
-    locked: true,
+  },
+  {
+    id: "nap-pillow" as AccessoryId,
+    label: "Nap pillow",
+    category: "base",
+    image: appearanceAsset("accessories/nap-pillow.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "cloud-cushion" as AccessoryId,
+    label: "Cloud cushion",
+    category: "base",
+    image: appearanceAsset("accessories/cloud-cushion.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "token-stand" as AccessoryId,
+    label: "Token stand",
+    category: "base",
+    image: appearanceAsset("accessories/token-stand.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "sparkle-aura" as AccessoryId,
+    label: "Sparkle aura",
+    category: "effects",
+    image: appearanceAsset("accessories/sparkle-aura.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "star-trail" as AccessoryId,
+    label: "Star trail",
+    category: "effects",
+    image: appearanceAsset("accessories/star-trail.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "leaf-drift" as AccessoryId,
+    label: "Leaf drift",
+    category: "effects",
+    image: appearanceAsset("accessories/leaf-drift.png"),
+    badge: "Unlocked",
+  },
+  {
+    id: "hot-sparks" as AccessoryId,
+    label: "Hot sparks",
+    category: "effects",
+    image: appearanceAsset("accessories/hot-sparks.png"),
+    badge: "Unlocked",
+  },
+];
+
+export const featuredAccessoryIds: AccessoryId[] = ["collar", "ribbon", "focus-crown", "tiny-scarf", "halo", "desk-mat"];
+export const accessories = featuredAccessoryIds
+  .map((accessoryId) => accessoryCatalog.find((accessory) => accessory.id === accessoryId))
+  .filter((accessory): accessory is AccessoryOption => Boolean(accessory));
+
+const noAccessoryOption: AccessoryChoiceOption = {
+  id: "none",
+  label: "None",
+};
+
+function accessoryChoice(accessoryId: AccessoryId): AccessoryChoiceOption {
+  const accessory = accessoryCatalog.find((option) => option.id === accessoryId);
+  if (!accessory) return { id: accessoryId, label: accessoryId };
+  return {
+    id: accessory.id,
+    label: accessory.label,
+    image: accessory.image,
+    locked: accessory.locked,
+  };
+}
+
+export const accessorySections: Array<{
+  id: AccessoryCategoryId;
+  label: string;
+  detail: string;
+  options: AccessoryChoiceOption[];
+}> = [
+  {
+    id: "neck",
+    label: "Neck",
+    detail: "Pick one",
+    options: [noAccessoryOption, accessoryChoice("collar"), accessoryChoice("bow-tie"), accessoryChoice("tiny-scarf"), accessoryChoice("bandana")],
+  },
+  {
+    id: "head",
+    label: "Head",
+    detail: "Pick one",
+    options: [noAccessoryOption, accessoryChoice("focus-crown"), accessoryChoice("halo"), accessoryChoice("study-glasses"), accessoryChoice("sleep-cap")],
+  },
+  {
+    id: "base",
+    label: "Base",
+    detail: "Pick one",
+    options: [noAccessoryOption, accessoryChoice("desk-mat"), accessoryChoice("nap-pillow"), accessoryChoice("cloud-cushion"), accessoryChoice("token-stand")],
+  },
+  {
+    id: "effects",
+    label: "Effects",
+    detail: "Pick one",
+    options: [noAccessoryOption, accessoryChoice("sparkle-aura"), accessoryChoice("star-trail"), accessoryChoice("leaf-drift"), accessoryChoice("hot-sparks")],
+  },
+];
+
+export const accessoryColorOptions: Array<{
+  id: AccessoryColorId;
+  label: string;
+  className: string;
+}> = [
+  { id: "cream", label: "Cream", className: "cream" },
+  { id: "mint", label: "Mint", className: "mint" },
+  { id: "sky", label: "Sky", className: "sky" },
+  { id: "violet", label: "Violet", className: "violet" },
+  { id: "rose", label: "Rose", className: "rose" },
+  { id: "rainbow", label: "Rainbow", className: "rainbow" },
+];
+
+export const accessoryPositionOptions: Array<{
+  id: AccessoryPosition;
+  label: string;
+}> = [
+  { id: "embedded", label: "Embedded" },
+  { id: "below", label: "Below" },
+  { id: "floating", label: "Floating" },
+];
+
+export const tokenFrameOptions: Array<{
+  id: TokenFrameId;
+  label: string;
+  detail: string;
+  tokenBubbleId: TokenBubbleId;
+}> = [
+  {
+    id: "embedded",
+    label: "Embedded frame",
+    detail: "Best for paw-frame cats",
+    tokenBubbleId: "pill",
+  },
+  {
+    id: "pillow",
+    label: "Pillow pill",
+    detail: "Soft base bubble",
+    tokenBubbleId: "pill",
+  },
+  {
+    id: "compact",
+    label: "Compact chip",
+    detail: "Smaller footprint",
+    tokenBubbleId: "compact",
+  },
+  {
+    id: "cost",
+    label: "Cost + tokens",
+    detail: "Cost and tokens",
+    tokenBubbleId: "cost",
+  },
+  {
+    id: "floating",
+    label: "Floating badge",
+    detail: "Side badge",
+    tokenBubbleId: "pill",
+  },
+  {
+    id: "hidden",
+    label: "Hidden",
+    detail: "No token frame",
+    tokenBubbleId: "hidden",
   },
 ];
 

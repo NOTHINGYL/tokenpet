@@ -18,6 +18,8 @@ import {
   skinThemes,
   tokenBubbleOptions,
 } from "./catalog";
+import { getTokenFrameForBubble } from "./accessorySettings";
+import { AccessoriesPage } from "./AccessoriesPage";
 import { CatTypePage } from "./CatTypePage";
 import { CatTypeCard } from "./CatTypePicker";
 import { exportPetPreview } from "./previewExport";
@@ -31,9 +33,9 @@ type AppearancePanelProps = {
   usage: UsageSnapshot;
 };
 
-function HeaderAction(props: { label: string }) {
+function HeaderAction(props: { label: string; onClick?: () => void }) {
   return (
-    <button className="pet-section-action" type="button" aria-label={props.label}>
+    <button className="pet-section-action" type="button" aria-label={props.label} onClick={props.onClick}>
       <span>{props.label}</span>
       <span aria-hidden="true">-&gt;</span>
     </button>
@@ -323,7 +325,11 @@ function MoodLooksCard(props: { selectedMood: MoodLookId; onSelectMood: (moodId:
   );
 }
 
-function AccessoriesCard(props: { selectedAccessories: AccessoryId[]; onToggleAccessory: (accessoryId: AccessoryId) => void }) {
+function AccessoriesCard(props: {
+  selectedAccessories: AccessoryId[];
+  onToggleAccessory: (accessoryId: AccessoryId) => void;
+  onViewAll: () => void;
+}) {
   return (
     <section className="pet-card accessories-card">
       <div className="pet-card-header">
@@ -331,7 +337,7 @@ function AccessoriesCard(props: { selectedAccessories: AccessoryId[]; onToggleAc
           <strong>Accessories</strong>
           <span>Dress up your pet with accessories.</span>
         </div>
-        <HeaderAction label="View all" />
+        <HeaderAction label="View all" onClick={props.onViewAll} />
       </div>
       <div className="accessory-grid">
         {accessories.map((accessory) => (
@@ -361,7 +367,7 @@ function AccessoriesCard(props: { selectedAccessories: AccessoryId[]; onToggleAc
 }
 
 export function AppearancePanel(props: AppearancePanelProps) {
-  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type">("appearance");
+  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type" | "accessories">("appearance");
   const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(
     props.settings,
     props.setSetting,
@@ -379,6 +385,10 @@ export function AppearancePanel(props: AppearancePanelProps) {
     patchAppearance({
       catTypeId,
       catDetails: getDefaultCatDetails(catTypeId),
+      accessorySettings: {
+        ...appearance.accessorySettings,
+        tokenFrameId: getTokenFrameForBubble(appearance.tokenBubbleId, catTypeId),
+      },
     });
   };
 
@@ -387,6 +397,22 @@ export function AppearancePanel(props: AppearancePanelProps) {
       <div className="pet-appearance-panel pet-cat-type-panel">
         <PetSubnav />
         <CatTypePage
+          appearance={appearance}
+          usage={props.usage}
+          canUndo={canUndo}
+          onBack={() => setActiveAppearancePage("appearance")}
+          onPatchAppearance={patchAppearance}
+          onUndo={undoAppearance}
+        />
+      </div>
+    );
+  }
+
+  if (activeAppearancePage === "accessories") {
+    return (
+      <div className="pet-appearance-panel pet-accessories-panel">
+        <PetSubnav />
+        <AccessoriesPage
           appearance={appearance}
           usage={props.usage}
           canUndo={canUndo}
@@ -424,13 +450,25 @@ export function AppearancePanel(props: AppearancePanelProps) {
         <div className="pet-side-column">
           <TokenBubbleCard
             selectedBubble={appearance.tokenBubbleId}
-            onSelectBubble={(tokenBubbleId) => patchAppearance({ tokenBubbleId })}
+            onSelectBubble={(tokenBubbleId) =>
+              patchAppearance({
+                tokenBubbleId,
+                accessorySettings: {
+                  ...appearance.accessorySettings,
+                  tokenFrameId: getTokenFrameForBubble(tokenBubbleId, appearance.catTypeId),
+                },
+              })
+            }
           />
           <MoodBadgeCard appearance={appearance} onPatchAppearance={patchAppearance} />
         </div>
         <div className="pet-bottom-row">
           <MoodLooksCard selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} />
-          <AccessoriesCard selectedAccessories={appearance.accessoryIds} onToggleAccessory={toggleAccessory} />
+          <AccessoriesCard
+            selectedAccessories={appearance.accessoryIds}
+            onToggleAccessory={toggleAccessory}
+            onViewAll={() => setActiveAppearancePage("accessories")}
+          />
         </div>
       </div>
       <footer className="pet-appearance-footer">

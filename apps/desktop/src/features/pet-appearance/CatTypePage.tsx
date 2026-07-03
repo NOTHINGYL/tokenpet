@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CatBreedDetails, CatEyeColor, CatTypeId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import { getTokenFrameForBubble } from "./accessorySettings";
 import { catEyeColors, catTypeFilters, catTypes, getDefaultCatDetails, type CatTypeFilter } from "./catalog";
 import { CatTypeGrid } from "./CatTypePicker";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
@@ -145,6 +146,10 @@ export function CatTypePage(props: CatTypePageProps) {
     props.onPatchAppearance({
       catTypeId,
       catDetails: getDefaultCatDetails(catTypeId),
+      accessorySettings: {
+        ...props.appearance.accessorySettings,
+        tokenFrameId: getTokenFrameForBubble(props.appearance.tokenBubbleId, catTypeId),
+      },
     });
   };
 
@@ -152,6 +157,10 @@ export function CatTypePage(props: CatTypePageProps) {
     props.onPatchAppearance({
       catTypeId: "golden-british",
       catDetails: getDefaultCatDetails("golden-british"),
+      accessorySettings: {
+        ...props.appearance.accessorySettings,
+        tokenFrameId: getTokenFrameForBubble(props.appearance.tokenBubbleId, "golden-british"),
+      },
     });
   };
 

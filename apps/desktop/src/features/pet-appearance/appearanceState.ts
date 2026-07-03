@@ -1,5 +1,9 @@
 import type {
+  AccessoryChoiceId,
+  AccessoryColorId,
   AccessoryId,
+  AccessoryPosition,
+  AccessorySettings,
   AppSettings,
   CatTypeId,
   CatBreedDetails,
@@ -8,6 +12,7 @@ import type {
   PetAppearanceSettings,
   PetThemeId,
   TokenBubbleId,
+  TokenFrameId,
 } from "../../types";
 import { catEyeColors, getDefaultCatDetails } from "./catalog";
 
@@ -30,13 +35,53 @@ export const catTypeIds: CatTypeId[] = [
 ];
 export const petThemeIds: PetThemeId[] = ["gold", "mint", "rose", "sky", "midnight", "custom"];
 export const tokenBubbleIds: TokenBubbleId[] = ["pill", "compact", "hidden", "cost"];
+export const tokenFrameIds: TokenFrameId[] = ["embedded", "pillow", "compact", "cost", "floating", "hidden"];
 export const moodLookIds: MoodLookId[] = ["sleepy", "focused", "hot", "overdrive"];
-export const accessoryIds: AccessoryId[] = ["collar", "ribbon", "focus-crown", "tiny-scarf", "halo", "desk-mat"];
+export const accessoryIds: AccessoryId[] = [
+  "collar",
+  "ribbon",
+  "bow-tie",
+  "tiny-scarf",
+  "bandana",
+  "focus-crown",
+  "halo",
+  "study-glasses",
+  "sleep-cap",
+  "desk-mat",
+  "nap-pillow",
+  "cloud-cushion",
+  "token-stand",
+  "sparkle-aura",
+  "star-trail",
+  "leaf-drift",
+  "hot-sparks",
+];
+export const accessoryChoiceIds: AccessoryChoiceId[] = ["none", ...accessoryIds];
+export const accessoryColorIds: AccessoryColorId[] = ["cream", "mint", "sky", "violet", "rose", "rainbow"];
+export const accessoryPositionIds: AccessoryPosition[] = ["embedded", "below", "floating"];
 
 export const defaultMoodBadgeSettings: MoodBadgeSettings = {
   showMood: true,
   colorByState: true,
   hideInFocusMode: false,
+};
+
+export const defaultAccessorySettings: AccessorySettings = {
+  tokenFrameId: "embedded",
+  neckId: "collar",
+  headId: "none",
+  baseId: "none",
+  effectId: "none",
+  colorId: "mint",
+  scale: 1,
+  position: "embedded",
+  textOnlyFrame: true,
+  moodVisibility: {
+    sleepy: true,
+    focused: true,
+    hot: true,
+    overdrive: true,
+  },
 };
 
 export const defaultPetAppearance: PetAppearanceSettings = {
@@ -50,7 +95,8 @@ export const defaultPetAppearance: PetAppearanceSettings = {
   bubbleScale: 1,
   moodId: "focused",
   moodBadge: defaultMoodBadgeSettings,
-  accessoryIds: ["collar", "ribbon"],
+  accessoryIds: ["collar"],
+  accessorySettings: defaultAccessorySettings,
 };
 
 export function clampNumber(value: unknown, min: number, max: number, fallback: number) {
@@ -68,6 +114,51 @@ function normalizeAccessories(value: unknown) {
   return value.filter((id): id is AccessoryId => accessoryIds.includes(id as AccessoryId));
 }
 
+function normalizeAccessoryChoice(value: unknown, fallback: AccessoryChoiceId) {
+  return pickKnown(value, accessoryChoiceIds, fallback);
+}
+
+function inferAccessorySettingsFromIds(ids: AccessoryId[]): Pick<AccessorySettings, "neckId" | "headId" | "baseId" | "effectId"> {
+  const firstKnown = (known: AccessoryId[], fallback: AccessoryChoiceId = "none") => ids.find((id) => known.includes(id)) ?? fallback;
+
+  return {
+    neckId: firstKnown(["collar", "ribbon", "bow-tie", "tiny-scarf", "bandana"], defaultAccessorySettings.neckId),
+    headId: firstKnown(["focus-crown", "halo", "study-glasses", "sleep-cap"]),
+    baseId: firstKnown(["desk-mat", "nap-pillow", "cloud-cushion", "token-stand"]),
+    effectId: firstKnown(["sparkle-aura", "star-trail", "leaf-drift", "hot-sparks"]),
+  };
+}
+
+function normalizeMoodVisibility(value: unknown): AccessorySettings["moodVisibility"] {
+  const source = (value && typeof value === "object" ? value : {}) as Partial<AccessorySettings["moodVisibility"]>;
+
+  return moodLookIds.reduce(
+    (visibility, moodId) => ({
+      ...visibility,
+      [moodId]: typeof source[moodId] === "boolean" ? source[moodId] : defaultAccessorySettings.moodVisibility[moodId],
+    }),
+    {} as AccessorySettings["moodVisibility"],
+  );
+}
+
+function normalizeAccessorySettings(value: unknown, sourceAccessoryIds: AccessoryId[]): AccessorySettings {
+  const source = (value && typeof value === "object" ? value : {}) as Partial<AccessorySettings>;
+  const inferred = inferAccessorySettingsFromIds(sourceAccessoryIds);
+
+  return {
+    tokenFrameId: pickKnown(source.tokenFrameId, tokenFrameIds, defaultAccessorySettings.tokenFrameId),
+    neckId: normalizeAccessoryChoice(source.neckId, inferred.neckId),
+    headId: normalizeAccessoryChoice(source.headId, inferred.headId),
+    baseId: normalizeAccessoryChoice(source.baseId, inferred.baseId),
+    effectId: normalizeAccessoryChoice(source.effectId, inferred.effectId),
+    colorId: pickKnown(source.colorId, accessoryColorIds, defaultAccessorySettings.colorId),
+    scale: clampNumber(source.scale, 0.7, 1.35, defaultAccessorySettings.scale),
+    position: pickKnown(source.position, accessoryPositionIds, defaultAccessorySettings.position),
+    textOnlyFrame: typeof source.textOnlyFrame === "boolean" ? source.textOnlyFrame : defaultAccessorySettings.textOnlyFrame,
+    moodVisibility: normalizeMoodVisibility(source.moodVisibility),
+  };
+}
+
 function normalizeCatDetails(value: unknown, catTypeId: CatTypeId): CatBreedDetails {
   const defaults = getDefaultCatDetails(catTypeId);
   const source = (value && typeof value === "object" ? value : {}) as Partial<CatBreedDetails>;
@@ -83,6 +174,7 @@ function normalizeCatDetails(value: unknown, catTypeId: CatTypeId): CatBreedDeta
 export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppearanceSettings {
   const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
   const catTypeId = pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId);
+  const normalizedAccessoryIds = normalizeAccessories(source.accessoryIds);
 
   return {
     catTypeId,
@@ -98,7 +190,8 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
       ...defaultMoodBadgeSettings,
       ...(source.moodBadge ?? {}),
     },
-    accessoryIds: normalizeAccessories(source.accessoryIds),
+    accessoryIds: normalizedAccessoryIds,
+    accessorySettings: normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds),
   };
 }
 

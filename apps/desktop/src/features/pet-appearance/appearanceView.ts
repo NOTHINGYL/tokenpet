@@ -1,6 +1,6 @@
 import type { AccessoryId, MoodLookId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
 import { compactNumber } from "../../utils/format";
-import { accessories, catTypes } from "./catalog";
+import { accessoryCatalog, catTokenBubbleLayouts, catTypes, defaultExternalTokenBubbleLayout, tokenFrameOptions } from "./catalog";
 
 const moodLabels: Record<MoodLookId, string> = {
   sleepy: "sleepy",
@@ -31,7 +31,44 @@ export function getCatVisual(catTypeId: PetAppearanceSettings["catTypeId"]) {
 }
 
 export function getAccessory(accessoryId: AccessoryId) {
-  return accessories.find((accessory) => accessory.id === accessoryId);
+  return accessoryCatalog.find((accessory) => accessory.id === accessoryId);
+}
+
+export function getTokenFrameOption(appearance: PetAppearanceSettings) {
+  return tokenFrameOptions.find((option) => option.id === appearance.accessorySettings.tokenFrameId) ?? tokenFrameOptions[0];
+}
+
+export function getEffectiveTokenBubbleId(appearance: PetAppearanceSettings): TokenBubbleId {
+  if (appearance.tokenBubbleId !== "pill") return appearance.tokenBubbleId;
+  return getTokenFrameOption(appearance).tokenBubbleId ?? appearance.tokenBubbleId;
+}
+
+export function getResolvedTokenBubbleLayout(appearance: PetAppearanceSettings) {
+  const frame = getTokenFrameOption(appearance);
+  if (appearance.tokenBubbleId === "hidden" || frame.id === "hidden") return null;
+
+  const catLayout = catTokenBubbleLayouts[appearance.catTypeId] ?? defaultExternalTokenBubbleLayout;
+  if (frame.id === "floating") {
+    return {
+      ...defaultExternalTokenBubbleLayout,
+      mode: "floating" as const,
+      anchorX: 0.92,
+      anchorY: 0.56,
+      width: appearance.tokenBubbleId === "cost" ? 138 : 112,
+      height: 42,
+    };
+  }
+
+  if (appearance.catTypeId === "golden-british" && frame.id === "embedded" && appearance.accessorySettings.textOnlyFrame) {
+    return catLayout;
+  }
+
+  return {
+    ...defaultExternalTokenBubbleLayout,
+    ...catLayout,
+    mode: "external" as const,
+    textOnly: false,
+  };
 }
 
 export function getMoodLabel(moodId: MoodLookId) {

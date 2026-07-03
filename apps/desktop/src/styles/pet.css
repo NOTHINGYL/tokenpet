@@ -90,6 +90,13 @@
   --pet-visual-cat-y: -16px;
   --pet-visual-token-bottom: 38px;
   --pet-visual-mood-top: 22px;
+  --pet-token-anchor-x: 50%;
+  --pet-token-anchor-y: 84%;
+  --pet-token-width: 118px;
+  --pet-token-height: 48px;
+  --pet-token-font-size: 24px;
+  --pet-token-render-scale: 1;
+  --pet-accessory-scale: 1;
   --pet-size-y-relief: 0px;
   --cat-fur-softness: 0px;
   --cat-pattern-contrast: 1;
@@ -159,19 +166,33 @@
   width: 38%;
   height: auto;
   pointer-events: none;
-  transform: translateX(-50%);
-  z-index: 3;
+  transform: translateX(-50%) scale(var(--pet-accessory-scale));
+  transform-origin: center;
 }
 
 .pet-visual-accessory-collar {
-  top: 66%;
-  width: 27%;
+  top: 55%;
+  width: 25%;
+}
+
+.pet-cat-golden-british .pet-visual-accessory-collar {
+  display: none;
 }
 
 .pet-visual-accessory-ribbon {
-  top: 58%;
+  top: 56%;
   left: 56%;
   width: 25%;
+}
+
+.pet-visual-accessory-bow-tie {
+  top: 56%;
+  width: 28%;
+}
+
+.pet-visual-accessory-bandana {
+  top: 58%;
+  width: 31%;
 }
 
 .pet-visual-accessory-focus-crown {
@@ -180,13 +201,67 @@
 }
 
 .pet-visual-accessory-tiny-scarf {
-  top: 64%;
+  top: 58%;
   width: 29%;
 }
 
 .pet-visual-accessory-halo {
   top: 10%;
   width: 36%;
+}
+
+.pet-visual-accessory-study-glasses {
+  top: 35%;
+  width: 35%;
+}
+
+.pet-visual-accessory-sleep-cap {
+  top: 13%;
+  left: 48%;
+  width: 34%;
+}
+
+.pet-visual-accessory-desk-mat,
+.pet-visual-accessory-nap-pillow,
+.pet-visual-accessory-cloud-cushion,
+.pet-visual-accessory-token-stand {
+  z-index: 0;
+  top: 76%;
+  width: 62%;
+}
+
+.pet-visual-accessory-nap-pillow,
+.pet-visual-accessory-cloud-cushion {
+  top: 78%;
+  width: 58%;
+}
+
+.pet-visual-accessory-sparkle-aura,
+.pet-visual-accessory-star-trail,
+.pet-visual-accessory-leaf-drift,
+.pet-visual-accessory-hot-sparks {
+  z-index: 4;
+  width: 78%;
+}
+
+.pet-visual-accessory-sparkle-aura {
+  top: 20%;
+}
+
+.pet-visual-accessory-star-trail {
+  top: 14%;
+  left: 57%;
+  width: 64%;
+}
+
+.pet-visual-accessory-leaf-drift {
+  top: 21%;
+  width: 70%;
+}
+
+.pet-visual-accessory-hot-sparks {
+  top: 69%;
+  width: 64%;
 }
 
 .pet-visual-mood {
@@ -226,12 +301,12 @@
 
 .pet-visual-token {
   position: absolute;
-  bottom: var(--pet-visual-token-bottom);
-  left: 50%;
+  top: var(--pet-token-anchor-y);
+  left: var(--pet-token-anchor-x);
   z-index: 6;
   display: grid;
-  min-width: 118px;
-  min-height: 48px;
+  min-width: var(--pet-token-width);
+  min-height: var(--pet-token-height);
   padding: 0 22px;
   place-items: center;
   border: 1px solid rgba(217, 154, 33, 0.18);
@@ -240,45 +315,40 @@
   color: #0b4f7c;
   box-shadow: 0 10px 20px rgba(30, 41, 59, 0.07);
   cursor: pointer;
-  font-size: 24px;
+  font-size: var(--pet-token-font-size);
   font-weight: 850;
   line-height: 1;
   pointer-events: auto;
-  transform: translateX(-50%) scale(var(--pet-bubble-scale));
+  transform: translate(-50%, -50%) scale(var(--pet-token-render-scale));
   transform-origin: center;
 }
 
 .pet-bubble-compact .pet-visual-token {
-  min-width: 82px;
-  min-height: 34px;
   padding: 0 14px;
-  font-size: 17px;
 }
 
 .pet-bubble-cost .pet-visual-token {
-  min-width: 138px;
-  min-height: 42px;
   padding: 0 16px;
-  font-size: 14px;
+}
+
+.pet-token-text-only .pet-visual-token {
+  min-width: var(--pet-token-width);
+  min-height: var(--pet-token-height);
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.64);
+}
+
+.pet-token-floating .pet-visual-token {
+  border-color: rgba(47, 148, 97, 0.22);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 18px rgba(30, 41, 59, 0.1);
 }
 
 .pet-appearance-visual-desktop .pet-visual-token {
-  min-width: 78px;
-  min-height: 28px;
   padding: 0 11px;
-  font-size: 17px;
-}
-
-.pet-appearance-visual-desktop.pet-bubble-compact .pet-visual-token {
-  min-width: 56px;
-  min-height: 22px;
-  font-size: 13px;
-}
-
-.pet-appearance-visual-desktop.pet-bubble-cost .pet-visual-token {
-  min-width: 112px;
-  min-height: 28px;
-  font-size: 11px;
 }
 
 .pet-stage.is-dragging {

@@ -36,6 +36,14 @@ export function useAppearanceController(settings: AppSettings, setSetting: SetSe
             ...appearance.moodBadge,
             ...(patch.moodBadge ?? {}),
           },
+          accessorySettings: {
+            ...appearance.accessorySettings,
+            ...(patch.accessorySettings ?? {}),
+            moodVisibility: {
+              ...appearance.accessorySettings.moodVisibility,
+              ...(patch.accessorySettings?.moodVisibility ?? {}),
+            },
+          },
         },
         options,
       );

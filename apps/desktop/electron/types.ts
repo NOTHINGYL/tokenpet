@@ -92,9 +92,30 @@ export type CatTypeId =
   | "sphynx";
 export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom";
 export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
+export type TokenFrameId = "embedded" | "pillow" | "compact" | "cost" | "floating" | "hidden";
 export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
-export type AccessoryId = "collar" | "ribbon" | "focus-crown" | "tiny-scarf" | "halo" | "desk-mat";
+export type AccessoryId =
+  | "collar"
+  | "ribbon"
+  | "bow-tie"
+  | "tiny-scarf"
+  | "bandana"
+  | "focus-crown"
+  | "halo"
+  | "study-glasses"
+  | "sleep-cap"
+  | "desk-mat"
+  | "nap-pillow"
+  | "cloud-cushion"
+  | "token-stand"
+  | "sparkle-aura"
+  | "star-trail"
+  | "leaf-drift"
+  | "hot-sparks";
 export type CatEyeColor = "gold" | "green" | "blue" | "slate";
+export type AccessoryChoiceId = AccessoryId | "none";
+export type AccessoryColorId = "cream" | "mint" | "sky" | "violet" | "rose" | "rainbow";
+export type AccessoryPosition = "embedded" | "below" | "floating";
 
 export type CatBreedDetails = {
   furLength: number;
@@ -106,6 +127,19 @@ export type MoodBadgeSettings = {
   showMood: boolean;
   colorByState: boolean;
   hideInFocusMode: boolean;
+};
+
+export type AccessorySettings = {
+  tokenFrameId: TokenFrameId;
+  neckId: AccessoryChoiceId;
+  headId: AccessoryChoiceId;
+  baseId: AccessoryChoiceId;
+  effectId: AccessoryChoiceId;
+  colorId: AccessoryColorId;
+  scale: number;
+  position: AccessoryPosition;
+  textOnlyFrame: boolean;
+  moodVisibility: Record<MoodLookId, boolean>;
 };
 
 export type PetAppearanceSettings = {
@@ -120,6 +154,7 @@ export type PetAppearanceSettings = {
   moodId: MoodLookId;
   moodBadge: MoodBadgeSettings;
   accessoryIds: AccessoryId[];
+  accessorySettings: AccessorySettings;
 };
 
 export type AppSettings = {
