@@ -11,6 +11,7 @@ import type {
 } from "../../types";
 import {
   accessories,
+  accessoryCatalog,
   getDefaultCatDetails,
   moodBadgeOptions,
   moodLooks,
@@ -18,7 +19,7 @@ import {
   skinThemes,
   tokenBubbleOptions,
 } from "./catalog";
-import { getTokenFrameForBubble } from "./accessorySettings";
+import { getTokenFrameForBubble, patchAccessorySettings } from "./accessorySettings";
 import { AccessoriesPage } from "./AccessoriesPage";
 import { CatTypePage } from "./CatTypePage";
 import { CatTypeCard } from "./CatTypePicker";
@@ -374,11 +375,19 @@ export function AppearancePanel(props: AppearancePanelProps) {
   );
 
   const toggleAccessory = (accessoryId: AccessoryId) => {
-    patchAppearance({
-      accessoryIds: appearance.accessoryIds.includes(accessoryId)
-        ? appearance.accessoryIds.filter((id) => id !== accessoryId)
-        : [...appearance.accessoryIds, accessoryId],
-    });
+    const accessory = accessoryCatalog.find((option) => option.id === accessoryId);
+    if (!accessory || accessory.category === "tokenFrame") return;
+
+    const categorySettingKeys = {
+      neck: "neckId",
+      head: "headId",
+      base: "baseId",
+      effects: "effectId",
+    } as const;
+    const settingKey = categorySettingKeys[accessory.category];
+    const selected = appearance.accessorySettings[settingKey] === accessoryId;
+
+    patchAppearance(patchAccessorySettings(appearance, { [settingKey]: selected ? "none" : accessoryId }));
   };
 
   const selectCatType = (catTypeId: PetAppearanceSettings["catTypeId"]) => {

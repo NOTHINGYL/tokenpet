@@ -97,6 +97,11 @@
   --pet-token-font-size: 24px;
   --pet-token-render-scale: 1;
   --pet-accessory-scale: 1;
+  --pet-layer-x: 50%;
+  --pet-layer-y: 50%;
+  --pet-layer-width: 32%;
+  --pet-layer-rotation: 0deg;
+  --pet-layer-z: 3;
   --pet-size-y-relief: 0px;
   --cat-fur-softness: 0px;
   --cat-pattern-contrast: 1;
@@ -264,11 +269,40 @@
   width: 64%;
 }
 
+.pet-compositor .pet-rig-layer.pet-visual-accessory {
+  top: var(--pet-layer-y);
+  left: var(--pet-layer-x);
+  z-index: var(--pet-layer-z);
+  display: block;
+  width: var(--pet-layer-width);
+  transform: translate(-50%, -50%) rotate(var(--pet-layer-rotation));
+}
+
+.pet-compositor .pet-rig-layer-behindCat {
+  z-index: 0;
+}
+
+.pet-compositor .pet-rig-layer-frontCat {
+  z-index: 4;
+}
+
+.pet-compositor .pet-rig-layer-effect {
+  z-index: 8;
+}
+
+.pet-compositor .pet-rig-token-embedded {
+  z-index: 3;
+}
+
+.pet-compositor .pet-rig-token-external {
+  z-index: 6;
+}
+
 .pet-visual-mood {
   position: absolute;
   top: var(--pet-visual-mood-top);
   left: 50%;
-  z-index: 5;
+  z-index: 7;
   padding: 5px 11px;
   border: 1px solid rgba(47, 148, 97, 0.16);
   border-radius: 999px;

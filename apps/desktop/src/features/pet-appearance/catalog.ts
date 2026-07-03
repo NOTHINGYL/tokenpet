@@ -53,6 +53,20 @@ export type TokenBubbleLayout = {
   textOnly?: boolean;
 };
 
+export type AccessoryCategoryId = "tokenFrame" | "neck" | "head" | "base" | "effects";
+export type AccessoryAnchorKey = "head" | "neck" | "face" | "base" | "tokenFrame";
+export type AccessoryLayer = "behindCat" | "frontCat" | "effect" | "tokenText";
+
+export type AccessoryPlacementOverride = Partial<{
+  attachTo: AccessoryAnchorKey;
+  defaultScale: number;
+  defaultRotation: number;
+  offsetX: number;
+  offsetY: number;
+  layer: AccessoryLayer;
+  hidden: boolean;
+}>;
+
 const generatedCatVisualScale = 1.59;
 
 export const catEyeColors: Array<{
@@ -314,15 +328,23 @@ export const moodLooks = [
   },
 ];
 
-export type AccessoryCategoryId = "neck" | "head" | "base" | "effects";
-
 export type AccessoryOption = {
   id: AccessoryId;
   label: string;
   category: AccessoryCategoryId;
+  attachTo: AccessoryAnchorKey;
+  layer: AccessoryLayer;
   image: string;
+  frontAsset?: string;
+  backAsset?: string;
   badge: string;
   locked?: boolean;
+  tintable?: boolean;
+  defaultScale?: number;
+  defaultRotation?: number;
+  offsetX?: number;
+  offsetY?: number;
+  perCatOverrides?: Partial<Record<CatTypeId, AccessoryPlacementOverride>>;
 };
 
 export type AccessoryChoiceOption = {
@@ -337,120 +359,200 @@ export const accessoryCatalog: AccessoryOption[] = [
     id: "collar" as AccessoryId,
     label: "Collar",
     category: "neck",
+    attachTo: "neck",
+    layer: "frontCat",
     image: appearanceAsset("accessories/collar.png"),
     badge: "Equipped",
+    defaultScale: 1.05,
+    offsetY: 0.01,
+    perCatOverrides: {
+      "golden-british": { hidden: true },
+      ragdoll: { offsetY: 0.01, defaultScale: 0.9 },
+      "maine-coon": { defaultScale: 0.9 },
+      persian: { defaultScale: 0.92 },
+      sphynx: { defaultScale: 0.82, offsetY: 0.02 },
+    },
   },
   {
     id: "ribbon" as AccessoryId,
     label: "Ribbon",
     category: "neck",
+    attachTo: "neck",
+    layer: "frontCat",
     image: appearanceAsset("accessories/ribbon.png"),
     badge: "Equipped",
+    defaultScale: 1.2,
+    offsetX: 0.03,
+    offsetY: -0.01,
   },
   {
     id: "bow-tie" as AccessoryId,
     label: "Bow tie",
     category: "neck",
+    attachTo: "neck",
+    layer: "frontCat",
     image: appearanceAsset("accessories/bow-tie.png"),
     badge: "Unlocked",
+    defaultScale: 1.18,
+    offsetY: -0.01,
   },
   {
     id: "tiny-scarf" as AccessoryId,
     label: "Tiny scarf",
     category: "neck",
+    attachTo: "neck",
+    layer: "frontCat",
     image: appearanceAsset("accessories/tiny-scarf.png"),
     badge: "Unlocked",
+    defaultScale: 1.15,
+    offsetY: 0.01,
   },
   {
     id: "bandana" as AccessoryId,
     label: "Bandana",
     category: "neck",
+    attachTo: "neck",
+    layer: "frontCat",
     image: appearanceAsset("accessories/bandana.png"),
     badge: "Unlocked",
+    defaultScale: 1.35,
+    offsetY: 0.04,
   },
   {
     id: "focus-crown" as AccessoryId,
     label: "Focus crown",
     category: "head",
+    attachTo: "head",
+    layer: "frontCat",
     image: appearanceAsset("accessories/focus-crown.png"),
     badge: "Unlocked",
+    defaultScale: 1.05,
+    offsetY: -0.28,
   },
   {
     id: "halo" as AccessoryId,
     label: "Halo",
     category: "head",
+    attachTo: "head",
+    layer: "frontCat",
     image: appearanceAsset("accessories/halo.png"),
     badge: "Unlocked",
+    defaultScale: 1.28,
+    offsetY: -0.34,
   },
   {
     id: "study-glasses" as AccessoryId,
     label: "Study glasses",
     category: "head",
+    attachTo: "face",
+    layer: "frontCat",
     image: appearanceAsset("accessories/study-glasses.png"),
     badge: "Unlocked",
+    defaultScale: 0.95,
+    offsetY: 0.02,
   },
   {
     id: "sleep-cap" as AccessoryId,
     label: "Sleep cap",
     category: "head",
+    attachTo: "head",
+    layer: "frontCat",
     image: appearanceAsset("accessories/sleep-cap.png"),
     badge: "Unlocked",
+    defaultScale: 1.1,
+    offsetX: -0.02,
+    offsetY: -0.31,
+    defaultRotation: -4,
   },
   {
     id: "desk-mat" as AccessoryId,
     label: "Desk mat",
     category: "base",
+    attachTo: "base",
+    layer: "behindCat",
     image: appearanceAsset("accessories/desk-mat.png"),
     badge: "Locked",
+    defaultScale: 1.02,
+    offsetY: 0.04,
   },
   {
     id: "nap-pillow" as AccessoryId,
     label: "Nap pillow",
     category: "base",
+    attachTo: "base",
+    layer: "behindCat",
     image: appearanceAsset("accessories/nap-pillow.png"),
     badge: "Unlocked",
+    defaultScale: 0.96,
+    offsetY: 0.03,
   },
   {
     id: "cloud-cushion" as AccessoryId,
     label: "Cloud cushion",
     category: "base",
+    attachTo: "base",
+    layer: "behindCat",
     image: appearanceAsset("accessories/cloud-cushion.png"),
     badge: "Unlocked",
+    defaultScale: 1.05,
+    offsetY: 0.04,
   },
   {
     id: "token-stand" as AccessoryId,
     label: "Token stand",
     category: "base",
+    attachTo: "base",
+    layer: "behindCat",
     image: appearanceAsset("accessories/token-stand.png"),
     badge: "Unlocked",
+    defaultScale: 0.96,
+    offsetY: 0.05,
   },
   {
     id: "sparkle-aura" as AccessoryId,
     label: "Sparkle aura",
     category: "effects",
+    attachTo: "head",
+    layer: "effect",
     image: appearanceAsset("accessories/sparkle-aura.png"),
     badge: "Unlocked",
+    defaultScale: 2.0,
+    offsetY: 0.03,
   },
   {
     id: "star-trail" as AccessoryId,
     label: "Star trail",
     category: "effects",
+    attachTo: "head",
+    layer: "effect",
     image: appearanceAsset("accessories/star-trail.png"),
     badge: "Unlocked",
+    defaultScale: 1.65,
+    offsetX: 0.18,
+    offsetY: -0.14,
   },
   {
     id: "leaf-drift" as AccessoryId,
     label: "Leaf drift",
     category: "effects",
+    attachTo: "head",
+    layer: "effect",
     image: appearanceAsset("accessories/leaf-drift.png"),
     badge: "Unlocked",
+    defaultScale: 1.85,
+    offsetX: 0.02,
+    offsetY: 0.02,
   },
   {
     id: "hot-sparks" as AccessoryId,
     label: "Hot sparks",
     category: "effects",
+    attachTo: "base",
+    layer: "effect",
     image: appearanceAsset("accessories/hot-sparks.png"),
     badge: "Unlocked",
+    defaultScale: 1.05,
+    offsetY: -0.08,
   },
 ];
 
@@ -534,42 +636,70 @@ export const tokenFrameOptions: Array<{
   label: string;
   detail: string;
   tokenBubbleId: TokenBubbleId;
+  category: "tokenFrame";
+  mode: "embedded" | "below" | "floating" | "hidden";
+  attachTo: "tokenFrame";
+  layer: "tokenText" | "frontCat";
 }> = [
   {
     id: "embedded",
     label: "Embedded frame",
     detail: "Best for paw-frame cats",
     tokenBubbleId: "pill",
+    category: "tokenFrame",
+    mode: "embedded",
+    attachTo: "tokenFrame",
+    layer: "tokenText",
   },
   {
     id: "pillow",
     label: "Pillow pill",
     detail: "Soft base bubble",
     tokenBubbleId: "pill",
+    category: "tokenFrame",
+    mode: "below",
+    attachTo: "tokenFrame",
+    layer: "frontCat",
   },
   {
     id: "compact",
     label: "Compact chip",
     detail: "Smaller footprint",
     tokenBubbleId: "compact",
+    category: "tokenFrame",
+    mode: "below",
+    attachTo: "tokenFrame",
+    layer: "frontCat",
   },
   {
     id: "cost",
     label: "Cost + tokens",
     detail: "Cost and tokens",
     tokenBubbleId: "cost",
+    category: "tokenFrame",
+    mode: "below",
+    attachTo: "tokenFrame",
+    layer: "frontCat",
   },
   {
     id: "floating",
     label: "Floating badge",
     detail: "Side badge",
     tokenBubbleId: "pill",
+    category: "tokenFrame",
+    mode: "floating",
+    attachTo: "tokenFrame",
+    layer: "frontCat",
   },
   {
     id: "hidden",
     label: "Hidden",
     detail: "No token frame",
     tokenBubbleId: "hidden",
+    category: "tokenFrame",
+    mode: "hidden",
+    attachTo: "tokenFrame",
+    layer: "frontCat",
   },
 ];
 

@@ -1,5 +1,15 @@
 import type { PetAppearanceSettings, UsageSnapshot } from "../../types";
-import { getAccessory, getCatVisual, getMoodLabel, getTokenBubbleLabel, shouldShowMoodBadge } from "./appearanceView";
+import type { AccessoryOption } from "./catalog";
+import { getCatRig, type Anchor, type CatAnchorKey } from "./catRigs";
+import {
+  getAccessory,
+  getCatVisual,
+  getEffectiveTokenBubbleId,
+  getMoodLabel,
+  getTokenBubbleLabel,
+  getTokenFrameOption,
+  shouldShowMoodBadge,
+} from "./appearanceView";
 
 type LoadedImage = HTMLImageElement;
 
@@ -35,6 +45,83 @@ function canvasToBlob(canvas: HTMLCanvasElement) {
   });
 }
 
+function getFallbackAnchor(anchorKey: CatAnchorKey): Anchor {
+  if (anchorKey === "base" || anchorKey === "tokenFrame") {
+    return { x: 0.5, y: 0.86, width: 0.56, height: 0.16 };
+  }
+
+  if (anchorKey === "neck") {
+    return { x: 0.5, y: 0.58, width: 0.24, height: 0.12 };
+  }
+
+  return { x: 0.5, y: 0.38, width: 0.32, height: 0.24 };
+}
+
+function drawCenteredImage(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  centerX: number,
+  centerY: number,
+  width: number,
+  rotation = 0,
+) {
+  const height = width * (image.height / image.width);
+  context.save();
+  context.translate(centerX, centerY);
+  context.rotate((rotation * Math.PI) / 180);
+  context.drawImage(image, -width / 2, -height / 2, width, height);
+  context.restore();
+}
+
+function drawTokenFrame(
+  context: CanvasRenderingContext2D,
+  tokenLabel: string,
+  options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    fontSize: number;
+    bubbleScale: number;
+    textOnly: boolean;
+  },
+) {
+  const width = options.width * options.bubbleScale;
+  const height = options.height * options.bubbleScale;
+  const x = options.x - width / 2;
+  const y = options.y - height / 2;
+
+  context.save();
+  if (!options.textOnly) {
+    roundRect(context, x, y, width, height, height / 2);
+    context.fillStyle = "rgba(255, 253, 239, 0.96)";
+    context.fill();
+    context.strokeStyle = "rgba(217, 154, 33, 0.2)";
+    context.stroke();
+  }
+
+  context.fillStyle = "#0b4f7c";
+  context.font = `800 ${options.fontSize * options.bubbleScale}px Inter, system-ui, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(tokenLabel, options.x, options.y + 1);
+  context.restore();
+}
+
+function resolveTokenMode(appearance: PetAppearanceSettings) {
+  const tokenFrame = getTokenFrameOption(appearance);
+  const catRig = getCatRig(appearance.catTypeId);
+  if (appearance.tokenBubbleId === "hidden" || tokenFrame.mode === "hidden") return "hidden";
+  if (tokenFrame.mode === "floating" || appearance.accessorySettings.position === "floating") return "floating";
+  if (tokenFrame.mode === "embedded" && catRig.tokenFrameMode === "embedded" && appearance.accessorySettings.textOnlyFrame) return "embedded";
+  return "below";
+}
+
+type LoadedAccessory = {
+  accessory: AccessoryOption;
+  image: HTMLImageElement;
+};
+
 async function downloadCanvas(canvas: HTMLCanvasElement) {
   const blob = await canvasToBlob(canvas);
   const objectUrl = URL.createObjectURL(blob);
@@ -60,19 +147,40 @@ export async function exportPetPreview(appearance: PetAppearanceSettings, usage:
   context.clearRect(0, 0, 640, 520);
 
   const cat = getCatVisual(appearance.catTypeId);
+  const catRig = getCatRig(appearance.catTypeId);
   const catImage = await loadImage(cat.image);
-  const accessoryImages = await Promise.all(
-    appearance.accessoryIds.map(async (accessoryId) => {
-      const accessory = getAccessory(accessoryId);
-      if (!accessory || accessory.locked) return null;
-      return { accessoryId, image: await loadImage(accessory.image) };
-    }),
-  );
+  const accessoryImages = (
+    await Promise.all(
+      appearance.accessoryIds.map(async (accessoryId) => {
+        const accessory = getAccessory(accessoryId);
+        if (!accessory || accessory.locked || catRig.builtInAccessoryIds?.includes(accessory.id)) return null;
+        const override = accessory.perCatOverrides?.[appearance.catTypeId];
+        if (override?.hidden) return null;
+        return { accessory, image: await loadImage(accessory.image) };
+      }),
+    )
+  ).filter((asset): asset is LoadedAccessory => Boolean(asset));
 
-  const catWidth = 300 * appearance.size;
+  const catWidth = 300 * appearance.size * (cat.visualScale ?? 1);
   const catHeight = (catImage.height / catImage.width) * catWidth;
   const catX = 320 - catWidth / 2;
   const catY = 150 - catHeight / 2;
+
+  function drawAccessory(asset: LoadedAccessory) {
+    const override = asset.accessory.perCatOverrides?.[appearance.catTypeId];
+    const attachTo = override?.attachTo ?? asset.accessory.attachTo;
+    const anchor = catRig.anchors[attachTo] ?? getFallbackAnchor(attachTo);
+    const defaultScale = override?.defaultScale ?? asset.accessory.defaultScale ?? 1;
+    const width = catWidth * (anchor.width ?? 0.3) * defaultScale * (catRig.accessoryScale ?? 1) * appearance.accessorySettings.scale;
+    const x = catX + catWidth * (anchor.x + (override?.offsetX ?? asset.accessory.offsetX ?? 0));
+    const y = catY + catHeight * (anchor.y + (override?.offsetY ?? asset.accessory.offsetY ?? 0));
+    const rotation = (anchor.angle ?? 0) + (override?.defaultRotation ?? asset.accessory.defaultRotation ?? 0);
+    drawCenteredImage(context, asset.image, x, y, width, rotation);
+  }
+
+  accessoryImages
+    .filter((asset) => (asset.accessory.perCatOverrides?.[appearance.catTypeId]?.layer ?? asset.accessory.layer) === "behindCat")
+    .forEach(drawAccessory);
 
   context.save();
   context.globalAlpha = appearance.opacity;
@@ -82,21 +190,39 @@ export async function exportPetPreview(appearance: PetAppearanceSettings, usage:
   context.drawImage(catImage, catX, catY, catWidth, catHeight);
   context.restore();
 
-  accessoryImages.forEach((asset) => {
-    if (!asset) return;
+  const tokenMode = resolveTokenMode(appearance);
+  const tokenBubbleId = getEffectiveTokenBubbleId(appearance);
+  const tokenLabel = tokenMode !== "hidden" ? getTokenBubbleLabel(tokenBubbleId, usage) : null;
+  const tokenAnchor = catRig.anchors.tokenFrame ?? getFallbackAnchor("tokenFrame");
 
-    const accessorySize = asset.accessoryId === "halo" ? 128 : asset.accessoryId === "desk-mat" ? 150 : 96;
-    const positions: Record<string, [number, number]> = {
-      collar: [320 - accessorySize / 2, catY + catHeight * 0.64],
-      ribbon: [320 - accessorySize / 2, catY + catHeight * 0.5],
-      "focus-crown": [320 - accessorySize / 2, catY + catHeight * 0.18],
-      "tiny-scarf": [320 - accessorySize / 2, catY + catHeight * 0.62],
-      halo: [320 - accessorySize / 2, catY + catHeight * 0.05],
-      "desk-mat": [320 - accessorySize / 2, catY + catHeight * 0.78],
-    };
-    const [x, y] = positions[asset.accessoryId] ?? [320 - accessorySize / 2, catY + catHeight * 0.58];
-    context.drawImage(asset.image, x, y, accessorySize, accessorySize);
-  });
+  if (tokenLabel && tokenMode === "embedded") {
+    drawTokenFrame(context, tokenLabel, {
+      x: catX + catWidth * tokenAnchor.x,
+      y: catY + catHeight * tokenAnchor.y,
+      width: catWidth * (tokenAnchor.width ?? 0.45),
+      height: catHeight * (tokenAnchor.height ?? 0.18),
+      fontSize: tokenBubbleId === "compact" ? 24 : 34,
+      bubbleScale: appearance.bubbleScale,
+      textOnly: true,
+    });
+  }
+
+  accessoryImages
+    .filter((asset) => (asset.accessory.perCatOverrides?.[appearance.catTypeId]?.layer ?? asset.accessory.layer) === "frontCat")
+    .forEach(drawAccessory);
+
+  if (tokenLabel && tokenMode !== "embedded") {
+    const floating = tokenMode === "floating";
+    drawTokenFrame(context, tokenLabel, {
+      x: catX + catWidth * (floating ? Math.min(tokenAnchor.x + 0.36, 0.92) : tokenAnchor.x),
+      y: catY + catHeight * (floating ? Math.max(tokenAnchor.y - 0.31, 0.22) : tokenAnchor.y),
+      width: tokenBubbleId === "cost" ? 138 : tokenBubbleId === "compact" ? 92 : 118,
+      height: tokenBubbleId === "compact" ? 40 : floating ? 42 : 48,
+      fontSize: tokenBubbleId === "cost" ? 14 : tokenBubbleId === "compact" ? 17 : 24,
+      bubbleScale: appearance.bubbleScale,
+      textOnly: false,
+    });
+  }
 
   const showMood = shouldShowMoodBadge(appearance);
   if (showMood) {
@@ -117,26 +243,9 @@ export async function exportPetPreview(appearance: PetAppearanceSettings, usage:
     context.fillText(moodLabel, 320, chipY + 20);
   }
 
-  const tokenLabel = getTokenBubbleLabel(appearance.tokenBubbleId, usage);
-  if (tokenLabel) {
-    context.font = `${appearance.tokenBubbleId === "compact" ? 700 : 800} ${
-      appearance.tokenBubbleId === "compact" ? 24 : 34
-    }px Inter, system-ui, sans-serif`;
-    const textWidth = context.measureText(tokenLabel).width;
-    const bubbleWidth = (textWidth + 48) * appearance.bubbleScale;
-    const bubbleHeight = (appearance.tokenBubbleId === "compact" ? 42 : 58) * appearance.bubbleScale;
-    const bubbleX = 320 - bubbleWidth / 2;
-    const bubbleY = 374;
-    roundRect(context, bubbleX, bubbleY, bubbleWidth, bubbleHeight, bubbleHeight / 2);
-    context.fillStyle = "rgba(255, 253, 239, 0.96)";
-    context.fill();
-    context.strokeStyle = "rgba(217, 154, 33, 0.2)";
-    context.stroke();
-    context.fillStyle = "#0b4f7c";
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    context.fillText(tokenLabel, 320, bubbleY + bubbleHeight / 2 + 1);
-  }
+  accessoryImages
+    .filter((asset) => (asset.accessory.perCatOverrides?.[appearance.catTypeId]?.layer ?? asset.accessory.layer) === "effect")
+    .forEach(drawAccessory);
 
   await downloadCanvas(canvas);
 }
