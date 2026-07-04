@@ -1237,13 +1237,15 @@
   display: grid;
   min-height: 0;
   place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .pet-appearance-visual-preview {
-  --pet-visual-cat-width: clamp(168px, 17.2vw, 250px);
-  --pet-visual-cat-y: clamp(-38px, -4.2vh, -18px);
+  --pet-visual-cat-width: clamp(140px, 14.2vw, 205px);
+  --pet-visual-cat-y: clamp(-20px, -2.2vh, -8px);
   --pet-visual-token-bottom: clamp(82px, 10vh, 122px);
-  --pet-visual-mood-top: clamp(4px, 1.2vh, 12px);
+  --pet-visual-mood-top: clamp(6px, 1.1vh, 11px);
 }
 
 .pet-preview-mood {
@@ -1826,11 +1828,13 @@
 
 .accessories-live-preview-stage {
   min-height: 0;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .accessories-live-preview-stage .pet-appearance-visual-preview {
-  --pet-visual-cat-width: clamp(154px, 12.8vw, 208px);
-  --pet-visual-cat-y: -8px;
+  --pet-visual-cat-width: clamp(132px, 11vw, 184px);
+  --pet-visual-cat-y: -4px;
   --pet-visual-mood-top: 10px;
 }
 

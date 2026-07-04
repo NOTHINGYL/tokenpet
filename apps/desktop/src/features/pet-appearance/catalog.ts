@@ -54,17 +54,33 @@ export type TokenBubbleLayout = {
 };
 
 export type AccessoryCategoryId = "tokenFrame" | "neck" | "head" | "base" | "effects";
-export type AccessoryAnchorKey = "head" | "neck" | "face" | "base" | "tokenFrame";
+export type AccessoryAnchorKey = "head" | "neck" | "face" | "chest" | "base" | "tokenFrame";
 export type AccessoryLayer = "behindCat" | "frontCat" | "effect" | "tokenText";
+export type AccessoryKitLayerId = "back" | "underChin" | "front" | "highlight" | "shadow" | "effect";
+export type CatBodyType = "round" | "slim" | "fluffy";
+
+export type AccessoryKitLayers = Partial<Record<AccessoryKitLayerId, string>>;
+
+export type AccessoryKitVariant = Partial<{
+  attachTo: AccessoryAnchorKey;
+  layers: AccessoryKitLayers;
+  defaultScale: number;
+  defaultRotation: number;
+  offsetX: number;
+  offsetY: number;
+}>;
 
 export type AccessoryPlacementOverride = Partial<{
   attachTo: AccessoryAnchorKey;
   defaultScale: number;
   defaultRotation: number;
+  scale: number;
+  rotation: number;
   offsetX: number;
   offsetY: number;
   layer: AccessoryLayer;
   hidden: boolean;
+  hiddenLayers: AccessoryKitLayerId[];
 }>;
 
 const generatedCatVisualScale = 1.59;
@@ -335,6 +351,7 @@ export type AccessoryOption = {
   attachTo: AccessoryAnchorKey;
   layer: AccessoryLayer;
   image: string;
+  layers?: AccessoryKitLayers;
   frontAsset?: string;
   backAsset?: string;
   badge: string;
@@ -344,6 +361,7 @@ export type AccessoryOption = {
   defaultRotation?: number;
   offsetX?: number;
   offsetY?: number;
+  bodyTypeVariants?: Partial<Record<CatBodyType, AccessoryKitVariant>>;
   perCatOverrides?: Partial<Record<CatTypeId, AccessoryPlacementOverride>>;
 };
 
@@ -362,15 +380,20 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "neck",
     layer: "frontCat",
     image: appearanceAsset("accessories/collar.png"),
+    layers: { underChin: appearanceAsset("accessories/collar.png") },
     badge: "Equipped",
-    defaultScale: 1.05,
-    offsetY: 0.01,
+    defaultScale: 0.92,
+    offsetY: 0.025,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.84, offsetY: 0.035 },
+      slim: { defaultScale: 0.78, offsetY: 0.02 },
+    },
     perCatOverrides: {
       "golden-british": { hidden: true },
-      ragdoll: { offsetY: 0.01, defaultScale: 0.9 },
-      "maine-coon": { defaultScale: 0.9 },
-      persian: { defaultScale: 0.92 },
-      sphynx: { defaultScale: 0.82, offsetY: 0.02 },
+      ragdoll: { offsetY: 0.035, scale: 0.84 },
+      "maine-coon": { scale: 0.82 },
+      persian: { scale: 0.84 },
+      sphynx: { scale: 0.76, offsetY: 0.02 },
     },
   },
   {
@@ -380,10 +403,15 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "neck",
     layer: "frontCat",
     image: appearanceAsset("accessories/ribbon.png"),
+    layers: { underChin: appearanceAsset("accessories/ribbon.png"), highlight: appearanceAsset("accessories/ribbon.png") },
     badge: "Equipped",
-    defaultScale: 1.2,
-    offsetX: 0.03,
+    defaultScale: 0.92,
+    offsetX: 0.025,
     offsetY: -0.01,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.82, offsetY: 0.005 },
+      slim: { defaultScale: 0.78 },
+    },
   },
   {
     id: "bow-tie" as AccessoryId,
@@ -392,9 +420,14 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "neck",
     layer: "frontCat",
     image: appearanceAsset("accessories/bow-tie.png"),
+    layers: { underChin: appearanceAsset("accessories/bow-tie.png"), highlight: appearanceAsset("accessories/bow-tie.png") },
     badge: "Unlocked",
-    defaultScale: 1.18,
+    defaultScale: 0.92,
     offsetY: -0.01,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.82, offsetY: 0.005 },
+      slim: { defaultScale: 0.78 },
+    },
   },
   {
     id: "tiny-scarf" as AccessoryId,
@@ -403,9 +436,14 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "neck",
     layer: "frontCat",
     image: appearanceAsset("accessories/tiny-scarf.png"),
+    layers: { underChin: appearanceAsset("accessories/tiny-scarf.png") },
     badge: "Unlocked",
-    defaultScale: 1.15,
-    offsetY: 0.01,
+    defaultScale: 1.06,
+    offsetY: 0.045,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 1.12, offsetY: 0.06 },
+      slim: { defaultScale: 0.86, offsetY: 0.035 },
+    },
   },
   {
     id: "bandana" as AccessoryId,
@@ -414,9 +452,14 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "neck",
     layer: "frontCat",
     image: appearanceAsset("accessories/bandana.png"),
+    layers: { underChin: appearanceAsset("accessories/bandana.png") },
     badge: "Unlocked",
-    defaultScale: 1.35,
+    defaultScale: 0.96,
     offsetY: 0.04,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.84, offsetY: 0.055 },
+      slim: { defaultScale: 0.78, offsetY: 0.035 },
+    },
   },
   {
     id: "focus-crown" as AccessoryId,
@@ -425,9 +468,14 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "frontCat",
     image: appearanceAsset("accessories/focus-crown.png"),
+    layers: { front: appearanceAsset("accessories/focus-crown.png") },
     badge: "Unlocked",
-    defaultScale: 1.05,
-    offsetY: -0.28,
+    defaultScale: 0.76,
+    offsetY: -0.245,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.7, offsetY: -0.235 },
+      slim: { defaultScale: 0.66, offsetY: -0.25 },
+    },
   },
   {
     id: "halo" as AccessoryId,
@@ -436,9 +484,14 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "frontCat",
     image: appearanceAsset("accessories/halo.png"),
+    layers: { front: appearanceAsset("accessories/halo.png") },
     badge: "Unlocked",
-    defaultScale: 1.28,
+    defaultScale: 0.98,
     offsetY: -0.34,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.92 },
+      slim: { defaultScale: 0.88 },
+    },
   },
   {
     id: "study-glasses" as AccessoryId,
@@ -447,8 +500,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "face",
     layer: "frontCat",
     image: appearanceAsset("accessories/study-glasses.png"),
+    layers: { front: appearanceAsset("accessories/study-glasses.png") },
     badge: "Unlocked",
-    defaultScale: 0.95,
+    defaultScale: 0.8,
     offsetY: 0.02,
   },
   {
@@ -458,11 +512,16 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "frontCat",
     image: appearanceAsset("accessories/sleep-cap.png"),
+    layers: { back: appearanceAsset("accessories/sleep-cap.png"), front: appearanceAsset("accessories/sleep-cap.png") },
     badge: "Unlocked",
-    defaultScale: 1.1,
+    defaultScale: 0.82,
     offsetX: -0.02,
-    offsetY: -0.31,
+    offsetY: -0.27,
     defaultRotation: -4,
+    bodyTypeVariants: {
+      fluffy: { defaultScale: 0.78, offsetY: -0.255 },
+      slim: { defaultScale: 0.74, offsetY: -0.285 },
+    },
   },
   {
     id: "desk-mat" as AccessoryId,
@@ -471,9 +530,10 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "base",
     layer: "behindCat",
     image: appearanceAsset("accessories/desk-mat.png"),
+    layers: { back: appearanceAsset("accessories/desk-mat.png") },
     badge: "Locked",
-    defaultScale: 1.02,
-    offsetY: 0.04,
+    defaultScale: 0.86,
+    offsetY: 0.045,
   },
   {
     id: "nap-pillow" as AccessoryId,
@@ -482,8 +542,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "base",
     layer: "behindCat",
     image: appearanceAsset("accessories/nap-pillow.png"),
+    layers: { back: appearanceAsset("accessories/nap-pillow.png") },
     badge: "Unlocked",
-    defaultScale: 0.96,
+    defaultScale: 0.82,
     offsetY: 0.03,
   },
   {
@@ -493,8 +554,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "base",
     layer: "behindCat",
     image: appearanceAsset("accessories/cloud-cushion.png"),
+    layers: { back: appearanceAsset("accessories/cloud-cushion.png") },
     badge: "Unlocked",
-    defaultScale: 1.05,
+    defaultScale: 0.86,
     offsetY: 0.04,
   },
   {
@@ -504,8 +566,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "base",
     layer: "behindCat",
     image: appearanceAsset("accessories/token-stand.png"),
+    layers: { back: appearanceAsset("accessories/token-stand.png") },
     badge: "Unlocked",
-    defaultScale: 0.96,
+    defaultScale: 0.82,
     offsetY: 0.05,
   },
   {
@@ -515,8 +578,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "effect",
     image: appearanceAsset("accessories/sparkle-aura.png"),
+    layers: { effect: appearanceAsset("accessories/sparkle-aura.png") },
     badge: "Unlocked",
-    defaultScale: 2.0,
+    defaultScale: 1.18,
     offsetY: 0.03,
   },
   {
@@ -526,10 +590,11 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "effect",
     image: appearanceAsset("accessories/star-trail.png"),
+    layers: { effect: appearanceAsset("accessories/star-trail.png") },
     badge: "Unlocked",
-    defaultScale: 1.65,
-    offsetX: 0.18,
-    offsetY: -0.14,
+    defaultScale: 0.95,
+    offsetX: 0.16,
+    offsetY: -0.16,
   },
   {
     id: "leaf-drift" as AccessoryId,
@@ -538,8 +603,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "head",
     layer: "effect",
     image: appearanceAsset("accessories/leaf-drift.png"),
+    layers: { effect: appearanceAsset("accessories/leaf-drift.png") },
     badge: "Unlocked",
-    defaultScale: 1.85,
+    defaultScale: 1.02,
     offsetX: 0.02,
     offsetY: 0.02,
   },
@@ -550,8 +616,9 @@ export const accessoryCatalog: AccessoryOption[] = [
     attachTo: "base",
     layer: "effect",
     image: appearanceAsset("accessories/hot-sparks.png"),
+    layers: { effect: appearanceAsset("accessories/hot-sparks.png") },
     badge: "Unlocked",
-    defaultScale: 1.05,
+    defaultScale: 0.86,
     offsetY: -0.08,
   },
 ];

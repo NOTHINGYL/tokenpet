@@ -100,8 +100,15 @@
   --pet-layer-x: 50%;
   --pet-layer-y: 50%;
   --pet-layer-width: 32%;
+  --pet-layer-height: 12%;
   --pet-layer-rotation: 0deg;
   --pet-layer-z: 3;
+  --pet-layer-opacity: 1;
+  --pet-mask-x: 50%;
+  --pet-mask-y: 60%;
+  --pet-mask-w: 30%;
+  --pet-mask-h: 12%;
+  --pet-mask-opacity: 1;
   --pet-size-y-relief: 0px;
   --cat-fur-softness: 0px;
   --cat-pattern-contrast: 1;
@@ -269,29 +276,86 @@
   width: 64%;
 }
 
-.pet-compositor .pet-rig-layer.pet-visual-accessory {
+.pet-compositor .pet-rig-layer {
+  position: absolute;
   top: var(--pet-layer-y);
   left: var(--pet-layer-x);
   z-index: var(--pet-layer-z);
   display: block;
   width: var(--pet-layer-width);
+  height: auto;
+  opacity: var(--pet-layer-opacity);
+  pointer-events: none;
   transform: translate(-50%, -50%) rotate(var(--pet-layer-rotation));
+  transform-origin: center;
+}
+
+.pet-compositor .pet-rig-layer.pet-visual-accessory {
+  filter:
+    drop-shadow(0 1px 0 rgba(255, 255, 255, 0.28))
+    drop-shadow(0 3px 5px rgba(30, 41, 59, 0.12));
 }
 
 .pet-compositor .pet-rig-layer-behindCat {
   z-index: 0;
 }
 
-.pet-compositor .pet-rig-layer-frontCat {
+.pet-compositor .pet-rig-layer-back {
+  z-index: 2;
+}
+
+.pet-compositor .pet-rig-layer-shadow {
+  z-index: 3;
+}
+
+.pet-compositor .pet-rig-layer-underChin {
   z-index: 4;
 }
 
-.pet-compositor .pet-rig-layer-effect {
+.pet-compositor .pet-rig-layer-frontCat {
+  z-index: 6;
+}
+
+.pet-compositor .pet-rig-layer-highlight {
   z-index: 8;
+  filter: saturate(1.08) brightness(1.08);
+  mix-blend-mode: screen;
+}
+
+.pet-compositor .pet-rig-layer-effect {
+  z-index: 9;
+  opacity: calc(var(--pet-layer-opacity) * 0.86);
+  filter: drop-shadow(0 5px 8px rgba(245, 158, 11, 0.1));
+}
+
+.pet-compositor .pet-wearable-shadow {
+  width: var(--pet-layer-width);
+  height: var(--pet-layer-height);
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(30, 41, 59, 0.26) 0%, rgba(30, 41, 59, 0.12) 44%, transparent 72%);
+  filter: blur(1.8px);
+  mix-blend-mode: multiply;
+}
+
+.pet-cat-occlusion {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: var(--pet-mask-opacity);
+  pointer-events: none;
+  user-select: none;
+  clip-path: ellipse(var(--pet-mask-w) var(--pet-mask-h) at var(--pet-mask-x) var(--pet-mask-y));
+  filter:
+    drop-shadow(0 0 var(--cat-fur-softness) rgba(255, 255, 255, 0.3))
+    saturate(var(--cat-pattern-saturation))
+    contrast(var(--cat-pattern-contrast));
 }
 
 .pet-compositor .pet-rig-token-embedded {
-  z-index: 3;
+  z-index: 7;
 }
 
 .pet-compositor .pet-rig-token-external {
