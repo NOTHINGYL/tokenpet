@@ -57,7 +57,7 @@ export type AccessoryCategoryId = "tokenFrame" | "neck" | "head" | "base" | "eff
 export type AccessoryAnchorKey = "head" | "neck" | "face" | "chest" | "base" | "tokenFrame";
 export type AccessoryLayer = "behindCat" | "frontCat" | "effect" | "tokenText";
 export type AccessoryKitLayerId = "back" | "underChin" | "front" | "highlight" | "shadow" | "effect";
-export type CatBodyType = "round" | "slim" | "fluffy";
+export type CatBodyType = "paw-frame" | "round-sitting" | "fluffy-sitting" | "slim-sitting";
 
 export type AccessoryKitLayers = Partial<Record<AccessoryKitLayerId, string>>;
 
@@ -385,8 +385,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 0.92,
     offsetY: 0.025,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.84, offsetY: 0.035 },
-      slim: { defaultScale: 0.78, offsetY: 0.02 },
+      "fluffy-sitting": { defaultScale: 0.84, offsetY: 0.035 },
+      "slim-sitting": { defaultScale: 0.78, offsetY: 0.02 },
     },
     perCatOverrides: {
       "golden-british": { hidden: true },
@@ -409,8 +409,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     offsetX: 0.025,
     offsetY: -0.01,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.82, offsetY: 0.005 },
-      slim: { defaultScale: 0.78 },
+      "fluffy-sitting": { defaultScale: 0.82, offsetY: 0.005 },
+      "slim-sitting": { defaultScale: 0.78 },
     },
   },
   {
@@ -425,8 +425,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 0.92,
     offsetY: -0.01,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.82, offsetY: 0.005 },
-      slim: { defaultScale: 0.78 },
+      "fluffy-sitting": { defaultScale: 0.82, offsetY: 0.005 },
+      "slim-sitting": { defaultScale: 0.78 },
     },
   },
   {
@@ -441,8 +441,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 1.06,
     offsetY: 0.045,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 1.12, offsetY: 0.06 },
-      slim: { defaultScale: 0.86, offsetY: 0.035 },
+      "fluffy-sitting": { defaultScale: 1.12, offsetY: 0.06 },
+      "slim-sitting": { defaultScale: 0.86, offsetY: 0.035 },
     },
   },
   {
@@ -457,8 +457,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 0.96,
     offsetY: 0.04,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.84, offsetY: 0.055 },
-      slim: { defaultScale: 0.78, offsetY: 0.035 },
+      "fluffy-sitting": { defaultScale: 0.84, offsetY: 0.055 },
+      "slim-sitting": { defaultScale: 0.78, offsetY: 0.035 },
     },
   },
   {
@@ -473,8 +473,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 0.76,
     offsetY: -0.245,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.7, offsetY: -0.235 },
-      slim: { defaultScale: 0.66, offsetY: -0.25 },
+      "fluffy-sitting": { defaultScale: 0.7, offsetY: -0.235 },
+      "slim-sitting": { defaultScale: 0.66, offsetY: -0.25 },
     },
   },
   {
@@ -489,8 +489,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 0.98,
     offsetY: -0.34,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.92 },
-      slim: { defaultScale: 0.88 },
+      "fluffy-sitting": { defaultScale: 0.92 },
+      "slim-sitting": { defaultScale: 0.88 },
     },
   },
   {
@@ -519,8 +519,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     offsetY: -0.27,
     defaultRotation: -4,
     bodyTypeVariants: {
-      fluffy: { defaultScale: 0.78, offsetY: -0.255 },
-      slim: { defaultScale: 0.74, offsetY: -0.285 },
+      "fluffy-sitting": { defaultScale: 0.78, offsetY: -0.255 },
+      "slim-sitting": { defaultScale: 0.74, offsetY: -0.285 },
     },
   },
   {

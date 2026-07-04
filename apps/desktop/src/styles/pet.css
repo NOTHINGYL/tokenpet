@@ -135,12 +135,156 @@
   top: 50%;
   left: 50%;
   width: var(--pet-visual-cat-width);
+  aspect-ratio: 1 / 1;
   opacity: var(--pet-visual-opacity);
   transform: translate(-50%, calc(-50% + var(--pet-visual-cat-y) + var(--pet-size-y-relief))) scale(var(--pet-visual-scale));
   transform-origin: center;
   transition:
     opacity 180ms ease,
     transform 180ms ease;
+}
+
+.pet-actor-root {
+  perspective: 900px;
+  transform-origin: center bottom;
+}
+
+.pet-actor-scene {
+  position: absolute;
+  inset: 0;
+  display: block;
+  transform-origin: center bottom;
+  animation: pet-actor-breathe var(--pet-motion-breath-duration, 3.8s) ease-in-out infinite;
+}
+
+.pet-drag-region:hover .pet-actor-scene {
+  animation:
+    pet-actor-breathe var(--pet-motion-breath-duration, 3.8s) ease-in-out infinite,
+    pet-actor-attention 1.6s ease-in-out infinite;
+}
+
+.pet-stage.is-dragging .pet-actor-scene {
+  animation: pet-actor-drag-squash 520ms ease-in-out infinite;
+}
+
+.pet-scene-node {
+  position: absolute;
+  top: var(--pet-node-y);
+  left: var(--pet-node-x);
+  z-index: var(--pet-node-layer);
+  display: block;
+  width: var(--pet-node-width);
+  height: var(--pet-node-height);
+  opacity: var(--pet-node-opacity);
+  pointer-events: none;
+  transform: translate(-50%, -50%) translate(var(--pet-node-offset-x), var(--pet-node-offset-y)) rotate(var(--pet-node-rotation)) scale(var(--pet-node-scale));
+  transform-origin: center;
+}
+
+.pet-scene-node-inner {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pet-scene-cat {
+  filter:
+    drop-shadow(0 0 var(--cat-fur-softness) rgba(255, 255, 255, 0.58))
+    drop-shadow(0 calc(18px * var(--pet-visual-shadow)) calc(24px * var(--pet-visual-shadow)) rgba(30, 41, 59, 0.2))
+    saturate(var(--cat-pattern-saturation))
+    contrast(var(--cat-pattern-contrast));
+}
+
+.pet-scene-accessory {
+  filter:
+    drop-shadow(-1px -1px 0 rgba(255, 255, 255, 0.16))
+    drop-shadow(0 3px 5px rgba(30, 41, 59, 0.13));
+}
+
+.pet-scene-kit-highlight {
+  opacity: 0.22;
+  filter: saturate(1.08) brightness(1.08);
+  mix-blend-mode: screen;
+}
+
+.pet-scene-node-effect .pet-scene-node-inner,
+.pet-scene-kit-effect {
+  opacity: 0.82;
+  filter: drop-shadow(0 5px 8px rgba(245, 158, 11, 0.1));
+}
+
+.pet-scene-node-shadow .pet-scene-node-inner {
+  height: 100%;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(30, 41, 59, 0.28) 0%, rgba(30, 41, 59, 0.12) 48%, transparent 74%);
+  filter: blur(1.9px);
+  mix-blend-mode: multiply;
+}
+
+.pet-scene-node-shadow .pet-scene-ground-shadow {
+  filter: blur(3.2px);
+}
+
+.pet-scene-occlusion {
+  position: absolute;
+  z-index: var(--pet-node-layer);
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: auto;
+  opacity: var(--pet-mask-opacity);
+  pointer-events: none;
+  user-select: none;
+  clip-path: ellipse(var(--pet-mask-w) var(--pet-mask-h) at var(--pet-mask-x) var(--pet-mask-y));
+  filter:
+    drop-shadow(0 0 var(--cat-fur-softness) rgba(255, 255, 255, 0.3))
+    saturate(var(--cat-pattern-saturation))
+    contrast(var(--cat-pattern-contrast));
+}
+
+.pet-motion-head {
+  animation: pet-actor-head-bob var(--pet-motion-head-duration, 4.8s) ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.pet-motion-neck {
+  animation: pet-actor-neck-breathe var(--pet-motion-breath-duration, 3.8s) ease-in-out infinite;
+  transform-origin: center top;
+}
+
+.pet-motion-token {
+  animation: pet-actor-token-float var(--pet-motion-breath-duration, 3.8s) ease-in-out infinite;
+}
+
+.pet-motion-badge {
+  animation: pet-actor-badge-hover var(--pet-motion-head-duration, 4.8s) ease-in-out infinite;
+}
+
+.pet-motion-effect {
+  animation: pet-actor-effect-drift var(--pet-motion-effect-duration, 5.2s) ease-in-out infinite;
+}
+
+.pet-actor .pet-scene-node-token {
+  pointer-events: auto;
+}
+
+.pet-actor .pet-scene-token-button {
+  position: static;
+  top: auto;
+  left: auto;
+  min-width: var(--pet-node-width);
+  min-height: var(--pet-node-height);
+  transform: scale(var(--pet-token-render-scale));
+}
+
+.pet-actor .pet-scene-badge-label {
+  position: static;
+  top: auto;
+  left: auto;
+  display: inline-flex;
+  transform: none;
 }
 
 .pet-visual-cat-wrap::after {
@@ -484,6 +628,10 @@
 
 .pet-stage.is-summoning .token-pill {
   animation: token-pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.pet-stage.is-summoning .pet-scene-token-button {
+  animation: pet-actor-token-pop 560ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .cat-image {
@@ -886,5 +1034,108 @@
 
   74% {
     transform: translateX(-50%) scale(0.98);
+  }
+}
+
+@keyframes pet-actor-breathe {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg) scaleX(1) scaleY(1);
+  }
+
+  50% {
+    transform: translateY(-2px) rotate(var(--pet-motion-root-sway)) scaleX(calc(1 + var(--pet-motion-breath-amplitude))) scaleY(0.997);
+  }
+}
+
+@keyframes pet-actor-attention {
+  0%,
+  100% {
+    filter: saturate(1) brightness(1);
+  }
+
+  45% {
+    filter: saturate(1.05) brightness(1.025);
+  }
+}
+
+@keyframes pet-actor-drag-squash {
+  0%,
+  100% {
+    transform: translateY(0) scaleX(1.02) scaleY(0.985);
+  }
+
+  50% {
+    transform: translateY(2px) scaleX(0.985) scaleY(1.025);
+  }
+}
+
+@keyframes pet-actor-head-bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  48% {
+    transform: translateY(calc(var(--pet-motion-head-amplitude) * -1)) rotate(-0.4deg);
+  }
+}
+
+@keyframes pet-actor-neck-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(1.2px) scale(1.018);
+  }
+}
+
+@keyframes pet-actor-token-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes pet-actor-badge-hover {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+
+@keyframes pet-actor-effect-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  50% {
+    transform: translate(3px, -4px) rotate(2deg);
+  }
+}
+
+@keyframes pet-actor-token-pop {
+  0%,
+  100% {
+    transform: scale(var(--pet-token-render-scale));
+  }
+
+  42% {
+    transform: scale(calc(var(--pet-token-render-scale) * 1.12));
+  }
+
+  74% {
+    transform: scale(calc(var(--pet-token-render-scale) * 0.98));
   }
 }
