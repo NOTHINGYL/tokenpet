@@ -1,0 +1,9 @@
+{
+  "name": "@tokenpet/pet-asset-studio",
+  "version": "0.8.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:golden-british": "node src/build-golden-british.mjs"
+  }
+}

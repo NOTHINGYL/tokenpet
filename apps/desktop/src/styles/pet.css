@@ -149,6 +149,58 @@
   transform-origin: center bottom;
 }
 
+.pet-actor-canvas-root {
+  width: calc(var(--pet-visual-cat-width) * 1.3);
+  overflow: visible;
+  perspective: 900px;
+  transform-origin: center bottom;
+}
+
+.pet-actor-canvas-root::after {
+  display: none;
+}
+
+.pet-actor-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform-origin: center bottom;
+  transition: opacity 160ms ease;
+}
+
+.pet-actor-canvas-root.is-loading .pet-actor-canvas {
+  opacity: 0;
+}
+
+.pet-actor-canvas-root.is-ready .pet-actor-canvas {
+  opacity: 1;
+}
+
+.pet-actor-token-hotspot {
+  position: absolute;
+  top: var(--pet-actor-token-y);
+  left: var(--pet-actor-token-x);
+  z-index: 10;
+  width: var(--pet-actor-token-w);
+  height: var(--pet-actor-token-h);
+  min-width: 44px;
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+.pet-actor-token-hotspot:focus-visible {
+  outline: 2px solid rgba(47, 148, 97, 0.7);
+  outline-offset: 2px;
+}
+
 .pet-actor-scene {
   position: absolute;
   inset: 0;

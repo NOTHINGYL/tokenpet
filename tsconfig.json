@@ -16,5 +16,5 @@
     "noEmit": true,
     "jsx": "react-jsx"
   },
-  "include": ["apps/desktop/src", "apps/desktop/vite.config.ts"]
+  "include": ["apps/desktop/src", "apps/desktop/vite.config.ts", "packages/pet-asset-schema/src"]
 }

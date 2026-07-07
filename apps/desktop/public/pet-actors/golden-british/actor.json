@@ -1,0 +1,179 @@
+{
+  "schemaVersion": "pet-actor/v1",
+  "actorId": "golden-british",
+  "displayName": "Golden British",
+  "breedId": "golden-british",
+  "sourceVersion": "0.8.0-mvp",
+  "generatedBy": "@tokenpet/pet-asset-studio",
+  "generatedAt": "2026-07-06T00:00:00.000Z",
+  "contentHash": "75e5b35e09120aaa",
+  "artboard": {
+    "width": 1024,
+    "height": 1024
+  },
+  "defaultAnimation": "focused.idle",
+  "defaultTokenMode": "embedded",
+  "dynamicSlots": {
+    "tokenText": {
+      "mode": "embedded",
+      "x": 326,
+      "y": 710,
+      "width": 380,
+      "height": 118,
+      "maxFontSize": 82,
+      "color": "#0b4f7c",
+      "fontWeight": 850
+    },
+    "externalToken": {
+      "mode": "below",
+      "x": 330,
+      "y": 796,
+      "width": 364,
+      "height": 108,
+      "maxFontSize": 70
+    },
+    "moodBadge": {
+      "x": 408,
+      "y": 72,
+      "width": 208,
+      "height": 70,
+      "maxFontSize": 46
+    }
+  },
+  "animations": {
+    "sleepy.idle": {
+      "id": "sleepy.idle",
+      "mood": "sleepy",
+      "motionState": "idle",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "sleepy-idle-base",
+          "mood": "sleepy",
+          "src": "frames/sleepy-idle.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1400,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateY": 6,
+            "scaleX": -0.0048000000000000004,
+            "scaleY": 0.012
+          }
+        }
+      ]
+    },
+    "focused.idle": {
+      "id": "focused.idle",
+      "mood": "focused",
+      "motionState": "idle",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "focused-idle-base",
+          "mood": "focused",
+          "src": "frames/focused-idle.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1400,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateY": 6,
+            "scaleX": -0.0048000000000000004,
+            "scaleY": 0.012
+          }
+        }
+      ]
+    },
+    "hot.idle": {
+      "id": "hot.idle",
+      "mood": "hot",
+      "motionState": "idle",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "hot-idle-base",
+          "mood": "hot",
+          "src": "frames/hot-idle.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1400,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateY": 6,
+            "scaleX": -0.0048000000000000004,
+            "scaleY": 0.012
+          }
+        }
+      ]
+    },
+    "overdrive.idle": {
+      "id": "overdrive.idle",
+      "mood": "overdrive",
+      "motionState": "idle",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "overdrive-idle-base",
+          "mood": "overdrive",
+          "src": "frames/overdrive-idle.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1400,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateY": 6,
+            "scaleX": -0.0048000000000000004,
+            "scaleY": 0.012
+          }
+        }
+      ]
+    }
+  },
+  "compatibility": {
+    "bakedAccessories": [
+      "collar",
+      "embedded-token-frame"
+    ],
+    "runtimeAccessoryPolicy": "disabled",
+    "supportedCatTypes": [
+      "golden-british"
+    ]
+  }
+}
