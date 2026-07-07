@@ -8,6 +8,9 @@ import type {
   CatBreedDetails,
   CatEyeColor,
   CatTypeId,
+  MotionActionId,
+  MotionModeId,
+  MotionSettings,
   MoodBadgeSettings,
   MoodLookId,
   PetAppearanceSettings,
@@ -37,6 +40,19 @@ const petThemeIds: PetThemeId[] = ["gold", "mint", "rose", "sky", "midnight", "c
 const tokenBubbleIds: TokenBubbleId[] = ["pill", "compact", "hidden", "cost"];
 const tokenFrameIds: TokenFrameId[] = ["embedded", "pillow", "compact", "cost", "floating", "hidden"];
 const moodLookIds: MoodLookId[] = ["sleepy", "focused", "hot", "overdrive"];
+const motionModeIds: MotionModeId[] = ["calm", "balanced", "playful", "energetic"];
+const motionActionIds: MotionActionId[] = [
+  "idle-breathe",
+  "tail-wag",
+  "blink",
+  "stretch",
+  "run-across",
+  "jump",
+  "desk-nap",
+  "celebrate",
+  "pounce-cursor",
+  "edge-peek",
+];
 const accessoryIds: AccessoryId[] = [
   "collar",
   "ribbon",
@@ -103,6 +119,43 @@ export const defaultAccessorySettings: AccessorySettings = {
   },
 };
 
+export const defaultMotionSettings: MotionSettings = {
+  modeId: "balanced",
+  actionId: "idle-breathe",
+  animationSpeed: 80,
+  motionEnergy: 65,
+  jumpHeight: 70,
+  roamingDistance: 75,
+  cursorSensitivity: 60,
+  desktopRoaming: {
+    edgeRoaming: true,
+    rememberPosition: true,
+    avoidMenuBar: true,
+    avoidFocusedWindow: true,
+    multiScreenTravel: true,
+    snapBackHome: false,
+  },
+  triggers: {
+    tokenSpike: true,
+    milestoneReached: true,
+    idleBreak: true,
+    workSessionStart: true,
+    hotState: true,
+    overdriveState: true,
+  },
+  safety: {
+    reduceMotion: false,
+    disableSuddenJumps: true,
+    pauseDuringTyping: true,
+    quietHoursMotion: false,
+    screenSharingStillness: true,
+  },
+  quietHours: {
+    start: "22:00",
+    end: "07:00",
+  },
+};
+
 export const defaultPetAppearance: PetAppearanceSettings = {
   catTypeId: "golden-british",
   catDetails: defaultCatDetailsByType["golden-british"],
@@ -116,6 +169,7 @@ export const defaultPetAppearance: PetAppearanceSettings = {
   moodBadge: defaultMoodBadgeSettings,
   accessoryIds: ["collar"],
   accessorySettings: defaultAccessorySettings,
+  motionSettings: defaultMotionSettings,
 };
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {
@@ -189,6 +243,40 @@ function normalizeCatDetails(value: unknown, catTypeId: CatTypeId): CatBreedDeta
   };
 }
 
+function normalizeMotionToggles<T extends Record<string, boolean>>(value: unknown, defaults: T): T {
+  const source = (value && typeof value === "object" ? value : {}) as Partial<T>;
+
+  return Object.entries(defaults).reduce(
+    (toggles, [key, defaultValue]) => ({
+      ...toggles,
+      [key]: typeof source[key as keyof T] === "boolean" ? source[key as keyof T] : defaultValue,
+    }),
+    {} as T,
+  );
+}
+
+function normalizeMotionSettings(value: unknown): MotionSettings {
+  const source = (value && typeof value === "object" ? value : {}) as Partial<MotionSettings>;
+  const quietHours = (source.quietHours && typeof source.quietHours === "object" ? source.quietHours : {}) as Partial<MotionSettings["quietHours"]>;
+
+  return {
+    modeId: pickKnown(source.modeId, motionModeIds, defaultMotionSettings.modeId),
+    actionId: pickKnown(source.actionId, motionActionIds, defaultMotionSettings.actionId),
+    animationSpeed: clampNumber(source.animationSpeed, 20, 140, defaultMotionSettings.animationSpeed),
+    motionEnergy: clampNumber(source.motionEnergy, 0, 100, defaultMotionSettings.motionEnergy),
+    jumpHeight: clampNumber(source.jumpHeight, 0, 120, defaultMotionSettings.jumpHeight),
+    roamingDistance: clampNumber(source.roamingDistance, 0, 100, defaultMotionSettings.roamingDistance),
+    cursorSensitivity: clampNumber(source.cursorSensitivity, 0, 100, defaultMotionSettings.cursorSensitivity),
+    desktopRoaming: normalizeMotionToggles(source.desktopRoaming, defaultMotionSettings.desktopRoaming),
+    triggers: normalizeMotionToggles(source.triggers, defaultMotionSettings.triggers),
+    safety: normalizeMotionToggles(source.safety, defaultMotionSettings.safety),
+    quietHours: {
+      start: typeof quietHours.start === "string" ? quietHours.start : defaultMotionSettings.quietHours.start,
+      end: typeof quietHours.end === "string" ? quietHours.end : defaultMotionSettings.quietHours.end,
+    },
+  };
+}
+
 export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppearanceSettings {
   const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
   const catTypeId = pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId);
@@ -210,6 +298,7 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
     },
     accessoryIds: normalizedAccessoryIds,
     accessorySettings: normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds),
+    motionSettings: normalizeMotionSettings(source.motionSettings),
   };
 }
 

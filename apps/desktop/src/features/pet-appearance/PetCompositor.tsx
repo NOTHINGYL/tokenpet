@@ -1,11 +1,12 @@
 import type { SyntheticEvent } from "react";
-import type { MoodLookId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { MoodLookId, MotionActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { PetRenderer } from "../pet-runtime/PetRenderer";
 
 type PetCompositorProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
   moodId?: MoodLookId;
+  motionActionId?: MotionActionId;
   surface: "preview" | "desktop";
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

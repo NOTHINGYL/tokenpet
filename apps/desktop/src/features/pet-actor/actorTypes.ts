@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { AccessoryId, CatTypeId, MoodLookId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
+import type { AccessoryId, CatTypeId, MoodLookId, MotionActionId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
 import type { AccessoryCategoryId, CatBodyType } from "../pet-appearance/catalog";
 
 export type PetSurface = "preview" | "desktop";
@@ -8,6 +8,7 @@ export type PetActorProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
   moodId?: MoodLookId;
+  motionActionId?: MotionActionId;
   surface: PetSurface;
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

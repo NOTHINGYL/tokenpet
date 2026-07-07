@@ -94,6 +94,18 @@ export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom
 export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
 export type TokenFrameId = "embedded" | "pillow" | "compact" | "cost" | "floating" | "hidden";
 export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
+export type MotionModeId = "calm" | "balanced" | "playful" | "energetic";
+export type MotionActionId =
+  | "idle-breathe"
+  | "tail-wag"
+  | "blink"
+  | "stretch"
+  | "run-across"
+  | "jump"
+  | "desk-nap"
+  | "celebrate"
+  | "pounce-cursor"
+  | "edge-peek";
 export type AccessoryId =
   | "collar"
   | "ribbon"
@@ -142,6 +154,43 @@ export type AccessorySettings = {
   moodVisibility: Record<MoodLookId, boolean>;
 };
 
+export type MotionSettings = {
+  modeId: MotionModeId;
+  actionId: MotionActionId;
+  animationSpeed: number;
+  motionEnergy: number;
+  jumpHeight: number;
+  roamingDistance: number;
+  cursorSensitivity: number;
+  desktopRoaming: {
+    edgeRoaming: boolean;
+    rememberPosition: boolean;
+    avoidMenuBar: boolean;
+    avoidFocusedWindow: boolean;
+    multiScreenTravel: boolean;
+    snapBackHome: boolean;
+  };
+  triggers: {
+    tokenSpike: boolean;
+    milestoneReached: boolean;
+    idleBreak: boolean;
+    workSessionStart: boolean;
+    hotState: boolean;
+    overdriveState: boolean;
+  };
+  safety: {
+    reduceMotion: boolean;
+    disableSuddenJumps: boolean;
+    pauseDuringTyping: boolean;
+    quietHoursMotion: boolean;
+    screenSharingStillness: boolean;
+  };
+  quietHours: {
+    start: string;
+    end: string;
+  };
+};
+
 export type PetAppearanceSettings = {
   catTypeId: CatTypeId;
   catDetails: CatBreedDetails;
@@ -155,6 +204,7 @@ export type PetAppearanceSettings = {
   moodBadge: MoodBadgeSettings;
   accessoryIds: AccessoryId[];
   accessorySettings: AccessorySettings;
+  motionSettings: MotionSettings;
 };
 
 export type AppSettings = {

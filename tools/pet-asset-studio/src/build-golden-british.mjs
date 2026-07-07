@@ -8,6 +8,7 @@ const repoRoot = resolve(toolDir, "../../..");
 const sourcePath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
 const outputDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-british");
 const frameDir = resolve(outputDir, "frames");
+const runtimeSourceDir = resolve(outputDir, "source");
 
 const moods = ["sleepy", "focused", "hot", "overdrive"];
 
@@ -25,7 +26,7 @@ function createContentHash(...parts) {
   return hash.digest("hex").slice(0, 16);
 }
 
-function moodEffectSvg(effect, artboard) {
+function visualEffectSvg(effect, artboard) {
   if (effect === "sleep") {
     return `
       <g opacity="0.82" filter="url(#softBlur)">
@@ -53,16 +54,89 @@ function moodEffectSvg(effect, artboard) {
       </g>`;
   }
 
+  if (effect === "tail-wag") {
+    return `
+      <g opacity="0.68" fill="none" stroke-linecap="round">
+        <path d="M788 520c54 18 91 6 120-29" stroke="#f6ad42" stroke-width="9"/>
+        <path d="M810 562c46 20 84 14 116-18" stroke="#fed7aa" stroke-width="7"/>
+        <path d="M832 492c38 11 68 3 93-24" stroke="#f59e0b" stroke-width="6"/>
+      </g>`;
+  }
+
+  if (effect === "blink") {
+    return `
+      <g opacity="0.78" fill="none" stroke="#4a2c14" stroke-linecap="round" stroke-width="8">
+        <path d="M306 405c31 18 67 18 100 0"/>
+        <path d="M500 400c34 19 73 18 108-2"/>
+      </g>`;
+  }
+
+  if (effect === "stretch") {
+    return `
+      <g opacity="0.52" fill="none" stroke="#93c5fd" stroke-linecap="round" stroke-width="5">
+        <path d="M184 706c-34 2-64-5-92-22"/>
+        <path d="M196 742c-42 9-82 6-120-8"/>
+        <path d="M748 306c30-9 60-7 91 6"/>
+      </g>`;
+  }
+
+  if (effect === "run-dust") {
+    return `
+      <g opacity="0.54" fill="#e5e7eb">
+        <ellipse cx="174" cy="682" rx="48" ry="24"/>
+        <ellipse cx="225" cy="640" rx="38" ry="19"/>
+        <ellipse cx="284" cy="610" rx="30" ry="15"/>
+      </g>
+      <g opacity="0.46" fill="none" stroke="#60a5fa" stroke-dasharray="10 12" stroke-linecap="round" stroke-width="4">
+        <path d="M204 532c128-116 304-133 468-42"/>
+      </g>`;
+  }
+
+  if (effect === "jump-arc") {
+    return `
+      <g opacity="0.72" fill="none" stroke="#4f7ee8" stroke-dasharray="8 12" stroke-linecap="round" stroke-width="4">
+        <path d="M332 522c92-122 224-158 350-74"/>
+      </g>
+      <path d="M676 431l42 14l-34 28" fill="none" stroke="#4f7ee8" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"/>
+      <ellipse cx="384" cy="828" rx="140" ry="30" fill="#cbd5e1" opacity="0.26"/>`;
+  }
+
+  if (effect === "celebrate") {
+    return `
+      <g opacity="0.88">
+        <circle cx="270" cy="280" r="7" fill="#ef4444"/>
+        <circle cx="744" cy="254" r="8" fill="#22c55e"/>
+        <circle cx="802" cy="414" r="6" fill="#3b82f6"/>
+        <path d="M318 338l18 18m0-18l-18 18" stroke="#f59e0b" stroke-linecap="round" stroke-width="5"/>
+        <path d="M710 340l18 18m0-18l-18 18" stroke="#ef4444" stroke-linecap="round" stroke-width="5"/>
+        <path d="M588 236l12 24l26 4l-19 19l5 26l-24-12l-23 12l4-26l-18-19l26-4l11-24Z" fill="#facc15"/>
+      </g>`;
+  }
+
+  if (effect === "cursor") {
+    return `
+      <g opacity="0.82">
+        <path d="M782 552l92 50l-39 16l28 55l-28 14l-28-56l-32 30l7-109Z" fill="#ffffff" stroke="#31446a" stroke-linejoin="round" stroke-width="5"/>
+        <path d="M720 492c42 10 76 32 102 66" fill="none" stroke="#60a5fa" stroke-dasharray="7 12" stroke-linecap="round" stroke-width="4"/>
+      </g>`;
+  }
+
+  if (effect === "edge") {
+    return `
+      <g opacity="0.62">
+        <rect x="812" y="300" width="132" height="408" rx="34" fill="#e5e7eb"/>
+        <rect x="844" y="332" width="72" height="344" rx="24" fill="#94a3b8" opacity="0.58"/>
+      </g>`;
+  }
+
   return "";
 }
 
-function frameSvg(source, imageBase64, moodId) {
+function frameSvg(source, effectName, imageHref) {
   const artboard = source.artboard;
   const placement = source.sourceImagePlacement;
-  const mood = source.moods[moodId];
-  const effect = moodEffectSvg(mood.frameEffect, artboard).trim();
+  const effect = visualEffectSvg(effectName, artboard).trim();
   const effectBlock = effect ? `${effect}\n` : "";
-  const imageHref = `data:image/png;base64,${imageBase64}`;
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${artboard.width}" height="${artboard.height}" viewBox="0 0 ${artboard.width} ${artboard.height}">
   <defs>
@@ -92,30 +166,70 @@ ${effectBlock}
 
 function buildManifest(source, contentHash) {
   const animations = {};
+  const origin = {
+    x: source.artboard.width / 2,
+    y: source.sourceImagePlacement.y + source.sourceImagePlacement.height * 0.92
+  };
+
+  function createFrame({ id, mood, src, durationMs, translateX, translateY, scaleX, scaleY, rotation }) {
+    return {
+      id,
+      mood,
+      src,
+      kind: "svg",
+      rect: { x: 0, y: 0, width: source.artboard.width, height: source.artboard.height },
+      durationMs,
+      bodyTransform: {
+        origin,
+        translateX,
+        translateY,
+        scaleX,
+        scaleY,
+        rotation
+      }
+    };
+  }
 
   moods.forEach((moodId) => {
-    const frame = {
+    const frame = createFrame({
       id: `${moodId}-idle-base`,
       mood: moodId,
       src: `frames/${moodId}-idle.svg`,
-      kind: "svg",
-      rect: { x: 0, y: 0, width: source.artboard.width, height: source.artboard.height },
       durationMs: source.motion.idle.durationMs,
-      bodyTransform: {
-        origin: {
-          x: source.artboard.width / 2,
-          y: source.sourceImagePlacement.y + source.sourceImagePlacement.height * 0.92
-        },
-        translateY: source.motion.idle.bobAmplitude,
-        scaleX: source.motion.idle.breathAmplitude * -0.4,
-        scaleY: source.motion.idle.breathAmplitude
-      }
-    };
+      translateX: 0,
+      translateY: source.motion.idle.bobAmplitude,
+      scaleX: source.motion.idle.breathAmplitude * -0.4,
+      scaleY: source.motion.idle.breathAmplitude,
+      rotation: 0
+    });
 
     animations[`${moodId}.idle`] = {
       id: `${moodId}.idle`,
       mood: moodId,
       motionState: "idle",
+      fps: source.motion.idle.fps,
+      loop: true,
+      frames: [frame]
+    };
+  });
+
+  Object.entries(source.actions ?? {}).forEach(([actionId, action]) => {
+    const frame = createFrame({
+      id: `${actionId}-base`,
+      mood: action.mood,
+      src: `frames/${actionId}.svg`,
+      durationMs: action.durationMs,
+      translateX: action.translateX,
+      translateY: action.translateY,
+      scaleX: action.scaleX,
+      scaleY: action.scaleY,
+      rotation: action.rotation
+    });
+
+    animations[`action.${actionId}`] = {
+      id: `action.${actionId}`,
+      mood: action.mood,
+      motionState: actionId,
       fps: source.motion.idle.fps,
       loop: true,
       frames: [frame]
@@ -132,7 +246,7 @@ function buildManifest(source, contentHash) {
     generatedAt: "2026-07-06T00:00:00.000Z",
     contentHash,
     artboard: source.artboard,
-    defaultAnimation: "focused.idle",
+    defaultAnimation: "action.idle-breathe",
     defaultTokenMode: "embedded",
     dynamicSlots: {
       tokenText: {
@@ -171,21 +285,37 @@ async function writeIfChanged(path, value) {
   return true;
 }
 
+async function writeBufferIfChanged(path, value) {
+  try {
+    const existing = await readFile(path);
+    if (Buffer.compare(existing, value) === 0) return false;
+  } catch {
+    // File does not exist yet.
+  }
+
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, value);
+  return true;
+}
+
 async function main() {
   const sourceText = await readFile(sourcePath, "utf8");
   const source = JSON.parse(sourceText);
   const imagePath = resolve(repoRoot, source.sourceImage);
   const imageBuffer = await readFile(imagePath);
-  const imageBase64 = imageBuffer.toString("base64");
+  const imageHref = `data:image/png;base64,${imageBuffer.toString("base64")}`;
   const contentHash = createContentHash(sourceText, imageBuffer);
   const manifest = buildManifest(source, contentHash);
 
   await mkdir(frameDir, { recursive: true });
 
-  const writes = [];
+  const writes = [writeBufferIfChanged(resolve(runtimeSourceDir, "golden-british.png"), imageBuffer)];
   for (const moodId of moods) {
-    writes.push(writeIfChanged(resolve(frameDir, `${moodId}-idle.svg`), frameSvg(source, imageBase64, moodId)));
+    writes.push(writeIfChanged(resolve(frameDir, `${moodId}-idle.svg`), frameSvg(source, source.moods[moodId].frameEffect, imageHref)));
   }
+  Object.entries(source.actions ?? {}).forEach(([actionId, action]) => {
+    writes.push(writeIfChanged(resolve(frameDir, `${actionId}.svg`), frameSvg(source, action.effect, imageHref)));
+  });
   writes.push(writeIfChanged(resolve(outputDir, "actor.json"), `${JSON.stringify(manifest, null, 2)}\n`));
 
   const changed = (await Promise.all(writes)).filter(Boolean).length;

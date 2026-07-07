@@ -2,7 +2,22 @@ export type PetActorSchemaVersion = "pet-actor/v1";
 export type PetActorSourceSchemaVersion = "pet-actor-source/v1";
 
 export type PetActorMood = "sleepy" | "focused" | "hot" | "overdrive";
-export type PetActorMotionState = "idle" | "blink" | "hover" | "click" | "drag" | "drop";
+export type PetActorMotionState =
+  | "idle"
+  | "idle-breathe"
+  | "tail-wag"
+  | "blink"
+  | "stretch"
+  | "run-across"
+  | "jump"
+  | "desk-nap"
+  | "celebrate"
+  | "pounce-cursor"
+  | "edge-peek"
+  | "hover"
+  | "click"
+  | "drag"
+  | "drop";
 export type PetActorTokenMode = "embedded" | "below" | "floating" | "hidden";
 export type PetActorFrameAssetKind = "svg" | "png" | "webp" | "atlas";
 
@@ -28,6 +43,18 @@ export type PetActorTransform = {
   scaleX?: number;
   scaleY?: number;
   rotation?: number;
+};
+
+export type PetActorSourceAction = {
+  label: string;
+  mood: PetActorMood;
+  effect: string;
+  durationMs: number;
+  translateX: number;
+  translateY: number;
+  scaleX: number;
+  scaleY: number;
+  rotation: number;
 };
 
 export type PetActorSourceLayer = {
@@ -66,6 +93,7 @@ export type PetActorSourceSpec = {
       durationMs: number;
     };
   };
+  actions: Record<string, PetActorSourceAction>;
   moods: Record<
     PetActorMood,
     {

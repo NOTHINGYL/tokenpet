@@ -18,11 +18,13 @@ import {
   petConsoleSections,
   skinThemes,
   tokenBubbleOptions,
+  type PetConsoleSection,
 } from "./catalog";
 import { getTokenFrameForBubble, patchAccessorySettings } from "./accessorySettings";
 import { AccessoriesPage } from "./AccessoriesPage";
 import { CatTypePage } from "./CatTypePage";
 import { CatTypeCard } from "./CatTypePicker";
+import { MotionPanel } from "./MotionPanel";
 import { exportPetPreview } from "./previewExport";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
 import { PetIcon } from "./icons";
@@ -43,20 +45,26 @@ function HeaderAction(props: { label: string; onClick?: () => void }) {
   );
 }
 
-function PetSubnav() {
+function PetSubnav(props: { activeSection: PetConsoleSection; onSelectSection: (section: PetConsoleSection) => void }) {
   return (
     <nav className="pet-console-subnav" aria-label="Pet customization sections">
-      {petConsoleSections.map((section) => (
-        <button
-          className={section.id === "appearance" ? "active" : "static"}
-          key={section.id}
-          type="button"
-          aria-current={section.id === "appearance" ? "page" : undefined}
-        >
-          <PetIcon name={section.id} />
-          {section.label}
-        </button>
-      ))}
+      {petConsoleSections.map((section) => {
+        const enabled = section.id === "appearance" || section.id === "motion";
+        return (
+          <button
+            className={`${section.id === props.activeSection ? "active" : ""} ${enabled ? "" : "static"}`.trim()}
+            key={section.id}
+            type="button"
+            aria-current={section.id === props.activeSection ? "page" : undefined}
+            onClick={() => {
+              if (enabled) props.onSelectSection(section.id);
+            }}
+          >
+            <PetIcon name={section.id} />
+            {section.label}
+          </button>
+        );
+      })}
     </nav>
   );
 }
@@ -369,6 +377,7 @@ function AccessoriesCard(props: {
 
 export function AppearancePanel(props: AppearancePanelProps) {
   const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type" | "accessories">("appearance");
+  const [activeSection, setActiveSection] = useState<PetConsoleSection>("appearance");
   const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(
     props.settings,
     props.setSetting,
@@ -401,10 +410,15 @@ export function AppearancePanel(props: AppearancePanelProps) {
     });
   };
 
+  const selectConsoleSection = (section: PetConsoleSection) => {
+    setActiveSection(section);
+    if (section !== "appearance") setActiveAppearancePage("appearance");
+  };
+
   if (activeAppearancePage === "cat-type") {
     return (
       <div className="pet-appearance-panel pet-cat-type-panel">
-        <PetSubnav />
+        <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
         <CatTypePage
           appearance={appearance}
           usage={props.usage}
@@ -420,7 +434,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
   if (activeAppearancePage === "accessories") {
     return (
       <div className="pet-appearance-panel pet-accessories-panel">
-        <PetSubnav />
+        <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
         <AccessoriesPage
           appearance={appearance}
           usage={props.usage}
@@ -434,62 +448,68 @@ export function AppearancePanel(props: AppearancePanelProps) {
   }
 
   return (
-    <div className="pet-appearance-panel">
-      <PetSubnav />
-      <div className="pet-appearance-grid">
-        <PetPreview
-          appearance={appearance}
-          usage={props.usage}
-          canUndo={canUndo}
-          onCapture={() => void exportPetPreview(appearance, props.usage)}
-          onReset={resetAppearance}
-          onUndo={undoAppearance}
-        />
-        <div className="pet-main-column">
-          <CatTypeCard
-            selectedCat={appearance.catTypeId}
-            onSelectCat={selectCatType}
-            onViewAll={() => setActiveAppearancePage("cat-type")}
-          />
-          <div className="pet-lower-controls">
-            <DisplayCard appearance={appearance} onPatchAppearance={patchAppearance} />
-            <SkinCard selectedSkin={appearance.themeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
+    <div className={`pet-appearance-panel ${activeSection === "motion" ? "pet-motion-root" : ""}`}>
+      <PetSubnav activeSection={activeSection} onSelectSection={selectConsoleSection} />
+      {activeSection === "motion" ? (
+        <MotionPanel appearance={appearance} usage={props.usage} onPatchAppearance={patchAppearance} />
+      ) : (
+        <>
+          <div className="pet-appearance-grid">
+            <PetPreview
+              appearance={appearance}
+              usage={props.usage}
+              canUndo={canUndo}
+              onCapture={() => void exportPetPreview(appearance, props.usage)}
+              onReset={resetAppearance}
+              onUndo={undoAppearance}
+            />
+            <div className="pet-main-column">
+              <CatTypeCard
+                selectedCat={appearance.catTypeId}
+                onSelectCat={selectCatType}
+                onViewAll={() => setActiveAppearancePage("cat-type")}
+              />
+              <div className="pet-lower-controls">
+                <DisplayCard appearance={appearance} onPatchAppearance={patchAppearance} />
+                <SkinCard selectedSkin={appearance.themeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
+              </div>
+            </div>
+            <div className="pet-side-column">
+              <TokenBubbleCard
+                selectedBubble={appearance.tokenBubbleId}
+                onSelectBubble={(tokenBubbleId) =>
+                  patchAppearance({
+                    tokenBubbleId,
+                    accessorySettings: {
+                      ...appearance.accessorySettings,
+                      tokenFrameId: getTokenFrameForBubble(tokenBubbleId, appearance.catTypeId),
+                    },
+                  })
+                }
+              />
+              <MoodBadgeCard appearance={appearance} onPatchAppearance={patchAppearance} />
+            </div>
+            <div className="pet-bottom-row">
+              <MoodLooksCard selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} />
+              <AccessoriesCard
+                selectedAccessories={appearance.accessoryIds}
+                onToggleAccessory={toggleAccessory}
+                onViewAll={() => setActiveAppearancePage("accessories")}
+              />
+            </div>
           </div>
-        </div>
-        <div className="pet-side-column">
-          <TokenBubbleCard
-            selectedBubble={appearance.tokenBubbleId}
-            onSelectBubble={(tokenBubbleId) =>
-              patchAppearance({
-                tokenBubbleId,
-                accessorySettings: {
-                  ...appearance.accessorySettings,
-                  tokenFrameId: getTokenFrameForBubble(tokenBubbleId, appearance.catTypeId),
-                },
-              })
-            }
-          />
-          <MoodBadgeCard appearance={appearance} onPatchAppearance={patchAppearance} />
-        </div>
-        <div className="pet-bottom-row">
-          <MoodLooksCard selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} />
-          <AccessoriesCard
-            selectedAccessories={appearance.accessoryIds}
-            onToggleAccessory={toggleAccessory}
-            onViewAll={() => setActiveAppearancePage("accessories")}
-          />
-        </div>
-      </div>
-      <footer className="pet-appearance-footer">
-        <span>
-          <PetIcon name="spark" />
-          Changes apply instantly.
-        </span>
-        <button type="button" onClick={resetAppearance}>
-          <PetIcon name="reset" />
-          Reset appearance
-        </button>
-      </footer>
+          <footer className="pet-appearance-footer">
+            <span>
+              <PetIcon name="spark" />
+              Changes apply instantly.
+            </span>
+            <button type="button" onClick={resetAppearance}>
+              <PetIcon name="reset" />
+              Reset appearance
+            </button>
+          </footer>
+        </>
+      )}
     </div>
   );
 }

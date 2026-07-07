@@ -6,12 +6,12 @@
   "sourceVersion": "0.8.0-mvp",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-06T00:00:00.000Z",
-  "contentHash": "75e5b35e09120aaa",
+  "contentHash": "6de37d015b4e50b8",
   "artboard": {
     "width": 1024,
     "height": 1024
   },
-  "defaultAnimation": "focused.idle",
+  "defaultAnimation": "action.idle-breathe",
   "defaultTokenMode": "embedded",
   "dynamicSlots": {
     "tokenText": {
@@ -65,9 +65,11 @@
               "x": 512,
               "y": 853.84
             },
+            "translateX": 0,
             "translateY": 6,
             "scaleX": -0.0048000000000000004,
-            "scaleY": 0.012
+            "scaleY": 0.012,
+            "rotation": 0
           }
         }
       ]
@@ -96,9 +98,11 @@
               "x": 512,
               "y": 853.84
             },
+            "translateX": 0,
             "translateY": 6,
             "scaleX": -0.0048000000000000004,
-            "scaleY": 0.012
+            "scaleY": 0.012,
+            "rotation": 0
           }
         }
       ]
@@ -127,9 +131,11 @@
               "x": 512,
               "y": 853.84
             },
+            "translateX": 0,
             "translateY": 6,
             "scaleX": -0.0048000000000000004,
-            "scaleY": 0.012
+            "scaleY": 0.012,
+            "rotation": 0
           }
         }
       ]
@@ -158,9 +164,341 @@
               "x": 512,
               "y": 853.84
             },
+            "translateX": 0,
             "translateY": 6,
             "scaleX": -0.0048000000000000004,
-            "scaleY": 0.012
+            "scaleY": 0.012,
+            "rotation": 0
+          }
+        }
+      ]
+    },
+    "action.idle-breathe": {
+      "id": "action.idle-breathe",
+      "mood": "focused",
+      "motionState": "idle-breathe",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "idle-breathe-base",
+          "mood": "focused",
+          "src": "frames/idle-breathe.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1800,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 0,
+            "translateY": 5,
+            "scaleX": -0.004,
+            "scaleY": 0.012,
+            "rotation": 0
+          }
+        }
+      ]
+    },
+    "action.tail-wag": {
+      "id": "action.tail-wag",
+      "mood": "focused",
+      "motionState": "tail-wag",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "tail-wag-base",
+          "mood": "focused",
+          "src": "frames/tail-wag.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1150,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 2,
+            "translateY": 4,
+            "scaleX": -0.004,
+            "scaleY": 0.01,
+            "rotation": 0.4
+          }
+        }
+      ]
+    },
+    "action.blink": {
+      "id": "action.blink",
+      "mood": "focused",
+      "motionState": "blink",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "blink-base",
+          "mood": "focused",
+          "src": "frames/blink.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 2400,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 0,
+            "translateY": 3,
+            "scaleX": -0.003,
+            "scaleY": 0.008,
+            "rotation": 0
+          }
+        }
+      ]
+    },
+    "action.stretch": {
+      "id": "action.stretch",
+      "mood": "focused",
+      "motionState": "stretch",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "stretch-base",
+          "mood": "focused",
+          "src": "frames/stretch.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1600,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": -4,
+            "translateY": 7,
+            "scaleX": 0.018,
+            "scaleY": -0.01,
+            "rotation": -0.8
+          }
+        }
+      ]
+    },
+    "action.run-across": {
+      "id": "action.run-across",
+      "mood": "focused",
+      "motionState": "run-across",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "run-across-base",
+          "mood": "focused",
+          "src": "frames/run-across.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1800,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 110,
+            "translateY": 6,
+            "scaleX": 0.008,
+            "scaleY": -0.004,
+            "rotation": 1.4
+          }
+        }
+      ]
+    },
+    "action.jump": {
+      "id": "action.jump",
+      "mood": "focused",
+      "motionState": "jump",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "jump-base",
+          "mood": "focused",
+          "src": "frames/jump.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1350,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 42,
+            "translateY": -88,
+            "scaleX": -0.006,
+            "scaleY": 0.014,
+            "rotation": 2
+          }
+        }
+      ]
+    },
+    "action.desk-nap": {
+      "id": "action.desk-nap",
+      "mood": "sleepy",
+      "motionState": "desk-nap",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "desk-nap-base",
+          "mood": "sleepy",
+          "src": "frames/desk-nap.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 2800,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 0,
+            "translateY": 4,
+            "scaleX": -0.002,
+            "scaleY": 0.006,
+            "rotation": -0.4
+          }
+        }
+      ]
+    },
+    "action.celebrate": {
+      "id": "action.celebrate",
+      "mood": "focused",
+      "motionState": "celebrate",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "celebrate-base",
+          "mood": "focused",
+          "src": "frames/celebrate.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1500,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 0,
+            "translateY": -28,
+            "scaleX": -0.012,
+            "scaleY": 0.018,
+            "rotation": 1.2
+          }
+        }
+      ]
+    },
+    "action.pounce-cursor": {
+      "id": "action.pounce-cursor",
+      "mood": "focused",
+      "motionState": "pounce-cursor",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "pounce-cursor-base",
+          "mood": "focused",
+          "src": "frames/pounce-cursor.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1300,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": 58,
+            "translateY": -24,
+            "scaleX": 0.012,
+            "scaleY": -0.006,
+            "rotation": 2.4
+          }
+        }
+      ]
+    },
+    "action.edge-peek": {
+      "id": "action.edge-peek",
+      "mood": "focused",
+      "motionState": "edge-peek",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "edge-peek-base",
+          "mood": "focused",
+          "src": "frames/edge-peek.svg",
+          "kind": "svg",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 1700,
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 853.84
+            },
+            "translateX": -72,
+            "translateY": 4,
+            "scaleX": -0.004,
+            "scaleY": 0.01,
+            "rotation": -1.2
           }
         }
       ]

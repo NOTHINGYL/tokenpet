@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import goldenBritishActorManifestJson from "../../../public/pet-actors/golden-british/actor.json";
-import type { PetActorFrameAsset, PetActorManifest, PetActorMood, PetActorRect, PetActorTokenMode } from "../../../../../packages/pet-asset-schema/src";
+import type {
+  PetActorAnimation,
+  PetActorFrameAsset,
+  PetActorManifest,
+  PetActorMood,
+  PetActorRect,
+  PetActorTokenMode,
+} from "../../../../../packages/pet-asset-schema/src";
 import type { MoodLookId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
 import { getEffectiveTokenBubbleId, getMoodLabel, getTokenBubbleLabel, getTokenFrameOption, moodToneClass, shouldShowMoodBadge } from "../pet-appearance/appearanceView";
 import type { PetActorProps, PetSurface } from "../pet-actor/actorTypes";
@@ -10,6 +17,7 @@ type GeneratedActorImageMap = Map<string, HTMLImageElement>;
 
 type GeneratedActorRenderPlan = {
   manifest: PetActorManifest;
+  animation: PetActorAnimation;
   frame: PetActorFrameAsset;
   moodId: MoodLookId;
   surface: PetSurface;
@@ -76,6 +84,17 @@ function resolveAnimation(manifest: PetActorManifest, moodId: MoodLookId) {
   return manifest.animations[`${moodId}.idle`] ?? manifest.animations[manifest.defaultAnimation] ?? Object.values(manifest.animations)[0];
 }
 
+function resolveActionAnimation(manifest: PetActorManifest, actionId: string | undefined, moodId: MoodLookId) {
+  if (actionId) {
+    const actionAnimation = manifest.animations[`action.${actionId}`];
+    if (actionAnimation) return actionAnimation;
+  }
+
+  const defaultAction = manifest.animations[manifest.defaultAnimation];
+  if (defaultAction) return defaultAction;
+  return resolveAnimation(manifest, moodId);
+}
+
 function resolveTokenMode(appearance: PetAppearanceSettings, manifest: PetActorManifest): PetActorTokenMode {
   const tokenBubbleId = getEffectiveTokenBubbleId(appearance);
   const frame = getTokenFrameOption(appearance);
@@ -99,7 +118,7 @@ function resolveTokenRect(manifest: PetActorManifest, tokenMode: PetActorTokenMo
 
 function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): GeneratedActorRenderPlan {
   const moodId = props.moodId ?? props.appearance.moodId;
-  const animation = resolveAnimation(manifest, moodId);
+  const animation = resolveActionAnimation(manifest, props.motionActionId ?? props.appearance.motionSettings.actionId, moodId);
   const frame = animation.frames[0];
   const tokenMode = resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
@@ -111,6 +130,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
 
   return {
     manifest,
+    animation,
     frame,
     moodId,
     surface: props.surface,
@@ -226,21 +246,50 @@ function drawMoodBadge(context: CanvasRenderingContext2D, plan: GeneratedActorRe
   context.restore();
 }
 
-function applyGeneratedBodyMotion(context: CanvasRenderingContext2D, frame: PetActorFrameAsset, time: number, hover: boolean) {
+function easeInOutSine(value: number) {
+  return -(Math.cos(Math.PI * value) - 1) / 2;
+}
+
+function travelPhase(phase01: number) {
+  if (phase01 < 0.5) return easeInOutSine(phase01 * 2);
+  return easeInOutSine((1 - phase01) * 2);
+}
+
+function jumpPhase(phase01: number) {
+  return Math.sin(Math.PI * phase01);
+}
+
+function applyGeneratedBodyMotion(context: CanvasRenderingContext2D, plan: GeneratedActorRenderPlan, time: number, hover: boolean) {
+  const frame = plan.frame;
   const transform = frame.bodyTransform;
   if (!transform) return;
 
-  const phase = Math.sin((time * Math.PI * 2) / (frame.durationMs / 1000));
+  const speed = plan.appearance.motionSettings.safety.reduceMotion ? 0.35 : plan.appearance.motionSettings.animationSpeed / 80;
+  const energy = plan.appearance.motionSettings.safety.reduceMotion ? 0.28 : 0.45 + plan.appearance.motionSettings.motionEnergy / 100;
+  const durationSeconds = Math.max(0.4, frame.durationMs / 1000 / Math.max(speed, 0.2));
+  const phase01 = (time % durationSeconds) / durationSeconds;
+  const sine = Math.sin(phase01 * Math.PI * 2);
+  const jump = jumpPhase(phase01);
+  const travel = travelPhase(phase01);
   const origin = transform.origin;
-  const translateX = (transform.translateX ?? 0) * phase;
-  const translateY = (transform.translateY ?? 0) * phase + (hover ? -10 : 0);
-  const scaleX = 1 + (transform.scaleX ?? 0) * phase;
-  const scaleY = 1 + (transform.scaleY ?? 0) * phase;
+  const motionState = plan.animation.motionState;
+  const jumpBoost = plan.appearance.motionSettings.jumpHeight / 70;
+  const translateX =
+    motionState === "run-across" || motionState === "edge-peek" || motionState === "pounce-cursor"
+      ? (transform.translateX ?? 0) * travel * energy
+      : (transform.translateX ?? 0) * sine * energy;
+  const translateY =
+    motionState === "jump" || motionState === "celebrate" || motionState === "pounce-cursor"
+      ? (transform.translateY ?? 0) * jump * jumpBoost * energy
+      : (transform.translateY ?? 0) * sine * energy;
+  const scaleX = 1 + (transform.scaleX ?? 0) * (motionState === "stretch" ? travel : sine) * energy;
+  const scaleY = 1 + (transform.scaleY ?? 0) * (motionState === "stretch" ? travel : sine) * energy;
+  const rotation = (transform.rotation ?? 0) * sine * energy;
 
   context.translate(origin.x, origin.y);
-  context.translate(translateX, translateY);
+  context.translate(translateX, translateY + (hover ? -10 : 0));
   context.scale(scaleX, scaleY);
-  context.rotate(((transform.rotation ?? 0) * Math.PI) / 180);
+  context.rotate((rotation * Math.PI) / 180);
   context.translate(-origin.x, -origin.y);
 }
 
@@ -261,7 +310,7 @@ function renderGeneratedPetActorCanvas(
   context.imageSmoothingQuality = "high";
 
   context.save();
-  applyGeneratedBodyMotion(context, plan.frame, time, interactiveState.hover);
+  applyGeneratedBodyMotion(context, plan, time, interactiveState.hover);
   context.drawImage(frameImage, 0, 0, plan.manifest.artboard.width, plan.manifest.artboard.height);
   if (plan.tokenMode === "embedded") drawTokenText(context, plan);
   context.restore();

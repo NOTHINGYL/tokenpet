@@ -44,6 +44,26 @@ export function useAppearanceController(settings: AppSettings, setSetting: SetSe
               ...(patch.accessorySettings?.moodVisibility ?? {}),
             },
           },
+          motionSettings: {
+            ...appearance.motionSettings,
+            ...(patch.motionSettings ?? {}),
+            desktopRoaming: {
+              ...appearance.motionSettings.desktopRoaming,
+              ...(patch.motionSettings?.desktopRoaming ?? {}),
+            },
+            triggers: {
+              ...appearance.motionSettings.triggers,
+              ...(patch.motionSettings?.triggers ?? {}),
+            },
+            safety: {
+              ...appearance.motionSettings.safety,
+              ...(patch.motionSettings?.safety ?? {}),
+            },
+            quietHours: {
+              ...appearance.motionSettings.quietHours,
+              ...(patch.motionSettings?.quietHours ?? {}),
+            },
+          },
         },
         options,
       );
