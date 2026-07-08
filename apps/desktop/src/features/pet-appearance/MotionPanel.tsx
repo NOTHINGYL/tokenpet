@@ -159,7 +159,13 @@ function ActionLibrary(props: { selectedAction: MotionActionId; onSelect: (actio
       </div>
       <div className="motion-action-grid">
         {motionActions.map((action) => (
-          <button className={props.selectedAction === action.id ? "selected" : ""} key={action.id} type="button" onClick={() => props.onSelect(action.id)}>
+          <button
+            className={props.selectedAction === action.id ? "selected" : ""}
+            key={action.id}
+            type="button"
+            data-motion-action-id={action.id}
+            onClick={() => props.onSelect(action.id)}
+          >
             <span className="motion-action-menu">
               <PetIcon name="more" />
             </span>

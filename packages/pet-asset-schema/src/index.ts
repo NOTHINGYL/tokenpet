@@ -20,6 +20,18 @@ export type PetActorMotionState =
   | "drop";
 export type PetActorTokenMode = "embedded" | "below" | "floating" | "hidden";
 export type PetActorFrameAssetKind = "svg" | "png" | "webp" | "atlas";
+export type PetActorSourcePose =
+  | "source"
+  | "sitting"
+  | "tail-wag"
+  | "blink"
+  | "stretch"
+  | "run"
+  | "jump"
+  | "nap"
+  | "celebrate"
+  | "pounce"
+  | "edge-peek";
 
 export type PetActorSize = {
   width: number;
@@ -48,6 +60,7 @@ export type PetActorTransform = {
 export type PetActorSourceAction = {
   label: string;
   mood: PetActorMood;
+  pose?: PetActorSourcePose;
   effect: string;
   durationMs: number;
   translateX: number;

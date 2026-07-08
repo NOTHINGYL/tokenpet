@@ -1070,6 +1070,11 @@
   white-space: nowrap;
 }
 
+.pet-console-subnav button:focus,
+.pet-console-subnav button:focus-visible {
+  outline: none;
+}
+
 .pet-console-subnav button.active {
   color: var(--qp-green);
   font-weight: 650;
@@ -2776,8 +2781,8 @@
 
 .pet-motion-grid {
   display: grid;
-  grid-template-columns: minmax(310px, 0.35fr) repeat(3, minmax(180px, 1fr));
-  grid-template-rows: minmax(250px, 0.45fr) minmax(216px, 0.4fr) minmax(76px, 0.15fr);
+  grid-template-columns: minmax(330px, 0.37fr) repeat(3, minmax(180px, 1fr));
+  grid-template-rows: clamp(230px, 33vh, 346px) clamp(210px, 25vh, 250px) clamp(53px, 9vh, 88px);
   grid-template-areas:
     "preview main main main"
     "controls roaming triggers safety"
@@ -2797,7 +2802,7 @@
 .motion-main-column {
   grid-area: main;
   display: grid;
-  grid-template-rows: clamp(92px, 11vh, 106px) minmax(0, 1fr);
+  grid-template-rows: clamp(74px, 9vh, 102px) minmax(0, 1fr);
   gap: var(--pet-gap);
   min-width: 0;
   min-height: 0;
@@ -2816,8 +2821,8 @@
 }
 
 .motion-preview-stage .pet-appearance-visual-preview {
-  --pet-visual-cat-width: clamp(86px, 8vw, 112px);
-  --pet-visual-cat-y: clamp(-5px, -0.6vh, 0px);
+  --pet-visual-cat-width: clamp(148px, 13.4vw, 218px);
+  --pet-visual-cat-y: clamp(-18px, -2vh, -8px);
   --pet-visual-token-bottom: clamp(42px, 6.2vh, 72px);
   --pet-visual-mood-top: clamp(14px, 2.3vh, 24px);
   z-index: 1;
@@ -2840,7 +2845,7 @@
 .motion-path-line {
   position: absolute;
   right: 12px;
-  bottom: 18%;
+  bottom: 20%;
   left: 22px;
   z-index: 0;
   display: grid;
@@ -2934,13 +2939,13 @@
 .motion-mode-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 9px;
+  gap: clamp(6px, 0.8vw, 9px);
 }
 
 .motion-mode-grid button {
   display: inline-flex;
   min-width: 0;
-  min-height: 40px;
+  min-height: clamp(30px, 4.2vh, 40px);
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -2974,27 +2979,34 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
+  --pet-card-pad-y: clamp(7px, 0.9vh, 10px);
 }
 
 .motion-action-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: clamp(6px, 0.75vw, 8px);
   min-height: 0;
 }
 
 .motion-action-grid button {
   position: relative;
   display: grid;
-  grid-template-rows: minmax(48px, 1fr) 22px;
+  grid-template-rows: minmax(24px, 1fr) clamp(11px, 1.8vh, 18px);
   min-width: 0;
   min-height: 0;
-  padding: 7px 6px 6px;
+  padding: clamp(1px, 0.3vh, 5px) 5px clamp(1px, 0.3vh, 5px);
   overflow: hidden;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 7px;
   background: #ffffff;
   color: var(--qp-text);
+}
+
+.motion-action-grid button:focus,
+.motion-action-grid button:focus-visible {
+  outline: none;
 }
 
 .motion-action-grid button.selected {
@@ -3005,17 +3017,17 @@
 .motion-action-grid img {
   width: 100%;
   height: 100%;
-  min-height: 42px;
-  max-height: 72px;
+  min-height: 24px;
+  max-height: 82px;
   object-fit: contain;
-  transform: scale(1.25);
+  transform: scale(1.48);
   transform-origin: center;
 }
 
 .motion-action-grid strong {
   overflow: hidden;
   align-self: end;
-  font-size: clamp(9.5px, 0.78vw, 11px);
+  font-size: clamp(7px, 0.72vw, 11px);
   font-weight: 680;
   line-height: 1.1;
   text-align: center;
@@ -3064,21 +3076,21 @@
 }
 
 .pet-motion-grid .pet-card-header {
-  min-height: clamp(24px, 3.5vh, 32px);
-  margin-bottom: 5px;
+  min-height: clamp(21px, 3.2vh, 32px);
+  margin-bottom: clamp(3px, 0.7vh, 5px);
 }
 
 .motion-range-list,
 .motion-toggle-list {
   display: grid;
   align-content: stretch;
-  gap: 4px;
+  gap: clamp(2px, 0.5vh, 4px);
   min-height: 0;
 }
 
 .motion-range-row {
   display: grid;
-  gap: 5px;
+  gap: clamp(1px, 0.35vh, 4px);
 }
 
 .motion-range-row span {
@@ -3135,7 +3147,7 @@
   grid-template-columns: auto minmax(0, 1fr) 34px;
   align-items: center;
   gap: 8px;
-  min-height: clamp(21px, 3vh, 27px);
+  min-height: clamp(19px, 2.7vh, 27px);
   padding: 0;
   border: 0;
   color: #1f2937;
@@ -3156,8 +3168,8 @@
 
 .motion-toggle-icon {
   display: grid;
-  width: 25px;
-  height: 25px;
+  width: clamp(21px, 2.8vh, 25px);
+  height: clamp(21px, 2.8vh, 25px);
   place-items: center;
   border-radius: 7px;
   color: #2f5592;
@@ -3189,7 +3201,7 @@
 
 .motion-quiet-hours select {
   min-width: 0;
-  height: 30px;
+  height: clamp(24px, 3.4vh, 30px);
   padding: 0 8px;
   border: 1px solid rgba(16, 24, 40, 0.08);
   border-radius: 7px;

@@ -1,6 +1,6 @@
 import type { MotionActionId, MotionModeId } from "../../types";
 
-const actorFrame = (name: string) => `pet-actors/golden-british/frames/${name}.svg`;
+const actorThumbnail = (name: string) => `pet-actors/golden-british/thumbnails/${name}.svg`;
 
 export type MotionModeOption = {
   id: MotionModeId;
@@ -27,61 +27,61 @@ export const motionActions: MotionActionOption[] = [
     id: "idle-breathe",
     label: "Idle breathe",
     detail: "Soft breathing loop",
-    image: actorFrame("idle-breathe"),
+    image: actorThumbnail("idle-breathe"),
   },
   {
     id: "tail-wag",
     label: "Tail wag",
     detail: "Small happy sway",
-    image: actorFrame("tail-wag"),
+    image: actorThumbnail("tail-wag"),
   },
   {
     id: "blink",
     label: "Blink",
     detail: "Gentle eye blink",
-    image: actorFrame("blink"),
+    image: actorThumbnail("blink"),
   },
   {
     id: "stretch",
     label: "Stretch",
     detail: "Wake up stretch",
-    image: actorFrame("stretch"),
+    image: actorThumbnail("stretch"),
   },
   {
     id: "run-across",
     label: "Run across screen",
     detail: "Sprint with dust",
-    image: actorFrame("run-across"),
+    image: actorThumbnail("run-across"),
   },
   {
     id: "jump",
     label: "Jump",
     detail: "Cross a small gap",
-    image: actorFrame("jump"),
+    image: actorThumbnail("jump"),
   },
   {
     id: "desk-nap",
     label: "Desk nap",
     detail: "Sleepy desk pause",
-    image: actorFrame("desk-nap"),
+    image: actorThumbnail("desk-nap"),
   },
   {
     id: "celebrate",
     label: "Celebrate",
     detail: "Milestone cheer",
-    image: actorFrame("celebrate"),
+    image: actorThumbnail("celebrate"),
   },
   {
     id: "pounce-cursor",
     label: "Pounce cursor",
     detail: "Play with pointer",
-    image: actorFrame("pounce-cursor"),
+    image: actorThumbnail("pounce-cursor"),
   },
   {
     id: "edge-peek",
     label: "Edge peek",
     detail: "Peek from screen edge",
-    image: actorFrame("edge-peek"),
+    image: actorThumbnail("edge-peek"),
   },
 ];
 
