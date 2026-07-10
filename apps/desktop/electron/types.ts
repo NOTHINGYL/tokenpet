@@ -218,7 +218,7 @@ export type AppSettings = {
   petStory: PetStorySettings;
 };
 
-export type PetActionId = "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop" | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up" | "settle_down" | "focus_start" | "cool_down" | "summon_to_screen" | "capture_moment";
+export type PetActionId = "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop" | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor" | "run_across" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up" | "settle_down" | "focus_start" | "cool_down" | "summon_to_screen" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetMemory = { id: string; kind: "firstSource" | "milestone" | "stage" | "dailyDigest"; title: string; message: string; createdAt: string; tokens?: number; stage?: PetLifeStage };
 export type PetJourneyState = { schemaVersion: 1; stage: PetLifeStage; milestoneIds: string[]; memories: PetMemory[]; firstSeenAt: string | null; lastSeenAt: string | null; lastUsageTokens: number; activeDays: number; lastDigestDate: string | null };

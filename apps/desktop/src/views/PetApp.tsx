@@ -116,6 +116,10 @@ export function PetApp() {
         window.setTimeout(() => void window.tokenpet?.capturePetMoment?.(), Math.min(420, Math.max(180, decision.durationMs / 4)));
       }
 
+      if (decision.sideEffect === "traverse") {
+        void window.tokenpet?.traversePet?.();
+      }
+
       if (decision.durationMs > 0) {
         completionTimerRef.current = window.setTimeout(() => {
           const completed = completePetDirectorAction(directorRef.current);
@@ -315,12 +319,21 @@ export function PetApp() {
   }
 
   const stageStyle = useMemo(
-    () =>
-      ({
+    () => {
+      const companionScale = Math.min(Math.max(appearance.size, 0.75), 1.25);
+      const closeSize = Math.round(24 + (companionScale - 0.75) * 8);
+      const closeCenterX = 130 + 78 * companionScale;
+      const closeCenterY = 172 - 66 * companionScale;
+      return ({
         "--pet-scale": appearance.size.toString(),
         "--pet-opacity": appearance.opacity.toString(),
         "--pet-shadow-opacity": appearance.shadow.toString(),
-      }) as CSSProperties,
+        "--pet-ui-close-size": `${closeSize}px`,
+        "--pet-ui-close-top": `${Math.round(closeCenterY - closeSize / 2)}px`,
+        "--pet-ui-close-right": `${Math.round(260 - closeCenterX - closeSize / 2)}px`,
+        "--pet-ui-close-font-size": `${Math.round(closeSize * 0.66)}px`,
+      }) as CSSProperties;
+    },
     [appearance.opacity, appearance.shadow, appearance.size],
   );
 

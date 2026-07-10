@@ -16,8 +16,17 @@ async function readFixture() {
   return JSON.parse(await readFile(resolve(packageDir, "fixtures/golden-british.actor.json"), "utf8"));
 }
 
+async function readSourceFixture() {
+  return JSON.parse(await readFile(resolve(packageDir, "../../assets/source/pet-actors/golden-british/source.json"), "utf8"));
+}
+
 function issueCodes(value) {
   const result = validatePetActorManifest(value);
+  return result.success ? [] : result.issues.map((issue) => issue.code);
+}
+
+function sourceIssueCodes(value) {
+  const result = validatePetActorSourceSpec(value);
   return result.success ? [] : result.issues.map((issue) => issue.code);
 }
 
@@ -55,6 +64,12 @@ test("ready capabilities must have a same-id action animation", async () => {
   click.status = "ready";
   delete click.fallbackId;
   assert.ok(issueCodes(fixture).includes("capability.readyAnimation"));
+});
+
+test("source frames reject invalid choreography timing", async () => {
+  const fixture = await readSourceFixture();
+  fixture.actions.idle_breathe.sourceFrames[0].durationMs = 0;
+  assert.ok(sourceIssueCodes(fixture).includes("source.frameDuration"));
 });
 
 test("every Quick Play action must be represented", async () => {

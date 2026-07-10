@@ -3,11 +3,11 @@
   "actorId": "golden-british",
   "displayName": "Golden British",
   "breedId": "golden-british",
-  "sourceVersion": "1.0.0-story",
+  "sourceVersion": "1.1.0-actions",
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "081f895bc5bab5fb1ff3e71caa0085a808731a465bda28f82b2402dc40d2195c",
+  "contentHash": "c091a5d51f4dc2dc855b26b1a870e64a8f3203eb5e88dec3a9d9c02cbf2d0319",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -111,6 +111,21 @@
         {
           "id": "blink-1",
           "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "blink:1"
+        },
+        {
+          "id": "blink-2",
+          "mood": "focused",
           "src": "frames/blink.png",
           "kind": "png",
           "rect": {
@@ -119,9 +134,54 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 140,
           "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
-          "sourceAssetId": "blink:1"
+          "sourceAssetId": "blink:2"
+        },
+        {
+          "id": "blink-3",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "blink:3"
+        },
+        {
+          "id": "blink-4",
+          "mood": "focused",
+          "src": "frames/blink.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
+          "sourceAssetId": "blink:4"
+        },
+        {
+          "id": "blink-5",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 460,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "blink:5"
         }
       ]
     },
@@ -218,9 +278,34 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 996,
+          "durationMs": 210,
           "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
           "sourceAssetId": "hot_loop:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -8,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "hot_loop-2",
+          "mood": "hot",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 170,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "hot_loop:2",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -248,6 +333,31 @@
         {
           "id": "overdrive_loop-1",
           "mood": "overdrive",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "overdrive_loop:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-2",
+          "mood": "overdrive",
           "src": "frames/overdrive_loop.png",
           "kind": "png",
           "rect": {
@@ -256,9 +366,59 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 900,
+          "durationMs": 180,
           "sha256": "e4789182163a9a497ad75a6c1d1571cbca42121377fbffb8934431a65affc869",
-          "sourceAssetId": "overdrive_loop:1",
+          "sourceAssetId": "overdrive_loop:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-3",
+          "mood": "overdrive",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "overdrive_loop:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-4",
+          "mood": "overdrive",
+          "src": "frames/overdrive_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "e4789182163a9a497ad75a6c1d1571cbca42121377fbffb8934431a65affc869",
+          "sourceAssetId": "overdrive_loop:4",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -286,6 +446,31 @@
         {
           "id": "click_purr-1",
           "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 160,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "click_purr:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": 4,
+            "scaleX": -0.005,
+            "scaleY": 0.009,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "click_purr-2",
+          "mood": "focused",
           "src": "frames/click_purr.png",
           "kind": "png",
           "rect": {
@@ -294,9 +479,84 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 420,
           "sha256": "6f0da39973acbf638f042d2bfdf46de93ece50950dda34d730f3bc71aee7ec28",
-          "sourceAssetId": "click_purr:1",
+          "sourceAssetId": "click_purr:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": 4,
+            "scaleX": -0.005,
+            "scaleY": 0.009,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "click_purr-3",
+          "mood": "focused",
+          "src": "frames/blink.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
+          "sourceAssetId": "click_purr:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": 4,
+            "scaleX": -0.005,
+            "scaleY": 0.009,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "click_purr-4",
+          "mood": "focused",
+          "src": "frames/click_purr.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 320,
+          "sha256": "6f0da39973acbf638f042d2bfdf46de93ece50950dda34d730f3bc71aee7ec28",
+          "sourceAssetId": "click_purr:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": 4,
+            "scaleX": -0.005,
+            "scaleY": 0.009,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "click_purr-5",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "click_purr:5",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -370,9 +630,109 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 150,
           "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
           "sourceAssetId": "drop_bounce:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -56,
+            "scaleX": -0.04,
+            "scaleY": 0.06,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "drop_bounce-2",
+          "mood": "focused",
+          "src": "frames/drop_bounce.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 170,
+          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "sourceAssetId": "drop_bounce:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -18,
+            "scaleX": 0.05,
+            "scaleY": -0.07,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "drop_bounce-3",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "drop_bounce:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -42,
+            "scaleX": 0.024,
+            "scaleY": -0.035,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "drop_bounce-4",
+          "mood": "focused",
+          "src": "frames/drop_bounce.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "sourceAssetId": "drop_bounce:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.02,
+            "scaleY": -0.025,
+            "rotation": 0
+          }
+        },
+        {
+          "id": "drop_bounce-5",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 250,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "drop_bounce:5",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -400,6 +760,21 @@
         {
           "id": "token_snack-1",
           "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "token_snack:1"
+        },
+        {
+          "id": "token_snack-2",
+          "mood": "focused",
           "src": "frames/token_snack.png",
           "kind": "png",
           "rect": {
@@ -408,9 +783,54 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 360,
           "sha256": "7214abab4d30ed502abe131969ff66972787c418b234c2399c349ab9812d4925",
-          "sourceAssetId": "token_snack:1"
+          "sourceAssetId": "token_snack:2"
+        },
+        {
+          "id": "token_snack-3",
+          "mood": "focused",
+          "src": "frames/click_purr.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 300,
+          "sha256": "6f0da39973acbf638f042d2bfdf46de93ece50950dda34d730f3bc71aee7ec28",
+          "sourceAssetId": "token_snack:3"
+        },
+        {
+          "id": "token_snack-4",
+          "mood": "focused",
+          "src": "frames/token_snack.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 320,
+          "sha256": "7214abab4d30ed502abe131969ff66972787c418b234c2399c349ab9812d4925",
+          "sourceAssetId": "token_snack:4"
+        },
+        {
+          "id": "token_snack-5",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "token_snack:5"
         }
       ]
     },
@@ -428,7 +848,7 @@
         {
           "id": "play_cursor-1",
           "mood": "focused",
-          "src": "frames/play_cursor.png",
+          "src": "frames/idle_breathe.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -436,8 +856,8 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
-          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "durationMs": 160,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
           "sourceAssetId": "play_cursor:1",
           "bodyTransform": {
             "origin": {
@@ -449,6 +869,435 @@
             "scaleX": 0.008,
             "scaleY": -0.004,
             "rotation": 1.4
+          }
+        },
+        {
+          "id": "play_cursor-2",
+          "mood": "focused",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "play_cursor:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 16,
+            "translateY": -12,
+            "scaleX": 0.008,
+            "scaleY": -0.004,
+            "rotation": 1.4
+          }
+        },
+        {
+          "id": "play_cursor-3",
+          "mood": "focused",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "play_cursor:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 16,
+            "translateY": -12,
+            "scaleX": 0.008,
+            "scaleY": -0.004,
+            "rotation": 1.4
+          }
+        },
+        {
+          "id": "play_cursor-4",
+          "mood": "focused",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "play_cursor:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 16,
+            "translateY": -12,
+            "scaleX": 0.008,
+            "scaleY": -0.004,
+            "rotation": 1.4
+          }
+        },
+        {
+          "id": "play_cursor-5",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "play_cursor:5",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 16,
+            "translateY": -12,
+            "scaleX": 0.008,
+            "scaleY": -0.004,
+            "rotation": 1.4
+          }
+        }
+      ]
+    },
+    "action.run_across": {
+      "id": "action.run_across",
+      "kind": "oneShot",
+      "mood": "hot",
+      "motionState": "run_across",
+      "fps": 14,
+      "loop": false,
+      "priority": 90,
+      "cooldownMs": 1800,
+      "reducedMotionFallback": "hot_loop",
+      "frames": [
+        {
+          "id": "run_across-1",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-2",
+          "mood": "hot",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "run_across:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-3",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-4",
+          "mood": "hot",
+          "src": "frames/drop_bounce.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "sourceAssetId": "run_across:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-5",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:5",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-6",
+          "mood": "hot",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "run_across:6",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-7",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:7",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-8",
+          "mood": "hot",
+          "src": "frames/drop_bounce.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "sourceAssetId": "run_across:8",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-9",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:9",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-10",
+          "mood": "hot",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "run_across:10",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-11",
+          "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "run_across:11",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "run_across-12",
+          "mood": "hot",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "run_across:12",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 22,
+            "translateY": -16,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
           }
         }
       ]
@@ -618,6 +1467,31 @@
         {
           "id": "milestone_celebrate-1",
           "mood": "hot",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "milestone_celebrate:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -22,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 1
+          }
+        },
+        {
+          "id": "milestone_celebrate-2",
+          "mood": "hot",
           "src": "frames/milestone_celebrate.png",
           "kind": "png",
           "rect": {
@@ -626,9 +1500,84 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 400,
           "sha256": "e26bf475f6f43d110a8e9bdedb813394ae440ed02cb11f47fcb9b1982906b281",
-          "sourceAssetId": "milestone_celebrate:1",
+          "sourceAssetId": "milestone_celebrate:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -22,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 1
+          }
+        },
+        {
+          "id": "milestone_celebrate-3",
+          "mood": "hot",
+          "src": "frames/click_purr.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "6f0da39973acbf638f042d2bfdf46de93ece50950dda34d730f3bc71aee7ec28",
+          "sourceAssetId": "milestone_celebrate:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -22,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 1
+          }
+        },
+        {
+          "id": "milestone_celebrate-4",
+          "mood": "hot",
+          "src": "frames/milestone_celebrate.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 400,
+          "sha256": "e26bf475f6f43d110a8e9bdedb813394ae440ed02cb11f47fcb9b1982906b281",
+          "sourceAssetId": "milestone_celebrate:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -22,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 1
+          }
+        },
+        {
+          "id": "milestone_celebrate-5",
+          "mood": "hot",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 200,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "milestone_celebrate:5",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -741,9 +1690,34 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 996,
+          "durationMs": 210,
           "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
           "sourceAssetId": "hot_loop:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -8,
+            "scaleX": 0.012,
+            "scaleY": 0.018,
+            "rotation": 0.8
+          }
+        },
+        {
+          "id": "hot_loop-2",
+          "mood": "hot",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 170,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "hot_loop:2",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -774,6 +1748,31 @@
         {
           "id": "overdrive_loop-1",
           "mood": "overdrive",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "overdrive_loop:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-2",
+          "mood": "overdrive",
           "src": "frames/overdrive_loop.png",
           "kind": "png",
           "rect": {
@@ -782,9 +1781,59 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 900,
+          "durationMs": 180,
           "sha256": "e4789182163a9a497ad75a6c1d1571cbca42121377fbffb8934431a65affc869",
-          "sourceAssetId": "overdrive_loop:1",
+          "sourceAssetId": "overdrive_loop:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-3",
+          "mood": "overdrive",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 140,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "overdrive_loop:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateY": -12,
+            "scaleX": 0.016,
+            "scaleY": 0.024,
+            "rotation": 1.2
+          }
+        },
+        {
+          "id": "overdrive_loop-4",
+          "mood": "overdrive",
+          "src": "frames/overdrive_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "e4789182163a9a497ad75a6c1d1571cbca42121377fbffb8934431a65affc869",
+          "sourceAssetId": "overdrive_loop:4",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -868,6 +1917,12 @@
       "status": "ready",
       "uiBehavior": "show",
       "runtimeBehavior": "animation"
+    },
+    {
+      "id": "run_across",
+      "status": "ready",
+      "uiBehavior": "show",
+      "runtimeBehavior": "choreography"
     },
     {
       "id": "toss_yarn",
@@ -964,8 +2019,8 @@
   },
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
-    "generatorVersion": "1.0.0-story",
-    "sourceSpecSha256": "39183fd529bcd0e73b3843cb1719ffa934893cf9942036c480ad14c955b3eb68",
-    "inputSetSha256": "8f9fdea34f28974f2797b65ef28ad9c92f19900fa9063c7e5e0c633defdab9ce"
+    "generatorVersion": "1.1.0-actions",
+    "sourceSpecSha256": "b34ae7bb5c4942a0e3b813fad9a38df1f4a3d7ad03430365d5ae70e50c3ea61b",
+    "inputSetSha256": "187e90d1f86f2e28fd7ab9dfadf6742617455f97f6c2b4e6bda9d747ab25a86f"
   }
 }

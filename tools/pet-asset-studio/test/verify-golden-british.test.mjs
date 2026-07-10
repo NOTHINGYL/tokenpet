@@ -53,6 +53,20 @@ test("every ready capability resolves to a same-id production animation", async 
   }
 });
 
+test("high-value actions use approved multi-frame sequences and desktop traversal is explicit", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  for (const actionId of ["blink", "hot_loop", "overdrive_loop", "click_purr", "drop_bounce", "token_snack", "play_cursor", "milestone_celebrate"]) {
+    assert.ok(manifest.animations[`action.${actionId}`].frames.length >= 2, `${actionId} must not ship as a single swapped image`);
+  }
+
+  const traversal = manifest.animations["action.run_across"];
+  assert.equal(traversal.kind, "oneShot");
+  assert.equal(traversal.frames.length, 12, "run_across needs its declared 12-step sequence");
+  assert.ok(new Set(traversal.frames.map((frame) => frame.src)).size >= 4, "run_across must use multiple approved action poses");
+  assert.ok(traversal.frames.reduce((total, frame) => total + frame.durationMs, 0) >= 2_000);
+  assert.equal(manifest.capabilities.find((entry) => entry.id === "run_across")?.runtimeBehavior, "choreography");
+});
+
 test("production bundle contains approved 1024px raster frames and no SVG cat", async () => {
   const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
   const files = await readdir(resolve(bundleDir, "frames"));

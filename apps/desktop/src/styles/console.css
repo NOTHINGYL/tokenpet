@@ -146,7 +146,12 @@
   height: 165px;
   overflow: hidden;
 }
-.sidebar-pet-actor .pet-generated-actor-shell { --pet-visual-cat-width: 310px; --pet-visual-cat-y: 18px; }
+.sidebar-pet-actor .pet-generated-actor-shell {
+  /* The sidebar is a fixed-size portrait, independent from the desktop size slider.
+     Fit the approved Golden frame's full visible alpha range inside the 165px slot. */
+  --pet-visual-cat-width: 230px;
+  --pet-visual-cat-y: -42px;
+}
 
 .console-view {
   display: flex;
@@ -3660,6 +3665,18 @@
 .director-priority-card ol { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; counter-reset: director; }
 .director-priority-card li { display: flex; min-height: 31px; align-items: center; gap: 7px; padding: 0 7px; border: 1px solid #e9ecf0; border-radius: 6px; color: #4c5f82; font-size: 9px; counter-increment: director; }
 .director-priority-card li::before { display: grid; width: 17px; height: 17px; place-items: center; border-radius: 50%; color: #fff; background: #2f9960; content: counter(director); font-size: 8px; }
+.desktop-run-control { border-color: #b9dfc7 !important; color: #1f7d49 !important; background: #f2faf5 !important; }
+.desktop-choreography-card { display: grid; grid-template-columns: minmax(165px,.58fr) minmax(0,2.42fr); align-items: center; gap: 10px; margin-top: 9px; padding: 9px 0 0; border-top: 1px solid #e8ecef; }
+.desktop-choreography-card .story-card-heading { margin: 0; }
+.desktop-choreography-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 7px; }
+.desktop-choreography-grid > button,
+.desktop-choreography-grid > article { display: grid; min-width: 0; min-height: 63px; grid-template-columns: auto minmax(0,1fr); align-content: center; align-items: center; gap: 2px 7px; padding: 7px 9px; border: 1px solid #e2e7ec; border-radius: 8px; color: #253858; background: #fff; text-align: left; }
+.desktop-choreography-grid > button { border-color: #8fcda7; background: linear-gradient(135deg,#effaf3,#fff); cursor: pointer; }
+.desktop-choreography-grid > button:disabled { cursor: not-allowed; filter: grayscale(.45); opacity: .58; }
+.desktop-choreography-grid span { grid-row: 1 / span 3; display: grid; width: 27px; height: 27px; place-items: center; border-radius: 50%; color: #fff; background: #2f9960; font-size: 13px; }
+.desktop-choreography-grid strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.desktop-choreography-grid code { color: #1f7d49; font-size: 7.5px; }
+.desktop-choreography-grid small { overflow: hidden; color: #687792; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .actions-safety-card { padding: 12px 15px; }
 .actions-safety-card .story-card-heading { margin-bottom: 4px; }
 .safety-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }

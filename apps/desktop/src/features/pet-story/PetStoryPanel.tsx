@@ -41,7 +41,7 @@ const labels: Partial<Record<PetActionId, string>> = {
   idle_breathe: "Living idle", blink: "Blink", sleep_loop: "Sleep loop", focus_loop: "Focus loop",
   hot_loop: "Hot loop", overdrive_loop: "Overdrive", hatch: "Hatch", click_purr: "Click purr",
   drag_dangle: "Drag dangle", drop_bounce: "Drop bounce", token_snack: "Token snack",
-  play_cursor: "Play cursor", milestone_celebrate: "Milestone celebrate", level_up: "Level up",
+  play_cursor: "Play cursor", run_across: "Run across desktop", milestone_celebrate: "Milestone celebrate", level_up: "Level up",
   daily_digest: "Daily digest", toss_yarn: "Toss yarn", nap_here: "Nap here", wake_up: "Wake up",
   settle_down: "Settle down", focus_start: "Focus start", cool_down: "Cool down",
   summon_to_screen: "Summon", capture_moment: "Capture moment",
@@ -59,6 +59,7 @@ const actionThumbnails: Partial<Record<PetActionId, string>> = {
   drop_bounce: "pet-actors/golden-british/frames/drop_bounce.png",
   token_snack: "pet-actors/golden-british/frames/token_snack.png",
   play_cursor: "pet-actors/golden-british/frames/play_cursor.png",
+  run_across: "pet-actors/golden-british/frames/hot_loop.png",
   milestone_celebrate: "pet-actors/golden-british/frames/milestone_celebrate.png",
 };
 
@@ -94,6 +95,8 @@ function ActionPanel(props: Props & { story: PetStorySettings; appearance: PetAp
     return capability.status === "ready" || capability.status === "fallback";
   };
   const actorPreviewAppearance = { ...props.appearance, moodBadge: { ...props.appearance.moodBadge, showMood: false } };
+  const traverseCapability = capabilityFor(props.appearance.catTypeId, "run_across");
+  const traverseDisabled = traverseCapability.status === "planned" || traverseCapability.status === "unavailable" || props.story.lockPosition;
   return (
     <div className="story-page actions-director-page" data-pet-page="actions">
       <div className="actions-layout">
@@ -108,6 +111,7 @@ function ActionPanel(props: Props & { story: PetStorySettings; appearance: PetAp
             <button type="button" disabled={!actionAvailable("click_purr")} title={actionAvailable("click_purr") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("click_purr")}>Trigger click_purr</button>
             <button type="button" disabled={!actionAvailable("drag_dangle")} title={actionAvailable("drag_dangle") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("drag_dangle")}>Trigger drag_dangle</button>
             <button type="button" disabled={!actionAvailable("milestone_celebrate")} title={actionAvailable("milestone_celebrate") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("milestone_celebrate")}>Trigger milestone_celebrate</button>
+            <button className="desktop-run-control" type="button" data-desktop-action="run_across" disabled={traverseDisabled} title={props.story.lockPosition ? "Unlock the pet position to run across the desktop." : traverseCapability.reason ?? "Move the real desktop companion window."} onClick={() => { setSelectedAction("run_across"); props.trigger("run_across"); }}>Run across desktop →</button>
           </div>
         </section>
 
@@ -138,6 +142,17 @@ function ActionPanel(props: Props & { story: PetStorySettings; appearance: PetAp
                   </button>
                 );
               })}
+            </div>
+            <div className="desktop-choreography-card">
+              <div className="story-card-heading"><h2>Desktop Choreography</h2><p>Actor poses and native window motion play together on your real desktop.</p></div>
+              <div className="desktop-choreography-grid">
+                <button type="button" data-desktop-choreography="run_across" disabled={traverseDisabled} onClick={() => { setSelectedAction("run_across"); props.trigger("run_across"); }}>
+                  <span aria-hidden="true">➜</span><strong>Run across desktop</strong><code>run_across</code><small>{props.story.lockPosition ? "Unlock position to play" : "Multi-pose run · safe work-area path"}</small>
+                </button>
+                <article><span aria-hidden="true">↕</span><strong>Pick up & dangle</strong><code>drag_dangle</code><small>Hold and drag the desktop cat</small></article>
+                <article><span aria-hidden="true">⌄</span><strong>Land & settle</strong><code>drop_bounce</code><small>Release after dragging</small></article>
+                <article><span aria-hidden="true">✦</span><strong>Track & pounce</strong><code>play_cursor</code><small>Multi-pose cursor sequence</small></article>
+              </div>
             </div>
           </section>
         </div>

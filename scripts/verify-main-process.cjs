@@ -11,6 +11,8 @@ const temporaryRoot = mkdtempSync(join(tmpdir(), "tokenpet-main-process-qa-"));
 const userDataPath = join(temporaryRoot, "user-data");
 const picturesPath = join(temporaryRoot, "pictures");
 const capturePath = join(picturesPath, "TokenPet-main-process-qa.png");
+const goldenActorRoot = join(root, "apps", "desktop", "public", "pet-actors", "golden-british");
+const goldenActorManifest = JSON.parse(readFileSync(join(goldenActorRoot, "actor.json"), "utf8"));
 
 mkdirSync(userDataPath, { recursive: true });
 mkdirSync(picturesPath, { recursive: true });
@@ -32,6 +34,7 @@ const report = {
 
 function record(name, detail) {
   report.checks.push({ name, detail });
+  console.log(`[main-qa ${report.checks.length}] ${name}`);
 }
 
 function verify(name, condition, detail) {
@@ -146,6 +149,145 @@ function boundsFitWorkArea(bounds, workArea) {
     && bounds.y + bounds.height <= workArea.y + workArea.height;
 }
 
+function rectanglesOverlap(left, right) {
+  return Math.min(left.x + left.width, right.x + right.width) > Math.max(left.x, right.x)
+    && Math.min(left.y + left.height, right.y + right.height) > Math.max(left.y, right.y);
+}
+
+function pointDistanceFromRect(x, y, rect, scale = { x: 1, y: 1 }) {
+  const dx = x < rect.x ? rect.x - x : x > rect.x + rect.width ? x - rect.x - rect.width : 0;
+  const dy = y < rect.y ? rect.y - y : y > rect.y + rect.height ? y - rect.y - rect.height : 0;
+  return Math.hypot(dx * scale.x, dy * scale.y);
+}
+
+function readFrameAlphaGeometry(frame, badgeRect, closeRect, artboardToDomScale) {
+  const image = nativeImage.createFromPath(join(goldenActorRoot, frame.src));
+  assert.equal(image.isEmpty(), false, `actor frame is missing or invalid: ${frame.src}`);
+  const { width, height } = image.getSize();
+  const bitmap = image.toBitmap({ scaleFactor: 1 });
+  assert.equal(bitmap.length, width * height * 4, `unexpected bitmap stride for ${frame.src}`);
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  let opaquePixels = 0;
+  let badgeOverlapPixels = 0;
+  let closeOverlapPixels = 0;
+  let badgeDistance = Number.POSITIVE_INFINITY;
+  let closeDistance = Number.POSITIVE_INFINITY;
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = bitmap[(y * width + x) * 4 + 3];
+      if (alpha < 12) continue;
+      opaquePixels += 1;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+
+      const badgePixelDistance = pointDistanceFromRect(x + 0.5, y + 0.5, badgeRect, artboardToDomScale);
+      const closePixelDistance = pointDistanceFromRect(x + 0.5, y + 0.5, closeRect, artboardToDomScale);
+      if (badgePixelDistance === 0) badgeOverlapPixels += 1;
+      if (closePixelDistance === 0) closeOverlapPixels += 1;
+      badgeDistance = Math.min(badgeDistance, badgePixelDistance);
+      closeDistance = Math.min(closeDistance, closePixelDistance);
+    }
+  }
+  assert.ok(opaquePixels > 0, `actor frame has no visible pixels: ${frame.src}`);
+  return {
+    id: frame.id,
+    src: frame.src,
+    alphaBounds: { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+    opaquePixels,
+    badgeOverlapPixels,
+    closeOverlapPixels,
+    badgeDistance,
+    closeDistance,
+  };
+}
+
+async function setPetSize(petWindow, size) {
+  await execute(petWindow, `window.tokenpet.getAppSettings().then((settings) => window.tokenpet.setAppSetting('petAppearance', {
+    ...settings.petAppearance,
+    size: ${JSON.stringify(size)},
+  }))`);
+  await waitFor(
+    () => execute(petWindow, `Number(document.querySelector('.pet-generated-actor-shell')?.dataset.petSize) === ${JSON.stringify(size)}`),
+    `pet size ${size}`,
+  );
+  await delay(260);
+}
+
+async function readPetChromeLayout(petWindow, actionId) {
+  const dom = await execute(petWindow, `(() => {
+    const shell = document.querySelector('.pet-generated-actor-shell');
+    const actor = document.querySelector('.pet-generated-actor-canvas-root');
+    const close = document.querySelector('.pet-close');
+    if (!shell || !actor || !close) return null;
+    const actorRect = actor.getBoundingClientRect();
+    const closeRect = close.getBoundingClientRect();
+    return {
+      size: Number(shell.dataset.petSize),
+      actor: { left: actorRect.left, top: actorRect.top, width: actorRect.width, height: actorRect.height },
+      close: { left: closeRect.left, top: closeRect.top, width: closeRect.width, height: closeRect.height },
+      moodY: Number(shell.dataset.moodBadgeY),
+      moodHeight: Number(shell.dataset.moodBadgeHeight),
+    };
+  })()`);
+  if (!dom) return null;
+
+  const animation = goldenActorManifest.animations[`action.${actionId}`];
+  assert.ok(animation?.frames?.length, `missing Golden British action animation: ${actionId}`);
+  const uniqueFrames = Array.from(new Map(animation.frames.map((frame) => [frame.src, frame])).values());
+  const artboard = goldenActorManifest.artboard;
+  const moodSlot = goldenActorManifest.moodBadgeSlot ?? goldenActorManifest.dynamicSlots.moodBadge;
+  const badgeRect = {
+    x: moodSlot.x,
+    y: dom.moodY,
+    width: moodSlot.width,
+    height: dom.moodHeight,
+  };
+  const domToArtboardScale = {
+    x: artboard.width / dom.actor.width,
+    y: artboard.height / dom.actor.height,
+  };
+  const closeRect = {
+    x: (dom.close.left - dom.actor.left) * domToArtboardScale.x,
+    y: (dom.close.top - dom.actor.top) * domToArtboardScale.y,
+    width: dom.close.width * domToArtboardScale.x,
+    height: dom.close.height * domToArtboardScale.y,
+  };
+  const artboardToDomScale = {
+    x: dom.actor.width / artboard.width,
+    y: dom.actor.height / artboard.height,
+  };
+  const frames = uniqueFrames.map((frame) => {
+    const geometry = readFrameAlphaGeometry(frame, badgeRect, closeRect, artboardToDomScale);
+    return {
+      id: geometry.id,
+      src: geometry.src,
+      alphaBounds: geometry.alphaBounds,
+      opaquePixels: geometry.opaquePixels,
+      badgeOverlapPixels: geometry.badgeOverlapPixels,
+      closeOverlapPixels: geometry.closeOverlapPixels,
+      badgeDistancePx: Math.round(geometry.badgeDistance * 100) / 100,
+      closeDistancePx: Math.round(geometry.closeDistance * 100) / 100,
+    };
+  });
+  return {
+    actionId,
+    size: dom.size,
+    actor: dom.actor,
+    close: dom.close,
+    moodY: dom.moodY,
+    moodHeight: dom.moodHeight,
+    frames,
+    maxBadgeDistancePx: Math.max(...frames.map((frame) => frame.badgeDistancePx)),
+    maxCloseDistancePx: Math.max(...frames.map((frame) => frame.closeDistancePx)),
+  };
+}
+
 async function run() {
   const moduleUrl = `${pathToFileURL(join(root, "dist-electron", "main.js")).href}?qa=${Date.now()}`;
   const main = await import(moduleUrl);
@@ -163,6 +305,22 @@ async function run() {
   let popover = await waitForWindow(qa, "popover");
   await waitForDom(popover, "[data-testid=quick-play-panel]");
   verify("double-click opens independent Quick Play", popover.getParentWindow() === null, `created independent BrowserWindow ${popover.id}`);
+  verify("Quick Play initially avoids pet", !rectanglesOverlap(pet.getBounds(), popover.getBounds()), "independent panel opens outside the desktop pet bounds");
+  const initialPopoverBounds = popover.getBounds();
+
+  const petDisplayWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
+  const centeredPetBounds = {
+    ...pet.getBounds(),
+    x: petDisplayWorkArea.x + Math.round((petDisplayWorkArea.width - pet.getBounds().width) / 2),
+    y: petDisplayWorkArea.y + Math.round((petDisplayWorkArea.height - pet.getBounds().height) / 2),
+  };
+  pet.setBounds(centeredPetBounds, false);
+  await waitFor(() => JSON.stringify(popover.getBounds()) !== JSON.stringify(initialPopoverBounds) && !rectanglesOverlap(pet.getBounds(), popover.getBounds()), "Quick Play dynamic pet avoidance");
+  verify(
+    "Quick Play dynamically avoids centered pet",
+    boundsFitWorkArea(popover.getBounds(), petDisplayWorkArea) && !rectanglesOverlap(pet.getBounds(), popover.getBounds()),
+    `pet ${JSON.stringify(pet.getBounds())}; panel ${JSON.stringify(popover.getBounds())}`,
+  );
 
   await doubleClickPet(pet);
   await waitForClosed(qa, "popover");
@@ -190,14 +348,14 @@ async function run() {
   await waitForDom(consoleWindow, "[data-pet-page=appearance]");
   verify("Open Console routes to Pet", !consoleWindow.webContents.isCrashed(), "real Console renderer opened Pet without crashing");
   verify("Open Console preserves pet state", JSON.stringify(qa.getSettings().petStory) === petStoryBeforeConsole, "opening Console did not dispatch or persist a pet action");
-  await waitFor(() => consoleWindow.isFocused(), "Console focus", 5_000);
-  verify("Open Console focuses window", consoleWindow.isVisible() && consoleWindow.isFocused(), "new Console is visible and focused");
+  await waitFor(() => consoleWindow.isVisible() && !consoleWindow.isMinimized(), "Console visible state", 5_000);
+  verify("Open Console shows window", consoleWindow.isVisible() && !consoleWindow.isMinimized(), "new Console is visible and available without relying on macOS foreground focus arbitration");
 
   consoleWindow.minimize();
   await waitFor(() => consoleWindow.isMinimized(), "Console minimize");
   qa.openConsole("pet");
-  await waitFor(() => !consoleWindow.isMinimized() && consoleWindow.isVisible() && consoleWindow.isFocused(), "Console restore/focus", 5_000);
-  verify("Open Console restores existing window", safeWindow(qa, "console")?.id === consoleWindow.id, "existing Console was restored and focused instead of duplicated");
+  await waitFor(() => !consoleWindow.isMinimized() && consoleWindow.isVisible(), "Console restore/show", 5_000);
+  verify("Open Console restores existing window", safeWindow(qa, "console")?.id === consoleWindow.id, "existing Console was restored and shown instead of duplicated");
 
   const crashedConsoleId = consoleWindow.id;
   await forceRendererCrash(consoleWindow, "Console");
@@ -206,6 +364,11 @@ async function run() {
   await waitForDom(consoleWindow, "[data-console-tab=pet].active");
   await waitForDom(consoleWindow, "[data-pet-page=appearance]");
   verify("Console crash self-heals", !consoleWindow.webContents.isCrashed(), `crashed window ${crashedConsoleId} was replaced by ${consoleWindow.id}`);
+
+  await click(consoleWindow, "[data-pet-section=actions]");
+  await waitForDom(consoleWindow, "[data-pet-page=actions]");
+  await waitForDom(consoleWindow, "[data-desktop-action=run_across]:not(:disabled)");
+  verify("Console Actions is interactive", true, "the real Pet > Actions page exposes enabled actor and desktop choreography controls");
 
   qa.setSetting("petVisible", true);
   pet = await waitForWindow(qa, "pet");
@@ -216,6 +379,45 @@ async function run() {
   await waitFor(() => qa.getSettings().alwaysOnTop && pet.isAlwaysOnTop(), "Always on top on");
   verify("Always on top control", pet.isAlwaysOnTop(), "real setting updates the desktop BrowserWindow level");
 
+  await setPetSize(pet, 0.75);
+  const hotActionBefore = qa.getSettings().petStory.lastAction?.nonce ?? null;
+  await click(consoleWindow, "[data-actor-state=hot_loop]");
+  const hotActionRequest = await waitFor(() => {
+    const request = qa.getSettings().petStory.lastAction;
+    return request?.id === "hot_loop" && request.nonce !== hotActionBefore ? request : null;
+  }, "Console hot_loop action request");
+  await delay(180);
+  const smallHotChrome = await readPetChromeLayout(pet, "hot_loop");
+
+  await setPetSize(pet, 1.25);
+  const idleActionBefore = qa.getSettings().petStory.lastAction?.nonce ?? null;
+  await click(consoleWindow, "[data-actor-state=idle_breathe]");
+  const idleActionRequest = await waitFor(() => {
+    const request = qa.getSettings().petStory.lastAction;
+    return request?.id === "idle_breathe" && request.nonce !== idleActionBefore ? request : null;
+  }, "Console idle_breathe action request");
+  await delay(180);
+  const largeIdleChrome = await readPetChromeLayout(pet, "idle_breathe");
+  verify(
+    "Desktop mood badge and close follow real action alpha",
+    hotActionRequest.id === "hot_loop"
+      && idleActionRequest.id === "idle_breathe"
+      && smallHotChrome
+      && largeIdleChrome
+      && smallHotChrome.frames.every((frame) => frame.badgeOverlapPixels === 0 && frame.closeOverlapPixels === 0)
+      && largeIdleChrome.frames.every((frame) => frame.badgeOverlapPixels === 0 && frame.closeOverlapPixels === 0)
+      && smallHotChrome.maxBadgeDistancePx <= 18
+      && largeIdleChrome.maxBadgeDistancePx <= 18
+      && smallHotChrome.maxCloseDistancePx <= 36
+      && largeIdleChrome.maxCloseDistancePx <= 36
+      && largeIdleChrome.actor.width > smallHotChrome.actor.width
+      && largeIdleChrome.close.left > smallHotChrome.close.left
+      && largeIdleChrome.close.top < smallHotChrome.close.top
+      && largeIdleChrome.close.width > smallHotChrome.close.width,
+    `small hot ${JSON.stringify(smallHotChrome)}; large idle ${JSON.stringify(largeIdleChrome)}`,
+  );
+  await setPetSize(pet, 1);
+
   await execute(pet, `window.tokenpet.getAppSettings().then((settings) => window.tokenpet.setAppSetting('petStory', {
     ...settings.petStory,
     followCursor: true,
@@ -224,6 +426,13 @@ async function run() {
   await waitFor(() => qa.getSettings().petStory.followCursor && qa.getSettings().petStory.lockPosition, "Follow/Lock settings");
   const lockedDrag = await execute(pet, "window.tokenpet.startDrag()");
   verify("Lock position blocks main-process drag", lockedDrag.started === false, "main IPC rejects drag even if renderer code is bypassed");
+  const lockedTraversalBounds = pet.getBounds();
+  const lockedTraversal = await execute(pet, "window.tokenpet.traversePet()");
+  verify(
+    "Lock position blocks native traversal",
+    lockedTraversal.moved === false && lockedTraversal.canceled === true && JSON.stringify(pet.getBounds()) === JSON.stringify(lockedTraversalBounds),
+    "run_across cannot move the BrowserWindow while Lock position is enabled",
+  );
 
   const cursorEvent = await execute(pet, `new Promise((resolve) => {
     let unsubscribe = () => undefined;
@@ -255,6 +464,105 @@ async function run() {
   const draggedBounds = pet.getBounds();
   const draggedPositionOnDisk = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
   verify("Dragged position persists", JSON.stringify(draggedPositionOnDisk) === JSON.stringify(draggedBounds), "the real drag end writes clamped desktop bounds to isolated userData");
+
+  const traversalWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
+  const leftTraversalBounds = {
+    ...pet.getBounds(),
+    x: traversalWorkArea.x + 24,
+    y: traversalWorkArea.y + Math.round((traversalWorkArea.height - pet.getBounds().height) / 2),
+  };
+
+  pet.setBounds(leftTraversalBounds, false);
+  const previousConsoleActionNonce = qa.getSettings().petStory.lastAction?.nonce ?? null;
+  const normalTraversalStartedAt = Date.now();
+  await click(consoleWindow, "[data-desktop-action=run_across]");
+  const memoryRequest = await waitFor(() => {
+    const request = qa.getSettings().petStory.lastAction;
+    return request?.id === "run_across" && request.nonce !== previousConsoleActionNonce ? request : null;
+  }, "Console run_across shared action request");
+  await waitFor(
+    () => execute(consoleWindow, "document.querySelector('.live-actor-stage .actor-loop-badge')?.textContent?.trim() === 'run_across'"),
+    "Console run_across preview",
+  );
+  const settingsAfterConsoleAction = JSON.parse(readFileSync(join(userDataPath, "settings.json"), "utf8"));
+  verify(
+    "Console run_across records a replay-safe action request",
+    memoryRequest?.id === "run_across"
+      && Number.isFinite(memoryRequest.nonce)
+      && memoryRequest.nonce !== previousConsoleActionNonce
+      && settingsAfterConsoleAction.petStory.lastAction === null,
+    `shared memory ${JSON.stringify(memoryRequest)}; disk lastAction ${JSON.stringify(settingsAfterConsoleAction.petStory.lastAction)}`,
+  );
+  await waitFor(() => pet.getBounds().x > leftTraversalBounds.x + 30, "native traversal intermediate movement");
+  const traversalMidpoint = pet.getBounds();
+  verify(
+    "Console traversal moves real intermediate bounds",
+    traversalMidpoint.x > leftTraversalBounds.x && boundsFitWorkArea(traversalMidpoint, traversalWorkArea),
+    `pet moved from ${JSON.stringify(leftTraversalBounds)} to intermediate ${JSON.stringify(traversalMidpoint)}`,
+  );
+  const expectedTraversalTargetX = traversalWorkArea.x + traversalWorkArea.width - leftTraversalBounds.width - 24;
+  await waitFor(() => {
+    const bounds = pet.getBounds();
+    return bounds.x === expectedTraversalTargetX && bounds.y === leftTraversalBounds.y;
+  }, "Console-triggered native traversal completion", 5_000);
+  const normalTraversalElapsed = Date.now() - normalTraversalStartedAt;
+  const normalTraversalFinal = pet.getBounds();
+  verify(
+    "Console Actions drives PetDirector and native traversal end to end",
+    normalTraversalElapsed >= 2_200
+      && normalTraversalElapsed < 3_500
+      && normalTraversalFinal.x > traversalMidpoint.x
+      && normalTraversalFinal.x === expectedTraversalTargetX
+      && boundsFitWorkArea(normalTraversalFinal, traversalWorkArea),
+    `Console lastAction ${memoryRequest.id}/${memoryRequest.nonce} traversed in ${normalTraversalElapsed}ms via Pet renderer Director/preload to ${JSON.stringify(normalTraversalFinal)}`,
+  );
+  const traversalPositionOnDisk = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
+  verify("Native traversal persists final bounds", JSON.stringify(traversalPositionOnDisk) === JSON.stringify(normalTraversalFinal), "completed run_across writes the safe opposite-side position");
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, lastAction: null });
+
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, reduceMotion: true });
+  pet.setBounds(leftTraversalBounds, false);
+  const reducedTraversalStartedAt = Date.now();
+  const reducedTraversal = await execute(pet, "window.tokenpet.traversePet()");
+  const reducedTraversalElapsed = Date.now() - reducedTraversalStartedAt;
+  const reducedTraversalFinal = pet.getBounds();
+  verify(
+    "Reduced Motion shortens native traversal",
+    reducedTraversal.moved === true
+      && reducedTraversal.canceled === false
+      && reducedTraversalElapsed < 1_500
+      && reducedTraversalFinal.x > leftTraversalBounds.x
+      && reducedTraversalFinal.x < normalTraversalFinal.x
+      && boundsFitWorkArea(reducedTraversalFinal, traversalWorkArea),
+    `reduced traversal completed in ${reducedTraversalElapsed}ms at ${JSON.stringify(reducedTraversalFinal)}`,
+  );
+
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, reduceMotion: false });
+  pet.setBounds(leftTraversalBounds, false);
+  const firstTraversal = qa.traversePetAcrossWorkArea();
+  await waitFor(() => pet.getBounds().x > leftTraversalBounds.x + 10, "first traversal before replacement");
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, reduceMotion: true });
+  const replacementTraversal = qa.traversePetAcrossWorkArea();
+  const firstTraversalResult = await firstTraversal;
+  const replacementTraversalResult = await replacementTraversal;
+  verify(
+    "New traversal cancels previous traversal",
+    firstTraversalResult.canceled === true && replacementTraversalResult.moved === true && replacementTraversalResult.canceled === false,
+    "the first promise resolves canceled before the replacement Reduced Motion traversal completes",
+  );
+
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, reduceMotion: false });
+  pet.setBounds(leftTraversalBounds, false);
+  const dragCanceledTraversal = qa.traversePetAcrossWorkArea();
+  await waitFor(() => pet.getBounds().x > leftTraversalBounds.x + 10, "traversal before drag cancellation");
+  const traversalCancelingDrag = await execute(pet, "window.tokenpet.startDrag()");
+  const dragCanceledTraversalResult = await dragCanceledTraversal;
+  await execute(pet, "window.tokenpet.endDrag()");
+  verify(
+    "Drag cancels native traversal",
+    traversalCancelingDrag.started === true && dragCanceledTraversalResult.canceled === true,
+    "direct manipulation takes ownership from run_across",
+  );
 
   const settingsOnDisk = JSON.parse(readFileSync(join(userDataPath, "settings.json"), "utf8"));
   verify(
@@ -293,9 +601,17 @@ async function run() {
   verify("Capture restores pet chrome", closeVisibility === "", "the hidden close control is restored after capture");
 
   const petIdBeforeHide = pet.id;
+  const hideTraversalStartX = pet.getBounds().x;
+  const hideCanceledTraversal = qa.traversePetAcrossWorkArea();
+  await waitFor(() => pet.getBounds().x !== hideTraversalStartX, "traversal before hide cancellation");
   await click(pet, ".pet-close");
+  const hideCanceledTraversalResult = await hideCanceledTraversal;
   await waitFor(() => !qa.getSettings().petVisible && !pet.isVisible(), "pet hide");
-  verify("Pet X hides without quitting", !pet.isDestroyed() && safeWindow(qa, "console") !== null, "pet BrowserWindow remains alive and Console keeps running");
+  verify(
+    "Pet X hides without quitting and cancels traversal",
+    hideCanceledTraversalResult.canceled === true && !pet.isDestroyed() && safeWindow(qa, "console") !== null,
+    "hide stops run_across, keeps the pet BrowserWindow alive, and leaves Console running",
+  );
   await execute(consoleWindow, "window.tokenpet.setAppSetting('petVisible', true)");
   await waitFor(() => qa.getSettings().petVisible && pet.isVisible(), "pet restore");
   verify("Hidden pet restores", pet.id === petIdBeforeHide && pet.isVisible(), "Show pet reuses and reveals the hidden desktop window");
@@ -324,12 +640,50 @@ async function run() {
   qa.toggleMenuBar();
   await waitForClosed(qa, "menubar");
 
+  const destroyedPetId = pet.id;
+  const destroyTraversalStartX = pet.getBounds().x;
+  const destroyCanceledTraversal = qa.traversePetAcrossWorkArea();
+  await waitFor(() => pet.getBounds().x !== destroyTraversalStartX, "traversal before destroy cancellation");
+  pet.destroy();
+  const destroyCanceledTraversalResult = await destroyCanceledTraversal;
+  qa.setSetting("petVisible", true);
+  pet = await waitForWindow(qa, "pet", destroyedPetId);
+  await waitForDom(pet, ".pet-stage");
+  verify(
+    "Pet destroy cancels traversal and recreates",
+    destroyCanceledTraversalResult.canceled === true && pet.id !== destroyedPetId,
+    `run_across stopped and destroyed window ${destroyedPetId} was replaced by ${pet.id}`,
+  );
+
   const crashedPetId = pet.id;
   await forceRendererCrash(pet, "Pet");
   qa.setSetting("petVisible", true);
   pet = await waitForWindow(qa, "pet", crashedPetId);
   await waitForDom(pet, ".pet-stage");
   verify("Pet crash self-heals", pet.id !== crashedPetId, `crashed window ${crashedPetId} was replaced by ${pet.id}`);
+
+  const quitTraversalStartX = pet.getBounds().x;
+  const quitCanceledTraversal = qa.traversePetAcrossWorkArea();
+  await waitFor(() => pet.getBounds().x !== quitTraversalStartX, "traversal before quit cancellation");
+  qa.toggleMenuBar();
+  menuBar = await waitForWindow(qa, "menubar");
+  await waitForDom(menuBar, "button[aria-label='Quit TokenPet']");
+  let quitRequests = 0;
+  const preventQaQuit = (event) => {
+    event.preventDefault();
+    quitRequests += 1;
+  };
+  app.on("before-quit", preventQaQuit);
+  await click(menuBar, "button[aria-label='Quit TokenPet']");
+  const quitCanceledTraversalResult = await quitCanceledTraversal;
+  await waitFor(() => quitRequests > 0, "Menu Bar quit request");
+  await delay(100);
+  app.removeListener("before-quit", preventQaQuit);
+  verify(
+    "Menu Bar X requests real app quit and cancels traversal",
+    quitCanceledTraversalResult.canceled === true && quitRequests > 0,
+    "the settings-adjacent X stopped run_across and reached app.quit; QA prevented final process exit only after observing before-quit",
+  );
 
   mkdirSync(join(root, "docs", "screenshots", "pet-story"), { recursive: true });
   writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);

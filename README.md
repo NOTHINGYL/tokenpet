@@ -20,6 +20,7 @@ The current integrated release is `v0.8.0`.
 - **One actor pipeline:** the desktop pet and every Console preview use the same generated Golden British actor bundle.
 - **Dynamic slots:** token and mood text render only inside manifest-declared slots. The actor artwork already contains its cream token frame.
 - **Pet Director:** click, drag/drop, token changes, lifecycle events, milestones, and Quick Play actions go through one priority and capability gate.
+- **Real desktop choreography:** Actions includes `run_across`, a 12-step Golden British sequence built from four approved action poses that moves the real pet window safely across the active display; Lock position blocks it and Reduce Motion shortens it.
 - **Ambient story loop:** non-Egg companions wake on startup/new days, blink on deterministic mode-aware intervals, rest at night or after inactivity, and wake again when local activity resumes.
 - **Quick Play:** double-click the pet to open the compact 3×3 interaction remote. It contains no duplicate token analytics, source list, or repeated cat preview.
 - **Five Pet pages:** Appearance, Actions, Mood & Reactions, Sound Cues, and Journey, plus Cat Type, Mood Looks, and Accessories subpages.
@@ -42,6 +43,7 @@ Then follow this short demo path:
 4. Double-click it to open Quick Play.
 5. Try Feed snack, Play cursor, Toss yarn, Nap here, Wake up, Summon, and Capture.
 6. Choose **Open Console**, then review all five Pet pages.
+7. In **Actions**, try **Run across desktop** to see the companion traverse the real work area.
 
 Regenerate the launch GIF from the real renderer, Director, and approved actor bundle with synthetic local usage:
 
@@ -86,7 +88,7 @@ Select the cat image, actor-safe token display, mood badge, Mood Looks, and comp
 
 ### Actions
 
-Configure behavior mode, inspect implementation ids, test actor states, and adjust interaction and motion-safety rules. Direct manipulation has higher priority than reactions, milestones, mood loops, and lifecycle idle.
+Configure behavior mode, inspect implementation ids, test multi-frame actor states, play `run_across` on the real desktop, and adjust interaction and motion-safety rules. Direct manipulation has higher priority than reactions, milestones, mood loops, and lifecycle idle.
 
 ### Mood & Reactions
 

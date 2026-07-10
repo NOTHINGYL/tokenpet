@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promises";
-import { dirname, relative, resolve } from "node:path";
+import { basename, dirname, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   assertValidPetActorManifest,
@@ -9,7 +9,7 @@ import {
 } from "../../../packages/pet-asset-schema/dist/index.js";
 
 const GENERATOR_NAME = "@tokenpet/pet-asset-studio";
-const GENERATOR_VERSION = "1.0.0-story";
+const GENERATOR_VERSION = "1.1.0-actions";
 const GENERATED_AT = "2026-07-09T00:00:00.000Z";
 
 const toolDir = dirname(fileURLToPath(import.meta.url));
@@ -39,8 +39,8 @@ function toRuntimeRelativePath(repoRelativePath) {
   return relative(outputDir, resolve(repoRoot, repoRelativePath)).replaceAll("\\", "/");
 }
 
-function outputFrameName(actionId, index, total) {
-  return total === 1 ? `${actionId}.png` : `${actionId}-${String(index + 1).padStart(2, "0")}.png`;
+function outputFrameName(input) {
+  return basename(input.source.src);
 }
 
 function defaultFrameDuration(action) {
@@ -52,17 +52,18 @@ function defaultFrameDuration(action) {
 function createAnimation(actionId, action, frameInputs, artboard) {
   const durationMs = defaultFrameDuration(action);
   const frames = frameInputs.map((input, index) => {
-    const fileName = outputFrameName(actionId, index, frameInputs.length);
+    const fileName = outputFrameName(input);
+    const bodyTransform = input.source.bodyTransform ?? action.bodyTransform;
     return {
       id: `${actionId}-${index + 1}`,
       mood: action.mood,
       src: `frames/${fileName}`,
       kind: "png",
       rect: { x: 0, y: 0, width: artboard.width, height: artboard.height },
-      durationMs,
+      durationMs: input.source.durationMs ?? durationMs,
       sha256: input.sha256,
       sourceAssetId: `${actionId}:${index + 1}`,
-      ...(action.bodyTransform ? { bodyTransform: action.bodyTransform } : {}),
+      ...(bodyTransform ? { bodyTransform } : {}),
     };
   });
 
@@ -302,15 +303,23 @@ export async function buildGoldenBritish() {
 
   const writes = [];
   const expectedFrameNames = new Set();
+  const frameOutputs = new Map();
   const outputFiles = [];
-  for (const [actionId, action] of Object.entries(source.actions)) {
+  for (const actionId of Object.keys(source.actions)) {
     const inputs = sourceFrames.get(actionId);
-    for (const [index, input] of inputs.entries()) {
-      const fileName = outputFrameName(actionId, index, inputs.length);
+    for (const input of inputs) {
+      const fileName = outputFrameName(input);
       expectedFrameNames.add(fileName);
-      writes.push(writeIfChanged(resolve(frameDir, fileName), input.buffer));
-      outputFiles.push({ path: `frames/${fileName}`, sha256: input.sha256, source: action.sourceFrames[index].src });
+      const existing = frameOutputs.get(fileName);
+      if (existing && existing.sha256 !== input.sha256) {
+        throw new Error(`Runtime frame name collision for ${fileName}: ${existing.sha256} vs ${input.sha256}`);
+      }
+      frameOutputs.set(fileName, input);
     }
+  }
+  for (const [fileName, input] of frameOutputs) {
+    writes.push(writeIfChanged(resolve(frameDir, fileName), input.buffer));
+    outputFiles.push({ path: `frames/${fileName}`, sha256: input.sha256, source: input.source.src });
   }
 
   writes.push(writeIfChanged(resolve(runtimeSourceDir, "golden-british.png"), sourceImageBuffer));

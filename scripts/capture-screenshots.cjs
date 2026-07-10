@@ -43,6 +43,26 @@ const quickPlayIds = [
   "capture_moment",
 ];
 
+const coreActorStateIds = [
+  "idle_breathe",
+  "blink",
+  "sleep_loop",
+  "focus_loop",
+  "hot_loop",
+  "overdrive_loop",
+  "click_purr",
+  "drag_dangle",
+  "drop_bounce",
+  "token_snack",
+  "play_cursor",
+  "milestone_celebrate",
+];
+const goldenActorManifest = require(join(root, "apps", "desktop", "public", "pet-actors", "golden-british", "actor.json"));
+const coreActorFramePaths = Object.fromEntries(coreActorStateIds.map((actionId) => [
+  actionId,
+  goldenActorManifest.animations[`action.${actionId}`].frames.map((frame) => frame.src),
+]));
+
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
 
@@ -195,6 +215,74 @@ async function waitForActor(window) {
   );
 }
 
+async function classifyDesktopActorFrame(window) {
+  return evaluate(window, async (actionFrames) => {
+    const canvas = document.querySelector(".pet-stage .pet-generated-actor-canvas");
+    const context = canvas?.getContext("2d", { willReadFrequently: true });
+    if (!canvas || !context) return null;
+
+    window.__tokenpetQaActorFrames ??= new Map();
+    const frameCache = window.__tokenpetQaActorFrames;
+    const loadFrame = async (framePath) => {
+      if (!frameCache.has(framePath)) {
+        frameCache.set(framePath, new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => {
+            const reference = document.createElement("canvas");
+            reference.width = canvas.width;
+            reference.height = canvas.height;
+            const referenceContext = reference.getContext("2d", { willReadFrequently: true });
+            referenceContext.drawImage(image, 0, 0, reference.width, reference.height);
+            resolve(referenceContext.getImageData(0, 0, reference.width, reference.height).data);
+          };
+          image.onerror = reject;
+          image.src = new URL(`pet-actors/golden-british/${framePath}`, window.location.href).href;
+        }));
+      }
+      return frameCache.get(framePath);
+    };
+
+    const current = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const scores = [];
+    for (const [actionId, framePaths] of Object.entries(actionFrames)) {
+      let actionScore = Number.POSITIVE_INFINITY;
+      for (const framePath of framePaths) {
+        const expected = await loadFrame(framePath);
+        let difference = 0;
+        let compared = 0;
+        for (let y = 176; y < 930; y += 8) {
+          for (let x = 48; x < 976; x += 8) {
+            if (x >= 320 && x <= 704 && y >= 680 && y <= 830) continue;
+            const offset = (y * canvas.width + x) * 4;
+            const occupied = current[offset + 3] > 12 || expected[offset + 3] > 12;
+            if (!occupied) continue;
+            difference += Math.abs(current[offset] - expected[offset]);
+            difference += Math.abs(current[offset + 1] - expected[offset + 1]);
+            difference += Math.abs(current[offset + 2] - expected[offset + 2]);
+            difference += Math.abs(current[offset + 3] - expected[offset + 3]) * 1.5;
+            compared += 4.5;
+          }
+        }
+        actionScore = Math.min(actionScore, compared ? difference / compared : Number.POSITIVE_INFINITY);
+      }
+      scores.push({ actionId, score: actionScore });
+    }
+    scores.sort((left, right) => left.score - right.score);
+    return { best: scores[0], runnerUp: scores[1] };
+  }, coreActorFramePaths);
+}
+
+async function waitForDesktopActorState(window, actionId) {
+  let latest = null;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 3_000) {
+    latest = await classifyDesktopActorFrame(window);
+    if (latest?.best?.actionId === actionId) return latest;
+    await delay(50);
+  }
+  throw new Error(`Timed out waiting for desktop actor frame ${actionId}; latest classification ${JSON.stringify(latest)}`);
+}
+
 async function load(window, view, params = {}) {
   await window.loadURL(rendererUrl(view, params));
   await waitForSelector(window, "#root > *");
@@ -241,6 +329,263 @@ async function capture(window, fileName, surface) {
 
 async function qaStateFor(window) {
   return evaluate(window, () => window.tokenpet.getScreenshotQaState());
+}
+
+async function setFixturePetSize(window, size) {
+  await evaluate(window, async (nextSize) => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petAppearance", {
+      ...(current.petAppearance ?? {}),
+      size: nextSize,
+    });
+  }, size);
+  await waitFor(
+    window,
+    (nextSize) => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance?.size === nextSize),
+    [size],
+    `pet appearance size ${size}`,
+  );
+  await delay(240);
+}
+
+async function actorCssGeometry(window, scope) {
+  return evaluate(window, (selector) => {
+    const shell = document.querySelector(`${selector} .pet-generated-actor-shell`);
+    const actor = document.querySelector(`${selector} .pet-generated-actor-canvas-root`);
+    const container = document.querySelector(selector);
+    if (!shell || !actor || !container) return null;
+    const actorRect = actor.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return {
+      scale: Number.parseFloat(getComputedStyle(shell).getPropertyValue("--pet-visual-scale")),
+      configuredSize: Number(shell.dataset.petSize),
+      actor: {
+        left: actorRect.left,
+        top: actorRect.top,
+        width: actorRect.width,
+        height: actorRect.height,
+      },
+      container: {
+        left: containerRect.left,
+        top: containerRect.top,
+        width: containerRect.width,
+        height: containerRect.height,
+      },
+    };
+  }, scope);
+}
+
+async function canvasAlphaGeometry(window, scope, containerScope = scope, alphaThreshold = 16) {
+  return evaluate(window, (actorSelector, containerSelector, threshold) => {
+    const canvas = document.querySelector(`${actorSelector} canvas.pet-actor-canvas`);
+    const container = document.querySelector(containerSelector);
+    const context = canvas?.getContext("2d", { willReadFrequently: true });
+    if (!canvas || !container || !context) return null;
+
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let minX = canvas.width;
+    let minY = canvas.height;
+    let maxX = -1;
+    let maxY = -1;
+    let opaquePixels = 0;
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        const alpha = pixels[(y * canvas.width + x) * 4 + 3];
+        if (alpha < threshold) continue;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        opaquePixels += 1;
+      }
+    }
+    if (maxX < minX || maxY < minY) return null;
+
+    const canvasRect = canvas.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const actorRoot = canvas.closest(".pet-visual-cat-wrap");
+    if (!actorRoot) return null;
+    const actorMatrix = new DOMMatrix(getComputedStyle(actorRoot).transform);
+    const scaleX = canvasRect.width / canvas.width;
+    const scaleY = canvasRect.height / canvas.height;
+    const visibleRect = {
+      left: canvasRect.left + minX * scaleX,
+      top: canvasRect.top + minY * scaleY,
+      right: canvasRect.left + (maxX + 1) * scaleX,
+      bottom: canvasRect.top + (maxY + 1) * scaleY,
+      width: (maxX - minX + 1) * scaleX,
+      height: (maxY - minY + 1) * scaleY,
+    };
+    const clippingRect = {
+      left: containerRect.left,
+      top: containerRect.top,
+      right: containerRect.right,
+      bottom: containerRect.bottom,
+      width: containerRect.width,
+      height: containerRect.height,
+    };
+    return {
+      alphaThreshold: threshold,
+      opaquePixels,
+      pixelBounds: { x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1 },
+      visibleRect,
+      containerRect: clippingRect,
+      overflow: {
+        left: Math.max(0, clippingRect.left - visibleRect.left),
+        top: Math.max(0, clippingRect.top - visibleRect.top),
+        right: Math.max(0, visibleRect.right - clippingRect.right),
+        bottom: Math.max(0, visibleRect.bottom - clippingRect.bottom),
+      },
+      shellClass: canvas.closest(".pet-appearance-visual")?.className ?? "",
+      transformScale: {
+        x: Math.hypot(actorMatrix.a, actorMatrix.b),
+        y: Math.hypot(actorMatrix.c, actorMatrix.d),
+      },
+      containerOverflow: getComputedStyle(container).overflow,
+    };
+  }, scope, containerScope, alphaThreshold);
+}
+
+function rectContained(inner, outer, tolerance = 1) {
+  return inner
+    && outer
+    && inner.left >= outer.left - tolerance
+    && inner.top >= outer.top - tolerance
+    && inner.right <= outer.right + tolerance
+    && inner.bottom <= outer.bottom + tolerance;
+}
+
+function sameRect(left, right, tolerance = 0.5) {
+  return left && right
+    && ["left", "top", "width", "height"].every((key) => Math.abs(left[key] - right[key]) <= tolerance);
+}
+
+async function verifyConsoleSidebarPetSize(consoleWindow, desktopPet) {
+  await waitForSelector(consoleWindow, ".sidebar-pet-actor .pet-generated-actor-canvas-root.is-ready");
+  const originalState = await qaStateFor(consoleWindow);
+  const originalSize = originalState.settings.petAppearance?.size ?? originalState.settings.petScale ?? 1;
+
+  await setFixturePetSize(consoleWindow, 0.75);
+  await waitFor(desktopPet, () => Number(document.querySelector(".pet-generated-actor-shell")?.dataset.petSize) === 0.75, [], "desktop pet size 0.75");
+  await delay(220);
+  const sidebarSmall = await actorCssGeometry(consoleWindow, ".sidebar-pet-actor");
+  const desktopSmall = await actorCssGeometry(desktopPet, ".pet-stage");
+  await capture(desktopPet, "desktop-pet-size-75.png", "Desktop pet / Size 75%");
+  await setFixturePetSize(consoleWindow, 1.25);
+  await waitFor(desktopPet, () => Number(document.querySelector(".pet-generated-actor-shell")?.dataset.petSize) === 1.25, [], "desktop pet size 1.25");
+  await delay(220);
+  const sidebarLarge = await actorCssGeometry(consoleWindow, ".sidebar-pet-actor");
+  const desktopLarge = await actorCssGeometry(desktopPet, ".pet-stage");
+  await capture(desktopPet, "desktop-pet-size-125.png", "Desktop pet / Size 125%");
+  report.sidebarSizeContract = {
+    testedDesktopSizes: [0.75, 1.25],
+    sidebarSmall,
+    sidebarLarge,
+    desktopControl: { small: desktopSmall, large: desktopLarge },
+  };
+
+  verify(
+    "Console sidebar pet has a fixed preview size",
+    sidebarSmall
+      && sidebarLarge
+      && sidebarSmall.scale === 1
+      && sidebarLarge.scale === 1
+      && sameRect(sidebarSmall.actor, sidebarLarge.actor)
+      && sameRect(sidebarSmall.container, sidebarLarge.container)
+      && desktopSmall
+      && desktopLarge
+      && desktopSmall.configuredSize === 0.75
+      && desktopLarge.configuredSize === 1.25
+      && desktopSmall.scale === 0.75
+      && desktopLarge.scale === 1.25,
+    `sidebar small/large ${JSON.stringify({ sidebarSmall, sidebarLarge })}; desktop control widths ${desktopSmall?.actor.width}/${desktopLarge?.actor.width}`,
+  );
+
+  const sidebarAlpha = await canvasAlphaGeometry(consoleWindow, ".sidebar-pet-actor", ".sidebar-pet-actor");
+  report.sidebarSizeContract.visibleAlpha = sidebarAlpha;
+  verify(
+    "Console sidebar Golden alpha bounds are fully visible",
+    sidebarAlpha
+      && sidebarAlpha.opaquePixels > 0
+      && rectContained(sidebarAlpha.visibleRect, sidebarAlpha.containerRect),
+    `mapped visible alpha ${JSON.stringify(sidebarAlpha?.visibleRect)} inside sidebar ${JSON.stringify(sidebarAlpha?.containerRect)}; overflow ${JSON.stringify(sidebarAlpha?.overflow)}`,
+  );
+
+  await setFixturePetSize(consoleWindow, originalSize);
+}
+
+async function setFixturePetAppearance(window, patch) {
+  await evaluate(window, async (nextPatch) => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petAppearance", {
+      ...(current.petAppearance ?? {}),
+      ...nextPatch,
+      ...(nextPatch.moodBadge ? {
+        moodBadge: { ...(current.petAppearance?.moodBadge ?? {}), ...nextPatch.moodBadge },
+      } : {}),
+    });
+  }, patch);
+  await waitFor(
+    window,
+    (expected) => window.tokenpet.getScreenshotQaState().then((state) => Object.entries(expected).every(([key, value]) => {
+      if (key === "moodBadge") return Object.entries(value).every(([badgeKey, badgeValue]) => state.settings.petAppearance?.moodBadge?.[badgeKey] === badgeValue);
+      return state.settings.petAppearance?.[key] === value;
+    })),
+    [patch],
+    `pet appearance patch ${JSON.stringify(patch)}`,
+  );
+  await delay(280);
+}
+
+async function verifyDesktopCatVisualNormalization(desktopPet) {
+  const originalState = await qaStateFor(desktopPet);
+  const originalAppearance = originalState.settings.petAppearance ?? {};
+  const originalSize = originalAppearance.size ?? originalState.settings.petScale ?? 1;
+  const originalMoodBadge = originalAppearance.moodBadge ?? { showMood: true };
+
+  await setFixturePetAppearance(desktopPet, {
+    catTypeId: "golden-british",
+    size: 1,
+    moodBadge: { showMood: false },
+  });
+  await waitFor(desktopPet, () => Boolean(document.querySelector(".pet-stage .pet-generated-actor-canvas-root.is-ready")), [], "Golden desktop normalization actor");
+  const golden = await canvasAlphaGeometry(desktopPet, ".pet-stage", ".pet-stage");
+
+  await setFixturePetAppearance(desktopPet, {
+    catTypeId: "ragdoll",
+    size: 1,
+    moodBadge: { showMood: false },
+  });
+  await waitFor(desktopPet, () => Boolean(document.querySelector(".pet-stage .pet-actor-canvas-shell.pet-cat-ragdoll .pet-actor-canvas-root.is-ready")), [], "Ragdoll desktop normalization actor");
+  const ragdoll = await canvasAlphaGeometry(desktopPet, ".pet-stage", ".pet-stage");
+
+  const widthDelta = golden && ragdoll ? Math.abs(golden.visibleRect.width - ragdoll.visibleRect.width) / Math.max(golden.visibleRect.width, ragdoll.visibleRect.width) : Number.POSITIVE_INFINITY;
+  const heightDelta = golden && ragdoll ? Math.abs(golden.visibleRect.height - ragdoll.visibleRect.height) / Math.max(golden.visibleRect.height, ragdoll.visibleRect.height) : Number.POSITIVE_INFINITY;
+  const goldenArea = golden ? golden.visibleRect.width * golden.visibleRect.height : 0;
+  const ragdollArea = ragdoll ? ragdoll.visibleRect.width * ragdoll.visibleRect.height : 0;
+  const goldenToRagdollAreaRatio = ragdollArea > 0 ? goldenArea / ragdollArea : 0;
+  report.desktopCatNormalization = { configuredSize: 1, moodBadgeExcluded: true, golden, ragdoll, widthDelta, heightDelta, goldenToRagdollAreaRatio };
+  verify(
+    "Desktop Golden keeps native proportions and is not smaller than Ragdoll",
+    golden
+      && ragdoll
+      && golden.opaquePixels > 0
+      && ragdoll.opaquePixels > 0
+      && Math.abs(golden.transformScale.x - golden.transformScale.y) <= 0.001
+      && Math.abs(ragdoll.transformScale.x - ragdoll.transformScale.y) <= 0.001
+      && heightDelta <= 0.1
+      && goldenToRagdollAreaRatio >= 0.9
+      && goldenToRagdollAreaRatio <= 1.2,
+    `size=1 mapped alpha Golden ${JSON.stringify(golden?.visibleRect)} vs Ragdoll ${JSON.stringify(ragdoll?.visibleRect)}; height delta ${(heightDelta * 100).toFixed(1)}%, area ratio ${goldenToRagdollAreaRatio.toFixed(3)}, transforms ${JSON.stringify({ golden: golden?.transformScale, ragdoll: ragdoll?.transformScale })}`,
+  );
+
+  await setFixturePetAppearance(desktopPet, {
+    ...originalAppearance,
+    catTypeId: originalAppearance.catTypeId ?? "golden-british",
+    size: originalSize,
+    moodBadge: originalMoodBadge,
+  });
+  await waitFor(desktopPet, () => Boolean(document.querySelector(".pet-stage .pet-generated-actor-canvas-root.is-ready")), [], "Golden desktop actor restore");
 }
 
 function sharedStoryState(state) {
@@ -375,8 +720,11 @@ async function verifyMenuBarTinyPet() {
     tiny: document.querySelectorAll("[data-testid=menubar-tiny-pet]").length,
     generated: document.querySelectorAll("[data-testid=menubar-tiny-pet] .pet-generated-actor-canvas").length,
     fallback: document.querySelectorAll("[data-testid=menubar-tiny-pet] .pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
+    quit: Boolean(document.querySelector("button[aria-label='Quit TokenPet']")),
   }));
   verify("MenuBar tiny companion enabled", visible.tiny === 1 && visible.generated === 1 && visible.fallback === 0, "keepTinyMenuForm=true renders one real generated actor in the menu bar");
+  verify("MenuBar explicit quit", visible.quit, "a settings-adjacent Quit TokenPet X is visible while the desktop pet X remains a hide control");
+  await capture(window, "menu-bar.png", "Menu Bar");
 
   await evaluate(window, async () => {
     const current = await window.tokenpet.getAppSettings();
@@ -553,20 +901,84 @@ async function verifyAppearanceAndSubpages(window) {
   }
 }
 
-async function verifyActions(window) {
+async function verifyActions(window, desktopPet) {
   await selectPetSection(window, "actions");
   await waitForActor(window);
   const state = await evaluate(window, () => ({
     ids: [...document.querySelectorAll("[data-actor-state]")].map((button) => button.dataset.actorState),
     disabled: [...document.querySelectorAll("[data-actor-state]")].filter((button) => button.disabled).map((button) => button.dataset.actorState),
     brokenImages: [...document.querySelectorAll(".actor-state-grid img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
+    runAcrossControls: [...document.querySelectorAll("[data-desktop-action=run_across], [data-desktop-choreography=run_across]")].map((button) => ({
+      disabled: button.disabled,
+      width: button.getBoundingClientRect().width,
+      height: button.getBoundingClientRect().height,
+    })),
+    safety: (() => {
+      const card = document.querySelector(".actions-safety-card");
+      const content = document.querySelector(".console-content");
+      if (!card || !content) return null;
+      const rect = card.getBoundingClientRect();
+      const contentRect = content.getBoundingClientRect();
+      return {
+        rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height },
+        viewport: {
+          left: Math.max(0, contentRect.left),
+          top: Math.max(0, contentRect.top),
+          right: Math.min(window.innerWidth, contentRect.right),
+          bottom: Math.min(window.innerHeight, contentRect.bottom),
+        },
+        switches: card.querySelectorAll("[role=switch]").length,
+        visible: getComputedStyle(card).display !== "none" && getComputedStyle(card).visibility !== "hidden",
+      };
+    })(),
   }));
   verify("Actions implementation ids", state.ids.length === 12 && state.ids.includes("click_purr") && state.ids.includes("milestone_celebrate"), `Actions exposes 12 stable actor-state ids`);
   verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all displayed Golden British actor states are enabled and have loaded thumbnails");
+  verify(
+    "Actions run_across controls are ready",
+    state.runAcrossControls.length >= 2
+      && state.runAcrossControls.every((control) => !control.disabled && control.width > 0 && control.height > 0),
+    `found ${state.runAcrossControls.length} enabled visible run_across controls: ${JSON.stringify(state.runAcrossControls)}`,
+  );
+  verify(
+    "Actions Safety is visible at 1280×900",
+    state.safety
+      && state.safety.visible
+      && state.safety.switches >= 4
+      && rectContained(state.safety.rect, state.safety.viewport),
+    `Safety ${JSON.stringify(state.safety)}`,
+  );
+  report.actionsViewportContract = { runAcrossControls: state.runAcrossControls, safety: state.safety };
   await verifyNoHorizontalOverflow(window, "Actions");
   await capture(window, "console-actions.png", "Console / Actions");
-  await click(window, "[data-actor-state=click_purr]", "Actions click_purr");
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.actions.includes("click_purr")), [], "Actions click_purr dispatch");
+  const desktopStates = [];
+  for (const actionId of coreActorStateIds) {
+    await click(window, `[data-actor-state=${actionId}]`, `Actions ${actionId}`);
+    const classification = await waitForDesktopActorState(desktopPet, actionId);
+    desktopStates.push({ actionId, classification });
+  }
+  report.actionDesktopMatrix = desktopStates;
+  verify(
+    "Actions drive the desktop actor",
+    desktopStates.length === coreActorStateIds.length
+      && desktopStates.every(({ actionId, classification }) => classification?.best?.actionId === actionId),
+    "all 12 Console actor-state controls render their matching approved frame in the separate desktop PetApp window",
+  );
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => ["click_purr", "drag_dangle", "token_snack", "play_cursor"].every((id) => state.qaState.actions.includes(id))), [], "Actions shared Quick Play dispatches");
+
+  await click(window, "[data-actor-state=focus_loop]", "Actions focus_loop return baseline");
+  await waitForDesktopActorState(desktopPet, "focus_loop");
+  await click(window, "[data-actor-state=click_purr]", "Actions click_purr one-shot lifecycle");
+  await waitForDesktopActorState(desktopPet, "click_purr");
+  await delay(1_300);
+  const clickReturn = await waitForDesktopActorState(desktopPet, "focus_loop");
+  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === "focus_loop", "click_purr visibly plays in the desktop PetApp and then returns to its prior focus loop");
+
+  await click(window, "[data-actor-state=overdrive_loop]", "Actions overdrive bounded lifecycle");
+  await waitForDesktopActorState(desktopPet, "overdrive_loop");
+  await delay(3_000);
+  const overdriveReturn = await waitForDesktopActorState(desktopPet, "focus_loop");
+  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === "focus_loop", "the intense overdrive state exits back to the prior focus loop instead of becoming a permanent image/transform");
 
   const beforeToggle = await qaStateFor(window);
   expectedReduceMotion = !beforeToggle.settings.petStory.reduceMotion;
@@ -646,13 +1058,14 @@ async function verifyJourney(window) {
   record("Journey controls persistence", "stage pin and milestone preview reach persisted story state");
 }
 
-async function verifyConsole() {
+async function verifyConsole(desktopPet) {
   const window = createWindow({ width: 1280, height: 900 });
   await load(window, "console");
   await waitForSelector(window, "[data-console-tab=overview].active");
+  await verifyConsoleSidebarPetSize(window, desktopPet);
   await openPetConsole(window);
   await verifyAppearanceAndSubpages(window);
-  await verifyActions(window);
+  await verifyActions(window, desktopPet);
   await verifyMood(window);
   await verifySound(window);
   await verifyJourney(window);
@@ -675,12 +1088,13 @@ async function verifyConsole() {
 async function run() {
   mkdirSync(outputDir, { recursive: true });
   registerFixtureBridge();
-  await verifyDesktopPet();
+  const desktopPet = await verifyDesktopPet();
+  await verifyDesktopCatVisualNormalization(desktopPet);
   await verifyQuickPlay();
   resetFixtureSettings();
   await verifyMenuBarTinyPet();
   resetFixtureSettings();
-  await verifyConsole();
+  await verifyConsole(desktopPet);
 
   const finalState = clone(qaState);
   verify("Quick Play summon side effect", finalState.summons >= 1, "summon action reached the desktop pet bridge");

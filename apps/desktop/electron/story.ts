@@ -63,6 +63,7 @@ const actionIds: PetActionId[] = [
   "drop_bounce",
   "token_snack",
   "play_cursor",
+  "run_across",
   "milestone_celebrate",
   "level_up",
   "daily_digest",

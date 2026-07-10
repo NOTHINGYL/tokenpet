@@ -11,6 +11,7 @@ import type {
 import type { MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { getEffectiveTokenBubbleId, getMoodLabel, getTokenBubbleLabel, getTokenFrameOption, moodToneClass, shouldShowMoodBadge } from "../pet-appearance/appearanceView";
 import type { PetActorProps, PetSurface } from "../pet-actor/actorTypes";
+import { resolveActorMoodBadgeRect } from "./actorLayout";
 
 type GeneratedActorImageMap = Map<string, HTMLImageElement>;
 
@@ -89,7 +90,7 @@ const storyActionForLegacyMotion: Record<MotionActionId, PetActionId> = {
   "tail-wag": "hot_loop",
   blink: "blink",
   stretch: "drag_dangle",
-  "run-across": "play_cursor",
+  "run-across": "run_across",
   jump: "drop_bounce",
   "desk-nap": "sleep_loop",
   celebrate: "milestone_celebrate",
@@ -166,7 +167,8 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
-  const moodBadgeRect = shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
+  const declaredMoodBadgeRect = shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
+  const moodBadgeRect = declaredMoodBadgeRect ? resolveActorMoodBadgeRect(manifest, declaredMoodBadgeRect, props.surface) : null;
   const tokenCenterX = tokenRect ? tokenRect.x + tokenRect.width / 2 : 0;
   const tokenCenterY = tokenRect ? tokenRect.y + tokenRect.height / 2 : 0;
 
@@ -326,16 +328,19 @@ function applyGeneratedBodyMotion(
   const origin = transform.origin;
   const motionState = String(plan.animation.motionState);
   const jumpBoost = plan.appearance.motionSettings.jumpHeight / 70;
+  const travelsHorizontally = motionState === "run_across" || motionState === "play_cursor";
+  const liftsFromGround = ["drop_bounce", "hot_loop", "overdrive_loop", "milestone_celebrate", "run_across", "play_cursor"].includes(motionState);
+  const stretches = motionState === "drag_dangle" || motionState === "drop_bounce";
   const translateX =
-    motionState === "run-across" || motionState === "edge-peek" || motionState === "pounce-cursor"
+    travelsHorizontally
       ? (transform.translateX ?? 0) * travel * energy
       : (transform.translateX ?? 0) * sine * energy;
   const translateY =
-    motionState === "jump" || motionState === "celebrate" || motionState === "pounce-cursor"
+    liftsFromGround
       ? (transform.translateY ?? 0) * jump * jumpBoost * energy
       : (transform.translateY ?? 0) * sine * energy;
-  const scaleX = 1 + (transform.scaleX ?? 0) * (motionState === "stretch" ? travel : sine) * energy;
-  const scaleY = 1 + (transform.scaleY ?? 0) * (motionState === "stretch" ? travel : sine) * energy;
+  const scaleX = 1 + (transform.scaleX ?? 0) * (stretches ? travel : sine) * energy;
+  const scaleY = 1 + (transform.scaleY ?? 0) * (stretches ? travel : sine) * energy;
   const rotation = (transform.rotation ?? 0) * sine * energy;
 
   context.translate(origin.x, origin.y);
@@ -460,7 +465,13 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
   if (!plan) return props.fallback ? <>{props.fallback}</> : null;
 
   return (
-    <div className={plan.className} style={plan.styleVars as CSSProperties}>
+    <div
+      className={plan.className}
+      style={plan.styleVars as CSSProperties}
+      data-pet-size={plan.appearance.size}
+      data-mood-badge-y={plan.moodBadgeRect?.y}
+      data-mood-badge-height={plan.moodBadgeRect?.height}
+    >
       <span
         className={`pet-visual-cat-wrap pet-actor-canvas-root pet-generated-actor-canvas-root ${images ? "is-ready" : "is-loading"}`}
         onPointerEnter={() => {

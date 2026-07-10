@@ -8,9 +8,9 @@ import { useUsage } from "../hooks/useUsage";
 import type { ProviderSnapshot } from "../types";
 import { compactNumber, lastUpdated, money } from "../utils/format";
 
-function IconButton(props: { label: string; children: ReactNode; onClick: () => void; disabled?: boolean }) {
+function IconButton(props: { label: string; children: ReactNode; onClick: () => void; disabled?: boolean; className?: string }) {
   return (
-    <button className="icon-button" type="button" aria-label={props.label} title={props.label} onClick={props.onClick} disabled={props.disabled}>
+    <button className={`icon-button ${props.className ?? ""}`} type="button" aria-label={props.label} title={props.label} onClick={props.onClick} disabled={props.disabled}>
       {props.children}
     </button>
   );
@@ -29,6 +29,14 @@ function SettingsIcon() {
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M12 8.2a3.8 3.8 0 1 0 0 7.6 3.8 3.8 0 0 0 0-7.6Z" />
       <path d="m18.4 14.4.7 2.1-2 2-2.1-.8a7.7 7.7 0 0 1-1.5.6l-.9 2h-2.8l-.9-2a7.7 7.7 0 0 1-1.5-.6l-2.1.8-2-2 .7-2.1a7.6 7.6 0 0 1-.6-1.5l-2-.9V9.2l2-.9c.2-.5.4-1 .6-1.5l-.7-2.1 2-2 2.1.8c.5-.3 1-.5 1.5-.6l.9-2h2.8l.9 2c.5.2 1 .4 1.5.6l2.1-.8 2 2-.7 2.1c.3.5.5 1 .6 1.5l2 .9V12l-2 .9c-.2.5-.4 1-.6 1.5Z" />
+    </svg>
+  );
+}
+
+function QuitIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m6 6 12 12M18 6 6 18" />
     </svg>
   );
 }
@@ -54,6 +62,7 @@ export function MenuBarApp() {
   const appearance = normalizePetAppearance(settings);
   const tinyAppearance = {
     ...appearance,
+    size: 1,
     moodBadge: { ...appearance.moodBadge, showMood: false },
   };
 
@@ -82,6 +91,9 @@ export function MenuBarApp() {
           </IconButton>
           <IconButton label="Open settings" onClick={() => window.tokenpet.openConsole()}>
             <SettingsIcon />
+          </IconButton>
+          <IconButton label="Quit TokenPet" className="menubar-quit" onClick={() => window.tokenpet.quit()}>
+            <QuitIcon />
           </IconButton>
         </div>
       </header>

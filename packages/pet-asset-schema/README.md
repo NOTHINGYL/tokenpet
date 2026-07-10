@@ -6,6 +6,8 @@
 
 Runtime ids use the underscore names exported by `PET_ACTOR_ACTION_IDS`. UI labels may be friendly, but an actor animation is keyed as `action.<id>`; for example, Quick Play **Feed snack** resolves to `action.token_snack`. Legacy aliases such as `idle-breathe`, `desk-nap`, or `pounce-cursor` are not valid source action ids.
 
+Authored source frames may declare individual positive `durationMs` values and manifest-safe body transforms. This lets the offline studio assemble approved multi-frame reactions such as `blink`, `token_snack`, and `run_across` without synthesizing cat anatomy at runtime. `run_across` is distinct from `play_cursor` and declares native choreography capability metadata.
+
 ## Capability status meanings
 
 - `ready`: the manifest must contain the same-id `action.<id>` animation. A label alone is invalid.

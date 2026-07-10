@@ -23,6 +23,7 @@ export const PET_ACTOR_ACTION_IDS = [
   "drop_bounce",
   "token_snack",
   "play_cursor",
+  "run_across",
   "toss_yarn",
   "nap_here",
   "wake_up",
@@ -99,6 +100,8 @@ export type PetActorSourceFrame = {
   src: string;
   kind: "approved-raster";
   expectedSha256: string;
+  durationMs?: number;
+  bodyTransform?: PetActorTransform;
 };
 
 export type PetActorSourceAction = {
@@ -129,7 +132,7 @@ export type PetActorCapability = {
   fallbackId?: PetActorActionId;
   reason?: string;
   uiBehavior?: "show" | "disable" | "hide";
-  runtimeBehavior?: "animation" | "reposition" | "capture";
+  runtimeBehavior?: "animation" | "reposition" | "capture" | "choreography";
 };
 
 export type PetActorCompatibility = {
@@ -672,6 +675,10 @@ export function validatePetActorSourceSpec(value: unknown): PetActorValidationRe
             pushIssue(issues, "source.frameKind", `${framePath}.kind`, "must be approved-raster; vector or geometric cat sources cannot ship");
           }
           validateSha256(frame.expectedSha256, issues, `${framePath}.expectedSha256`);
+          if (frame.durationMs !== undefined && (typeof frame.durationMs !== "number" || !Number.isFinite(frame.durationMs) || frame.durationMs <= 0)) {
+            pushIssue(issues, "source.frameDuration", `${framePath}.durationMs`, "must be a positive duration when provided");
+          }
+          if (frame.bodyTransform !== undefined) validateTransform(frame.bodyTransform, issues, `${framePath}.bodyTransform`);
         });
       }
       if (typeof action.fps !== "number" || !Number.isFinite(action.fps) || action.fps <= 0 || action.fps > 120) {

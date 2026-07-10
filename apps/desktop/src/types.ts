@@ -217,7 +217,7 @@ export type AppSettings = {
 export type PetActionId =
   | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
   | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor"
-  | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up"
+  | "run_across" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up"
   | "settle_down" | "focus_start" | "cool_down" | "summon_to_screen" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";
@@ -312,6 +312,7 @@ export type TokenPetBridge = {
   dispatchPetAction: (action: QuickPlayActionId) => Promise<{ accepted: boolean }>;
   onPetDirectorEvent: (callback: (event: PetDirectorEvent) => void) => () => void;
   summonPet: () => Promise<{ moved: boolean }>;
+  traversePet: () => Promise<{ moved: boolean; canceled?: boolean }>;
   capturePetMoment: () => Promise<{ saved: boolean; filePath?: string }>;
   onCursorPosition: (callback: (position: { x: number; y: number }) => void) => () => void;
   startDrag: () => Promise<{ started: boolean }>;

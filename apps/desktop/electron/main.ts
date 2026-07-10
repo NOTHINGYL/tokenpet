@@ -10,7 +10,9 @@ import { loadUsageSnapshot } from "./usage.js";
 import {
   clampBoundsToWorkArea,
   clampValue,
+  createPetTraversalPlan,
   hasPngSignature,
+  petTraversalBoundsAtProgress,
   popoverPositionForBounds,
   summonBoundsForCursor,
 } from "./window-behavior.js";
@@ -31,6 +33,16 @@ let lastStoryReconcileAt = 0;
 const pendingDirectorEvents: PetDirectorEvent[] = [];
 const rendererGoneWindows = new WeakSet<BrowserWindow>();
 let mainProcessQaCursor: { x: number; y: number } | null = null;
+type PetTraversalResult = { moved: boolean; canceled?: boolean };
+type PetTraversalState = {
+  window: BrowserWindow;
+  plan: ReturnType<typeof createPetTraversalPlan>;
+  startedAt: number;
+  timer: NodeJS.Timeout | null;
+  moved: boolean;
+  resolve: (result: PetTraversalResult) => void;
+};
+let traversalState: PetTraversalState | null = null;
 let dragState:
   | {
       timer: NodeJS.Timeout;
@@ -81,7 +93,10 @@ function isUsableWindow(window: BrowserWindow | null): window is BrowserWindow {
 
 function trackWindowHealth(window: BrowserWindow) {
   window.webContents.on("render-process-gone", (_event, details) => {
-    if (details.reason !== "clean-exit") rendererGoneWindows.add(window);
+    if (details.reason !== "clean-exit") {
+      rendererGoneWindows.add(window);
+      if (window === petWindow) cancelPetTraversal();
+    }
   });
 }
 
@@ -129,6 +144,7 @@ function verifyBridge(window: BrowserWindow, label: string) {
 }
 
 function quitTokenPet() {
+  cancelPetTraversal();
   if (cursorTrackingTimer) {
     clearInterval(cursorTrackingTimer);
     cursorTrackingTimer = null;
@@ -176,6 +192,103 @@ function writeStoredPetPosition(bounds: Rectangle) {
   } catch (error) {
     console.warn("[tokenpet] failed to write pet position", error);
   }
+}
+
+function traversalMovedFromStart(state: PetTraversalState, bounds: Rectangle) {
+  return state.moved || bounds.x !== state.plan.start.x || bounds.y !== state.plan.start.y;
+}
+
+function cancelPetTraversal(): PetTraversalResult {
+  const state = traversalState;
+  if (!state) return { moved: false, canceled: true };
+  traversalState = null;
+  if (state.timer) clearInterval(state.timer);
+
+  let moved = state.moved;
+  if (isUsableWindow(state.window)) {
+    const bounds = clampBoundsToWorkArea(state.window.getBounds(), state.plan.workArea);
+    moved = traversalMovedFromStart(state, bounds);
+    state.window.setBounds(bounds, false);
+    if (moved) writeStoredPetPosition(bounds);
+    if (petWindow === state.window) positionAccessoryWindows();
+  }
+  const result = { moved, canceled: true };
+  state.resolve(result);
+  return result;
+}
+
+function finishPetTraversal(state: PetTraversalState) {
+  if (traversalState !== state) return;
+  traversalState = null;
+  if (state.timer) clearInterval(state.timer);
+  if (!isUsableWindow(state.window)) {
+    state.resolve({ moved: state.moved, canceled: true });
+    return;
+  }
+
+  state.window.setBounds(state.plan.target, false);
+  const moved = traversalMovedFromStart(state, state.plan.target);
+  if (moved) writeStoredPetPosition(state.plan.target);
+  if (petWindow === state.window) positionAccessoryWindows();
+  state.resolve({ moved, canceled: false });
+}
+
+function traversePetAcrossWorkArea(): Promise<PetTraversalResult> {
+  cancelPetTraversal();
+  if (!settings.petVisible || !isUsableWindow(petWindow) || settings.petStory.lockPosition || dragState) {
+    return Promise.resolve({ moved: false, canceled: true });
+  }
+
+  const traversalWindow = petWindow;
+  const workArea = screen.getDisplayMatching(traversalWindow.getBounds()).workArea;
+  const plan = createPetTraversalPlan(traversalWindow.getBounds(), workArea, settings.petStory.reduceMotion);
+  if (traversalWindow.getBounds().x !== plan.start.x || traversalWindow.getBounds().y !== plan.start.y) {
+    traversalWindow.setBounds(plan.start, false);
+    positionAccessoryWindows();
+  }
+  if (plan.start.x === plan.target.x && plan.start.y === plan.target.y) {
+    return Promise.resolve({ moved: false, canceled: false });
+  }
+
+  return new Promise((resolve) => {
+    const state: PetTraversalState = {
+      window: traversalWindow,
+      plan,
+      startedAt: Date.now(),
+      timer: null,
+      moved: false,
+      resolve,
+    };
+    traversalState = state;
+
+    const step = () => {
+      if (traversalState !== state) return;
+      if (
+        petWindow !== state.window
+        || !isUsableWindow(state.window)
+        || !settings.petVisible
+        || settings.petStory.lockPosition
+        || dragState
+      ) {
+        cancelPetTraversal();
+        return;
+      }
+
+      const progress = Math.min((Date.now() - state.startedAt) / state.plan.durationMs, 1);
+      if (progress >= 1) {
+        finishPetTraversal(state);
+        return;
+      }
+      const nextBounds = petTraversalBoundsAtProgress(state.plan, progress);
+      state.moved = traversalMovedFromStart(state, nextBounds);
+      state.window.setPosition(nextBounds.x, nextBounds.y, false);
+      positionAccessoryWindows();
+    };
+
+    state.timer = setInterval(step, 16);
+    state.timer.unref();
+    step();
+  });
 }
 
 function readStoredSettings() {
@@ -503,6 +616,7 @@ function setPetVisible(enabled: boolean) {
     return;
   }
 
+  cancelPetTraversal();
   closeUsableWindow(popoverWindow);
   if (isUsableWindow(petWindow)) petWindow.hide();
   else {
@@ -581,6 +695,7 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
 
   if (key === "petStory") {
     settings.petStory = normalizePetStory(value);
+    if (settings.petStory.lockPosition) cancelPetTraversal();
   }
 
   settings = syncLegacyAppearanceFields(settings, settings.petAppearance) as AppSettings;
@@ -680,6 +795,7 @@ function createPetWindow() {
   });
 
   createdWindow.on("closed", () => {
+    if (traversalState?.window === createdWindow) cancelPetTraversal();
     if (petWindow === createdWindow) {
       petWindow = null;
       closeUsableWindow(popoverWindow);
@@ -747,6 +863,7 @@ function togglePopover() {
 }
 
 function summonPetToCurrentScreen() {
+  cancelPetTraversal();
   if (!settings.petVisible) {
     settings.petVisible = true;
     createPetWindow();
@@ -861,6 +978,7 @@ export const mainProcessQa = {
   togglePopover,
   setSetting,
   summonPetToCurrentScreen,
+  traversePetAcrossWorkArea,
   capturePetMoment,
 };
 
@@ -921,6 +1039,8 @@ ipcMain.handle("pet:dispatch-action", (_event, action: QuickPlayActionId) => {
 
 ipcMain.handle("pet:summon", () => summonPetToCurrentScreen());
 
+ipcMain.handle("pet:traverse", () => traversePetAcrossWorkArea());
+
 ipcMain.handle("pet:capture-moment", () => capturePetMoment());
 
 function stopDrag() {
@@ -938,6 +1058,7 @@ function stopDrag() {
 }
 
 ipcMain.handle("pet:start-drag", () => {
+  cancelPetTraversal();
   if (!isUsableWindow(petWindow) || settings.petStory.lockPosition) return { started: false };
 
   stopDrag();

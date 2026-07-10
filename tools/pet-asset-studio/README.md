@@ -2,7 +2,7 @@
 
 The studio turns the Golden British v2 source spec into the runtime bundle at `apps/desktop/public/pet-actors/golden-british`.
 
-Inputs are 1024×1024 transparent approved raster poses under `assets/source/pet-actors/golden-british/frames`. Every pose already contains the matching cream token frame, lighting, shadows, and any state-specific prop. The studio copies those pixels without reconstructing cat anatomy, verifies every declared SHA-256 digest, and records the digest again in `actor.json`.
+Inputs are 1024×1024 transparent approved raster poses under `assets/source/pet-actors/golden-british/frames`. Every pose already contains the matching cream token frame, lighting, shadows, and any state-specific prop. The studio copies those pixels without reconstructing cat anatomy, verifies every declared SHA-256 digest, and records the digest again in `actor.json`. Approved poses can be sequenced with per-step timing; the current bundle uses multi-pose reactions and a 12-step `run_across` sequence assembled from four approved action poses and coordinated with native desktop traversal.
 
 Generated outputs include:
 

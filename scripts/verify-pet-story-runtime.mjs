@@ -35,6 +35,17 @@ const outfitBundle = await build({
 });
 const outfitCode = outfitBundle.outputFiles[0].text;
 const outfit = await import(`data:text/javascript;base64,${Buffer.from(outfitCode).toString("base64")}`);
+const actorLayoutBundle = await build({
+  entryPoints: [join(root, "apps/desktop/src/features/pet-generated-actor/actorLayout.ts")],
+  bundle: true,
+  format: "esm",
+  platform: "node",
+  target: "node20",
+  write: false,
+  logLevel: "silent",
+});
+const actorLayoutCode = actorLayoutBundle.outputFiles[0].text;
+const actorLayout = await import(`data:text/javascript;base64,${Buffer.from(actorLayoutCode).toString("base64")}`);
 
 const results = [];
 
@@ -203,6 +214,56 @@ verify("overdrive is a bounded burst that cools to hot", () => {
   assert.equal(director.completePetDirectorAction(directed.state, 14_200).currentAction, "hot_loop");
 });
 
+verify("all Console Actions use explicit desktop lifecycles", () => {
+  const actions = [
+    ["idle_breathe", "actor.actionRequested", 2_400],
+    ["blink", "actor.actionRequested", 1_600],
+    ["sleep_loop", "actor.actionRequested", 2_400],
+    ["focus_loop", "actor.actionRequested", 2_400],
+    ["hot_loop", "actor.actionRequested", 2_400],
+    ["overdrive_loop", "actor.actionRequested", 3_200],
+    ["click_purr", "quickPlay.action", 1_450],
+    ["drag_dangle", "quickPlay.action", 1_800],
+    ["drop_bounce", "actor.actionRequested", 1_600],
+    ["token_snack", "quickPlay.action", 1_450],
+    ["play_cursor", "quickPlay.action", 1_450],
+    ["run_across", "actor.actionRequested", 2_400],
+    ["milestone_celebrate", "actor.actionRequested", 1_600],
+  ];
+
+  for (const [index, [action, eventType, expectedDuration]] of actions.entries()) {
+    const now = 14_500 + index * 4_000;
+    const directed = director.directPetEvent(
+      director.createPetDirectorState("focused"),
+      { type: eventType, action },
+      { actorId: "golden-british", now },
+    );
+    assert.equal(directed.decision.requested, action);
+    assert.equal(directed.decision.resolved, action);
+    assert.equal(directed.decision.durationMs, expectedDuration);
+    if (action === "run_across") assert.equal(directed.decision.sideEffect, "traverse");
+    if (expectedDuration === 0) {
+      assert.equal(directed.state.activeUntil, Number.POSITIVE_INFINITY);
+    } else {
+      assert.equal(directed.state.activeUntil, now + expectedDuration);
+      assert.ok(Number.isFinite(directed.state.activeUntil));
+      assert.equal(director.completePetDirectorAction(directed.state, now + expectedDuration).currentAction, "focus_loop");
+    }
+  }
+
+  const firstPreview = director.directPetEvent(
+    director.createPetDirectorState("focused"),
+    { type: "actor.actionRequested", action: "overdrive_loop" },
+    { actorId: "golden-british", now: 90_000 },
+  );
+  const repeatedPreview = director.directPetEvent(
+    firstPreview.state,
+    { type: "actor.actionRequested", action: "overdrive_loop" },
+    { actorId: "golden-british", now: 90_050 },
+  );
+  assert.equal(repeatedPreview.decision?.requested, "overdrive_loop", "explicit Console previews must bypass ambient cooldowns");
+});
+
 verify("threshold reaction fires exactly once per mood crossing", () => {
   assert.equal(director.thresholdCrossingEvent("focused", "focused", true), null);
   assert.equal(director.thresholdCrossingEvent("focused", "hot", false), null);
@@ -361,7 +422,7 @@ verify("summon/capture side effects", () => {
   assert.equal(capture.decision.sideEffect, "capture");
 });
 
-verify("desktop window safe bounds and PNG contract", () => {
+verify("desktop window placement, safe bounds and PNG contract", () => {
   const workArea = { x: -1920, y: -1080, width: 1920, height: 1080 };
   assert.deepEqual(
     windowBehavior.clampBoundsToWorkArea({ x: -9999, y: 9999, width: 260, height: 260 }, workArea),
@@ -384,9 +445,55 @@ verify("desktop window safe bounds and PNG contract", () => {
     { x: -417, y: -788 },
   );
 
+  const standardWorkArea = { x: 0, y: 0, width: 1512, height: 869 };
+  const popover = { width: 405, height: 480 };
+  const overlapArea = (pet, position) => {
+    const width = Math.max(0, Math.min(pet.x + pet.width, position.x + popover.width) - Math.max(pet.x, position.x));
+    const height = Math.max(0, Math.min(pet.y + pet.height, position.y + popover.height) - Math.max(pet.y, position.y));
+    return width * height;
+  };
+  const boundsFitWorkAreaForTest = (bounds, area) => bounds.x >= area.x
+    && bounds.y >= area.y
+    && bounds.x + bounds.width <= area.x + area.width
+    && bounds.y + bounds.height <= area.y + area.height;
+  const centeredPet = { x: 626, y: 305, width: 260, height: 260 };
+  const centeredPosition = windowBehavior.popoverPositionForBounds(centeredPet, popover, standardWorkArea);
+  assert.deepEqual(centeredPosition, { x: 894, y: 195 });
+  assert.equal(overlapArea(centeredPet, centeredPosition), 0, "a vertically centered pet must push Quick Play to its side");
+
+  const topPet = { x: 626, y: 12, width: 260, height: 260 };
+  const topPosition = windowBehavior.popoverPositionForBounds(topPet, popover, standardWorkArea);
+  assert.equal(topPosition.y, 280);
+  assert.equal(overlapArea(topPet, topPosition), 0, "a top-edge pet must place Quick Play below");
+
+  const rightPet = { x: 1240, y: 305, width: 260, height: 260 };
+  const rightPosition = windowBehavior.popoverPositionForBounds(rightPet, popover, standardWorkArea);
+  assert.deepEqual(rightPosition, { x: 827, y: 195 });
+  assert.equal(overlapArea(rightPet, rightPosition), 0, "a right-edge pet must place Quick Play to its left");
+
+  const traversalStart = { x: 24, y: 300, width: 260, height: 260 };
+  const fullTraversal = windowBehavior.createPetTraversalPlan(traversalStart, standardWorkArea, false);
+  const reducedTraversal = windowBehavior.createPetTraversalPlan(traversalStart, standardWorkArea, true);
+  assert.equal(fullTraversal.durationMs, 2_400);
+  assert.equal(fullTraversal.target.x, 1_228);
+  assert.equal(reducedTraversal.durationMs, 900);
+  assert.ok(reducedTraversal.target.x > traversalStart.x && reducedTraversal.target.x < fullTraversal.target.x);
+  const walkingFrame = windowBehavior.petTraversalBoundsAtProgress(fullTraversal, 0.125);
+  assert.ok(walkingFrame.x > traversalStart.x, "native traversal must change real window x before completion");
+  assert.notEqual(walkingFrame.y, traversalStart.y, "normal traversal adds a light gait offset");
+  assert.deepEqual(windowBehavior.petTraversalBoundsAtProgress(fullTraversal, 1), fullTraversal.target);
+  assert.equal(boundsFitWorkAreaForTest(walkingFrame, standardWorkArea), true);
+
   const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
   assert.equal(windowBehavior.hasPngSignature(png), true);
   assert.equal(windowBehavior.hasPngSignature(Uint8Array.from([0x89, 0x50, 0x4e, 0x47])), false);
+});
+
+verify("desktop mood badge stays anchored to the scaled actor", () => {
+  const declared = { x: 408, y: 72, width: 208, height: 70, align: "center", maxTextLength: 10, maxFontSize: 44 };
+  const manifest = { artboard: { width: 1024, height: 1024 }, footLineY: 832 };
+  assert.deepEqual(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "preview"), declared);
+  assert.equal(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "desktop").y, 383);
 });
 
 verify("reduced motion and capability policy", () => {

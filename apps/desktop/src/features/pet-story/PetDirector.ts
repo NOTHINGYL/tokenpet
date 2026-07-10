@@ -75,6 +75,7 @@ export const actionIds: PetActionId[] = [
   "drop_bounce",
   "token_snack",
   "play_cursor",
+  "run_across",
   "milestone_celebrate",
   "level_up",
   "daily_digest",
@@ -351,7 +352,7 @@ export type PetDirectorDecision = ResolvedPetAction & {
   priority: number;
   durationMs: number;
   returnTo: PetActionId;
-  sideEffect?: "summon" | "capture";
+  sideEffect?: "summon" | "capture" | "traverse";
 };
 
 export type PetDirectorState = {
@@ -383,7 +384,7 @@ type DirectorRequest = {
   durationMs: number;
   persistent?: "rest" | "wake";
   moodLoop?: PetActionId;
-  sideEffect?: "summon" | "capture";
+  sideEffect?: "summon" | "capture" | "traverse";
   ignoreCooldown?: boolean;
 };
 
@@ -414,15 +415,18 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
   }
   if (event.type === "actor.actionRequested") {
     const persistent = event.action === "nap_here" ? "rest" : event.action === "wake_up" ? "wake" : undefined;
+    const loopPreviewDuration = event.action === "overdrive_loop" ? 3_200 : event.action.endsWith("_loop") ? 2_400 : 0;
     return {
       action: event.action,
       priority: event.action.endsWith("_loop") || event.action === "idle_breathe" || event.action === "blink"
         ? directorPriority.moodLoop
         : directorPriority.userReaction,
-      durationMs: event.action.endsWith("_loop") || event.action === "idle_breathe" ? 0 : 1_600,
+      durationMs: event.action === "idle_breathe" ? 2_400 : loopPreviewDuration || (event.action === "run_across" ? 2_400 : 1_600),
       ...(persistent ? { persistent } : {}),
       ...(event.action === "summon_to_screen" ? { sideEffect: "summon" as const } : {}),
       ...(event.action === "capture_moment" ? { sideEffect: "capture" as const } : {}),
+      ...(event.action === "run_across" ? { sideEffect: "traverse" as const } : {}),
+      ignoreCooldown: true,
     };
   }
   if (event.type === "pointer.dragStart") return { action: "drag_dangle", priority: directorPriority.directManipulation, durationMs: 0 };
@@ -560,6 +564,7 @@ export function rendererAction(id: PetActionId): MotionActionId {
     drop_bounce: "jump",
     token_snack: "blink",
     play_cursor: "pounce-cursor",
+    run_across: "run-across",
     milestone_celebrate: "celebrate",
     level_up: "celebrate",
     daily_digest: "desk-nap",

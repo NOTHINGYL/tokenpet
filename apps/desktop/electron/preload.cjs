@@ -25,6 +25,7 @@ contextBridge.exposeInMainWorld("tokenpet", {
     return () => ipcRenderer.removeListener("pet:director-event", listener);
   },
   summonPet: () => ipcRenderer.invoke("pet:summon"),
+  traversePet: () => ipcRenderer.invoke("pet:traverse"),
   capturePetMoment: () => ipcRenderer.invoke("pet:capture-moment"),
   onCursorPosition: (callback) => {
     const listener = (_event, position) => callback(position);

@@ -358,7 +358,7 @@
 
 .menubar-tiny-pet .pet-generated-actor-shell {
   --pet-visual-cat-width: 92px;
-  --pet-visual-cat-y: 7px;
+  --pet-visual-cat-y: -11px;
 }
 
 .panel-header .panel-header-actions,
@@ -384,6 +384,11 @@
 
 .icon-button:hover {
   background: rgba(16, 24, 40, 0.05);
+}
+
+.icon-button.menubar-quit:hover {
+  color: #b42318;
+  background: rgba(217, 45, 32, 0.08);
 }
 
 .icon-button svg {

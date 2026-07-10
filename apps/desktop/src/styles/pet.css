@@ -13,6 +13,10 @@
   --pet-mood-bg: rgba(225, 246, 232, 0.92);
   --pet-mood-text: #176c3a;
   --pet-state-glow: rgba(47, 148, 97, 0.18);
+  --pet-ui-close-size: 26px;
+  --pet-ui-close-top: 90px;
+  --pet-ui-close-right: 57px;
+  --pet-ui-close-font-size: 17px;
   position: relative;
   display: grid;
   width: 100%;
@@ -128,6 +132,12 @@
   --pet-visual-cat-y: -12px;
   --pet-visual-token-bottom: 12px;
   --pet-visual-mood-top: 20px;
+}
+
+.pet-appearance-visual-desktop.pet-generated-actor-shell {
+  /* Golden British frames reserve transparent artboard space for every pose.
+     Normalize the visible cat to the same default footprint as fallback cats. */
+  --pet-visual-cat-width: 230px;
 }
 
 .pet-visual-cat-wrap {
@@ -841,11 +851,11 @@
 
 .pet-close {
   position: absolute;
-  top: 17px;
-  right: 18px;
+  top: var(--pet-ui-close-top);
+  right: var(--pet-ui-close-right);
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: var(--pet-ui-close-size);
+  height: var(--pet-ui-close-size);
   padding: 0;
   place-items: center;
   cursor: pointer;
@@ -854,10 +864,17 @@
   border-radius: 50%;
   background: rgba(255, 253, 239, 0.82);
   box-shadow: 0 8px 18px rgba(87, 57, 11, 0.18);
-  font-size: 18px;
+  font-size: var(--pet-ui-close-font-size);
   font-weight: 700;
   line-height: 1;
   z-index: 2;
+  transition:
+    top 180ms ease,
+    right 180ms ease,
+    width 180ms ease,
+    height 180ms ease,
+    color 140ms ease,
+    background 140ms ease;
 }
 
 .pet-close:hover {

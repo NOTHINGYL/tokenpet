@@ -320,7 +320,7 @@ export function ConsoleApp() {
   const { usage } = useUsage();
   const { settings, setSetting } = useAppSettings();
   const normalizedAppearance = normalizePetAppearance(settings);
-  const sidebarAppearance = { ...normalizedAppearance, moodBadge: { ...normalizedAppearance.moodBadge, showMood: false } };
+  const sidebarAppearance = { ...normalizedAppearance, size: 1, moodBadge: { ...normalizedAppearance.moodBadge, showMood: false } };
   const requestedTab = new URLSearchParams(window.location.search).get("section");
   const [activeTab, setActiveTab] = useState<ConsoleTab>(requestedTab === "pet" ? "pet" : "overview");
   useEffect(() => window.tokenpet?.onConsoleNavigation?.(setActiveTab), []);
