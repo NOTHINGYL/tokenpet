@@ -24,7 +24,7 @@ import { getTokenFrameForBubble, patchAccessorySettings } from "./accessorySetti
 import { AccessoriesPage } from "./AccessoriesPage";
 import { CatTypePage } from "./CatTypePage";
 import { CatTypeCard } from "./CatTypePicker";
-import { MotionPanel } from "./MotionPanel";
+import { PetStoryPanel } from "../pet-story/PetStoryPanel";
 import { exportPetPreview } from "./previewExport";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
 import { PetIcon } from "./icons";
@@ -49,7 +49,7 @@ function PetSubnav(props: { activeSection: PetConsoleSection; onSelectSection: (
   return (
     <nav className="pet-console-subnav" aria-label="Pet customization sections">
       {petConsoleSections.map((section) => {
-        const enabled = section.id === "appearance" || section.id === "motion";
+        const enabled = true;
         return (
           <button
             className={`${section.id === props.activeSection ? "active" : ""} ${enabled ? "" : "static"}`.trim()}
@@ -226,8 +226,8 @@ function TokenBubbleCard(props: { selectedBubble: TokenBubbleId; onSelectBubble:
     <section className="pet-card token-bubble-card">
       <div className="pet-card-header">
         <div>
-          <strong>Token Bubble</strong>
-          <span>Choose how token info is shown.</span>
+          <strong>Token Frame</strong>
+          <span>Choose the manifest-safe token display.</span>
         </div>
       </div>
       <div className="token-bubble-list">
@@ -448,10 +448,10 @@ export function AppearancePanel(props: AppearancePanelProps) {
   }
 
   return (
-    <div className={`pet-appearance-panel ${activeSection === "motion" ? "pet-motion-root" : ""}`}>
+    <div className={`pet-appearance-panel ${activeSection !== "appearance" ? "pet-story-root" : ""}`}>
       <PetSubnav activeSection={activeSection} onSelectSection={selectConsoleSection} />
-      {activeSection === "motion" ? (
-        <MotionPanel appearance={appearance} usage={props.usage} onPatchAppearance={patchAppearance} />
+      {activeSection !== "appearance" ? (
+        <PetStoryPanel section={activeSection} settings={props.settings} usage={props.usage} setStory={(petStory) => props.setSetting("petStory", petStory)} />
       ) : (
         <>
           <div className="pet-appearance-grid">

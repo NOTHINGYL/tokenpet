@@ -561,6 +561,20 @@ function buildManifest(source, contentHash) {
       moodBadge: source.dynamicSlots.moodBadge
     },
     animations,
+    capabilities: [
+      "idle_breathe", "blink", "sleep_loop", "focus_loop", "hot_loop", "overdrive_loop", "click_purr", "drag_dangle", "drop_bounce", "play_cursor", "milestone_celebrate"
+    ].map((id) => ({ id, status: "ready", uiBehavior: "show" })).concat([
+      { id: "hatch", status: "fallback", fallbackId: "milestone_celebrate", uiBehavior: "show" },
+      { id: "token_snack", status: "fallback", fallbackId: "click_purr", uiBehavior: "show" },
+      { id: "toss_yarn", status: "fallback", fallbackId: "play_cursor", uiBehavior: "show" },
+      { id: "nap_here", status: "fallback", fallbackId: "sleep_loop", uiBehavior: "show" },
+      { id: "wake_up", status: "fallback", fallbackId: "idle_breathe", uiBehavior: "show" },
+      { id: "summon_to_screen", status: "fallback", fallbackId: "idle_breathe", uiBehavior: "show" },
+      { id: "capture_moment", status: "fallback", fallbackId: "idle_breathe", uiBehavior: "show" }
+    ]),
+    fallbackStaticImage: "../../assets/pets/appearance/cat-types/golden-british.png",
+    visualReferences: ["docs/designs/gpt-v15-actor-state-reference.png", "docs/designs/gpt-v15-quick-play-action-reference.png"],
+    sourceAssetHash: contentHash,
     compatibility: {
       bakedAccessories: ["collar", "embedded-token-frame"],
       runtimeAccessoryPolicy: "disabled",
@@ -617,8 +631,10 @@ async function main() {
     writes.push(writeIfChanged(resolve(frameDir, `${moodId}-idle.svg`), frameSvg(source, source.moods[moodId].frameEffect, imageHref)));
   }
   Object.entries(source.actions ?? {}).forEach(([actionId, action]) => {
+    // Runtime frames always preserve the approved bitmap actor. Pose thumbnails are
+    // planning references only and must never replace the production cat with SVG anatomy.
     const pose = action.pose ?? "source";
-    writes.push(writeIfChanged(resolve(frameDir, `${actionId}.svg`), frameSvg(source, action.effect, imageHref, pose)));
+    writes.push(writeIfChanged(resolve(frameDir, `${actionId}.svg`), frameSvg(source, action.effect, imageHref, "source")));
     writes.push(writeIfChanged(resolve(thumbnailDir, `${actionId}.svg`), thumbnailSvg(source, pose)));
   });
   writes.push(writeIfChanged(resolve(outputDir, "actor.json"), `${JSON.stringify(manifest, null, 2)}\n`));

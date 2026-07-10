@@ -211,6 +211,28 @@ export type AppSettings = {
   petScale: number;
   petOpacity: number;
   petAppearance: PetAppearanceSettings;
+  petStory: PetStorySettings;
+};
+
+export type PetActionId =
+  | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
+  | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor"
+  | "milestone_celebrate" | "toss_yarn" | "nap_here" | "wake_up" | "summon_to_screen" | "capture_moment";
+export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
+export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";
+export type PetStorySettings = {
+  behaviorMode: PetBehaviorMode;
+  moodThresholds: { focused: number; hot: number; overdrive: number };
+  quietMode: boolean;
+  followCursor: boolean;
+  lockPosition: boolean;
+  reduceMotion: boolean;
+  soundEnabled: boolean;
+  soundStyle: "soft" | "cozy" | "playful";
+  volume: number;
+  cueIds: string[];
+  pinnedStage: PetLifeStage | null;
+  lastAction: { id: PetActionId; nonce: number } | null;
 };
 
 export type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";

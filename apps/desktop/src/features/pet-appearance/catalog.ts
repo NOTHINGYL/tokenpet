@@ -14,17 +14,17 @@ import type {
 
 const appearanceAsset = (path: string) => `assets/pets/appearance/${path}`;
 
-export type PetConsoleSection = "appearance" | "motion" | "mood" | "sound" | "rewards";
+export type PetConsoleSection = "appearance" | "actions" | "mood" | "sound" | "journey";
 
 export const petConsoleSections: Array<{
   id: PetConsoleSection;
   label: string;
 }> = [
   { id: "appearance", label: "Appearance" },
-  { id: "motion", label: "Motion" },
+  { id: "actions", label: "Actions" },
   { id: "mood", label: "Mood & Reactions" },
-  { id: "sound", label: "Sound" },
-  { id: "rewards", label: "Rewards" },
+  { id: "sound", label: "Sound Cues" },
+  { id: "journey", label: "Journey" },
 ];
 
 export type CatHairLength = "short" | "medium" | "long";

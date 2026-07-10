@@ -504,6 +504,111 @@
       ]
     }
   },
+  "capabilities": [
+    {
+      "id": "idle_breathe",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "blink",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "sleep_loop",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "focus_loop",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "hot_loop",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "overdrive_loop",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "click_purr",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "drag_dangle",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "drop_bounce",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "play_cursor",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "milestone_celebrate",
+      "status": "ready",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "hatch",
+      "status": "fallback",
+      "fallbackId": "milestone_celebrate",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "token_snack",
+      "status": "fallback",
+      "fallbackId": "click_purr",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "toss_yarn",
+      "status": "fallback",
+      "fallbackId": "play_cursor",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "nap_here",
+      "status": "fallback",
+      "fallbackId": "sleep_loop",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "wake_up",
+      "status": "fallback",
+      "fallbackId": "idle_breathe",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "summon_to_screen",
+      "status": "fallback",
+      "fallbackId": "idle_breathe",
+      "uiBehavior": "show"
+    },
+    {
+      "id": "capture_moment",
+      "status": "fallback",
+      "fallbackId": "idle_breathe",
+      "uiBehavior": "show"
+    }
+  ],
+  "fallbackStaticImage": "../../assets/pets/appearance/cat-types/golden-british.png",
+  "visualReferences": [
+    "docs/designs/gpt-v15-actor-state-reference.png",
+    "docs/designs/gpt-v15-quick-play-action-reference.png"
+  ],
+  "sourceAssetHash": "5cd7a5c5725a4fa8",
   "compatibility": {
     "bakedAccessories": [
       "collar",

@@ -138,6 +138,9 @@ export type PetActorAnimation = {
   frames: PetActorFrameAsset[];
 };
 
+export type PetActorCapabilityStatus = "ready" | "fallback" | "planned" | "unavailable";
+export type PetActorCapability = { id: string; status: PetActorCapabilityStatus; fallbackId?: string; reason?: string; uiBehavior?: "show" | "disable" | "hide" };
+
 export type PetActorDynamicSlots = {
   tokenText: PetActorRect & {
     mode: PetActorTokenMode;
@@ -168,6 +171,10 @@ export type PetActorManifest = {
   defaultTokenMode: PetActorTokenMode;
   dynamicSlots: PetActorDynamicSlots;
   animations: Record<string, PetActorAnimation>;
+  capabilities: PetActorCapability[];
+  fallbackStaticImage?: string;
+  visualReferences?: string[];
+  sourceAssetHash?: string;
   compatibility: {
     bakedAccessories: string[];
     runtimeAccessoryPolicy: "disabled" | "compatible-only" | "freeform";

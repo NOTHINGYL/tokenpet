@@ -77,4 +77,5 @@ export const fallbackSettings: AppSettings = {
   petScale: 1,
   petOpacity: 0.92,
   petAppearance: defaultPetAppearance,
+  petStory: { behaviorMode: "balanced", moodThresholds: { focused: 1000, hot: 10000, overdrive: 50000 }, quietMode: false, followCursor: false, lockPosition: false, reduceMotion: false, soundEnabled: false, soundStyle: "soft", volume: 45, cueIds: ["wake", "purr", "drop", "snack", "milestone"], pinnedStage: null, lastAction: null },
 };

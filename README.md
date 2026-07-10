@@ -1,5 +1,19 @@
 # TokenPet
 
+> TokenPet makes local AI usage visible, playful, and private.
+
+TokenPet turns local token flow into a tiny desktop companion. The Golden British actor wakes, breathes, reacts to clicks and drag/drop, reflects usage moods, and keeps a gentle local Journey without chores, punishment, accounts, or cloud telemetry.
+
+## Pet story
+
+- **Manifest-driven actor:** the desktop pet, console preview, and Quick Play use the same generated actor bundle and dynamic token/mood slots.
+- **Pet Director:** stable action ids flow through a capability gate before playback. Missing dedicated frames use declared fallbacks; unsupported features are not presented as ready.
+- **Quick Play:** double-click the pet for a compact remote with Pet, Feed snack, Play cursor, Dangle toy, Toss yarn, Nap, Wake, Summon, and Capture actions.
+- **Gentle Journey:** lifecycle progress and local memories derive from local use. Switching cat type never resets shared behavior or progress.
+- **Local first:** usage, settings, thresholds, journey state, and memories remain on the machine.
+
+Golden British is the first actor-ready cat. Other cat types intentionally use approved static fallback images until an actor bundle is available.
+
 A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.
 
 TokenPet is a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.

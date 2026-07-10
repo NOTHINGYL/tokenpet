@@ -15,6 +15,16 @@
   backdrop-filter: blur(20px);
 }
 
+.quick-play { padding: 14px; background: linear-gradient(155deg,#fffdf7,#fff 58%,#f1faf5); }
+.quick-header,.quick-status,.quick-controls label,.open-console { display:flex; align-items:center; justify-content:space-between; }
+.quick-header div { display:grid; gap:1px; }.quick-header div>span,.eyebrow { color:#b97919; font-size:10px; font-weight:900; letter-spacing:.12em; }
+.quick-header strong { font-size:21px; }.live-dot { color:#26764a; font-size:11px; font-style:normal; font-weight:800; }.live-dot:before { content:""; display:inline-block; width:7px; height:7px; margin-right:6px; border-radius:50%; background:#36b36d; }
+.quick-status { margin:10px 0 12px; padding:9px 11px; border:1px solid #e9dfc7; border-radius:10px; background:#fffaf0; }.quick-status span{font-size:12px;font-weight:850}.quick-status small{color:var(--qp-muted);font-size:10px}
+.quick-play section { margin-top:11px; }.quick-play h2 { margin:0 0 7px; font-size:12px; }
+.quick-action-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }.quick-action-grid button { position:relative; display:grid; min-height:62px; place-items:center; gap:2px; padding:7px 4px; border:1px solid #e5dfd1; border-radius:10px; background:#fff; color:#344054; }.quick-action-grid button:hover:not(:disabled){border-color:#e8b95e;background:#fffaf0;transform:translateY(-1px)}.quick-action-grid b{color:#d58a17;font-size:17px}.quick-action-grid span{font-size:10px;font-weight:850}.quick-action-grid small{position:absolute;right:4px;top:3px;color:#98702a;font-size:7px}
+.quick-modes { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; padding:3px; border-radius:9px; background:#f2f4f7; }.quick-modes button,.segmented button{border:0;background:transparent;text-transform:capitalize}.quick-modes button{padding:6px 2px;font-size:9px}.quick-modes button.active,.segmented button.active{background:#fff;color:#9d6516;box-shadow:0 1px 4px #0001}
+.quick-controls { display:grid; grid-template-columns:1fr 1fr; gap:5px 12px; }.quick-controls label{font-size:10px;font-weight:750}.quick-controls input{accent-color:#d9972c}.open-console{width:100%;margin-top:12px;padding:9px 11px;border:0;border-radius:9px;background:#263246;color:white;font-weight:850}
+
 .popover::-webkit-scrollbar {
   width: 8px;
 }
