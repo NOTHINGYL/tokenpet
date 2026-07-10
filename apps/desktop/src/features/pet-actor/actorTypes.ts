@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { AccessoryId, CatTypeId, MoodLookId, MotionActionId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
+import type { AccessoryId, CatTypeId, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
 import type { AccessoryCategoryId, CatBodyType } from "../pet-appearance/catalog";
 
 export type PetSurface = "preview" | "desktop";
@@ -8,7 +8,12 @@ export type PetActorProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
   moodId?: MoodLookId;
+  /** Stable story/director action id. Prefer this over the legacy motionActionId. */
+  actionId?: PetActionId;
+  storyActionId?: PetActionId;
   motionActionId?: MotionActionId;
+  reduceMotion?: boolean;
+  pointerOffset?: { x: number; y: number };
   surface: PetSurface;
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

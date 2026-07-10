@@ -171,58 +171,18 @@ function drawContactShadow(context: CanvasRenderingContext2D, center: Point, wid
   context.restore();
 }
 
-function drawTokenFrame(context: CanvasRenderingContext2D, frame: PetActorFrame, time: number) {
-  const token = frame.tokenFrame;
-  if (!token || !token.label) return;
-
-  const pulse = 1 + Math.sin(time * 3.2) * 0.01;
-  const rect = {
-    x: token.rect.x + token.rect.width * (1 - pulse) / 2,
-    y: token.rect.y + token.rect.height * (1 - pulse) / 2,
-    width: token.rect.width * pulse * frame.appearance.bubbleScale,
-    height: token.rect.height * pulse * frame.appearance.bubbleScale,
-  };
-  rect.x = token.rect.x + (token.rect.width - rect.width) / 2;
-  rect.y = token.rect.y + (token.rect.height - rect.height) / 2;
-
-  context.save();
-
-  if (!token.textOnly) {
-    drawRoundRect(context, rect, rect.height / 2);
-    const gradient = context.createLinearGradient(rect.x, rect.y, rect.x, rect.y + rect.height);
-    gradient.addColorStop(0, "rgba(255, 254, 244, 0.98)");
-    gradient.addColorStop(1, "rgba(255, 246, 218, 0.95)");
-    context.fillStyle = gradient;
-    context.fill();
-    context.lineWidth = 3;
-    context.strokeStyle = "rgba(224, 159, 39, 0.22)";
-    context.stroke();
-    drawContactShadow(context, { x: rect.x + rect.width / 2, y: rect.y + rect.height * 0.62 }, rect.width * 0.86, rect.height * 0.34, 0.18);
-  }
-
-  context.fillStyle = "#0b4f7c";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font = `800 ${token.fontSize * frame.appearance.bubbleScale}px Inter, system-ui, sans-serif`;
-  context.shadowColor = "rgba(255, 255, 255, 0.84)";
-  context.shadowBlur = 2;
-  context.fillText(token.label, token.rect.x + token.rect.width / 2, token.rect.y + token.rect.height / 2 + 2);
-  context.restore();
-}
-
-function drawMoodBadge(context: CanvasRenderingContext2D, frame: PetActorFrame, time: number) {
+function drawMoodBadge(context: CanvasRenderingContext2D, frame: PetActorFrame) {
   const badge = frame.moodBadge;
   if (!badge) return;
 
-  const bob = Math.sin(time * 2.1) * 4;
-  const rect = { ...badge.rect, y: badge.rect.y + bob };
+  const rect = { ...badge.rect };
   const palette: Record<string, { bg: string; stroke: string; text: string }> = {
     sleepy: { bg: "rgba(239, 246, 255, 0.96)", stroke: "rgba(49, 84, 120, 0.18)", text: "#315478" },
     focused: { bg: "rgba(225, 246, 232, 0.96)", stroke: "rgba(47, 148, 97, 0.18)", text: "#176c3a" },
     hot: { bg: "rgba(255, 237, 213, 0.96)", stroke: "rgba(179, 90, 2, 0.18)", text: "#a34308" },
     overdrive: { bg: "rgba(255, 228, 230, 0.96)", stroke: "rgba(200, 48, 48, 0.2)", text: "#b42318" },
   };
-  const tone = palette[badge.tone] ?? palette.focused;
+  const tone = frame.appearance.moodBadge.colorByState ? (palette[badge.tone] ?? palette.focused) : palette.focused;
 
   context.save();
   drawRoundRect(context, rect, rect.height / 2);
@@ -303,35 +263,18 @@ function drawSlot(
   time: number,
   interactiveState: { hover: boolean },
 ) {
-  if (slot === "baseBack") {
-    drawContactShadow(context, { x: 512, y: frame.model.footLineY + 42 }, 560, 90, 0.22 + frame.appearance.shadow * 0.12);
-  }
-
   slotAttachments(frame, slot).forEach((attachment) => {
     drawAttachment(context, frame, images, catImage, placement, attachment, time, interactiveState);
   });
 
   if (slot === "catBody") {
-    const motion = motionValues(frame, time, interactiveState);
-    context.save();
-    context.translate(512, frame.model.footLineY);
-    context.scale(motion.rootScaleX, motion.rootScaleY);
-    context.translate(-512, -frame.model.footLineY + motion.rootY);
-    context.filter = `drop-shadow(0 ${18 * frame.appearance.shadow}px ${26 * frame.appearance.shadow}px rgba(30, 41, 59, 0.18))`;
+    // Approved static fallback images are complete compositions. Runtime only
+    // maps them onto the common artboard; it does not deform or re-light them.
     context.drawImage(catImage, placement.x, placement.y, catImage.width * placement.scale, catImage.height * placement.scale);
-    context.restore();
-  }
-
-  if (slot === "tokenFrame" && frame.tokenFrame?.mode !== "embedded") {
-    drawTokenFrame(context, frame, time);
-  }
-
-  if (slot === "tokenText" && frame.tokenFrame?.mode === "embedded") {
-    drawTokenFrame(context, frame, time);
   }
 
   if (slot === "moodBadge") {
-    drawMoodBadge(context, frame, time);
+    drawMoodBadge(context, frame);
   }
 }
 

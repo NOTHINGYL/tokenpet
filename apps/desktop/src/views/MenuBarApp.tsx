@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { APP_VERSION } from "../constants";
 import { HealthBadge, SettingToggle, StatCard } from "../components/ui";
+import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
+import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import type { ProviderSnapshot } from "../types";
@@ -49,6 +51,11 @@ function SourceRows(props: { providers: ProviderSnapshot[] }) {
 export function MenuBarApp() {
   const { usage, refresh, loading, error } = useUsage();
   const { settings, setSetting } = useAppSettings();
+  const appearance = normalizePetAppearance(settings);
+  const tinyAppearance = {
+    ...appearance,
+    moodBadge: { ...appearance.moodBadge, showMood: false },
+  };
 
   return (
     <main className="menubar-panel">
@@ -57,6 +64,17 @@ export function MenuBarApp() {
           <strong>TokenPet</strong>
           <span className="panel-version">v{APP_VERSION}</span>
           <HealthBadge status={usage.status} loading={loading} error={error} />
+          {settings.petStory.companionSettings.keepTinyMenuForm ? (
+            <div className="menubar-tiny-pet" data-testid="menubar-tiny-pet" aria-label="Tiny TokenPet companion">
+              <PetAppearanceVisual
+                appearance={tinyAppearance}
+                usage={usage}
+                storyActionId="idle_breathe"
+                reduceMotion
+                surface="preview"
+              />
+            </div>
+          ) : null}
         </div>
         <div className="panel-header-actions">
           <IconButton label="Refresh now" onClick={() => void refresh()} disabled={loading}>

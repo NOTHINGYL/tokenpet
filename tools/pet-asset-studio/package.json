@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build:golden-british": "node src/build-golden-british.mjs"
+    "build:golden-british": "node src/build-golden-british.mjs",
+    "test": "node --test test/verify-golden-british.test.mjs",
+    "verify:golden-british": "node --test test/verify-golden-british.test.mjs"
   }
 }

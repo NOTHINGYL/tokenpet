@@ -8,5 +8,9 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     }
+  },
+  "scripts": {
+    "test": "node --test test/index.test.mjs",
+    "typecheck": "tsc --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions src/index.ts"
   }
 }

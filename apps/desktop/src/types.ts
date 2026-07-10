@@ -217,9 +217,31 @@ export type AppSettings = {
 export type PetActionId =
   | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
   | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor"
-  | "milestone_celebrate" | "toss_yarn" | "nap_here" | "wake_up" | "summon_to_screen" | "capture_moment";
+  | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up"
+  | "settle_down" | "focus_start" | "cool_down" | "summon_to_screen" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";
+export type PetMemoryKind = "firstSource" | "milestone" | "stage" | "dailyDigest";
+export type PetMemory = {
+  id: string;
+  kind: PetMemoryKind;
+  title: string;
+  message: string;
+  createdAt: string;
+  tokens?: number;
+  stage?: PetLifeStage;
+};
+export type PetJourneyState = {
+  schemaVersion: 1;
+  stage: PetLifeStage;
+  milestoneIds: string[];
+  memories: PetMemory[];
+  firstSeenAt: string | null;
+  lastSeenAt: string | null;
+  lastUsageTokens: number;
+  activeDays: number;
+  lastDigestDate: string | null;
+};
 export type PetStorySettings = {
   behaviorMode: PetBehaviorMode;
   moodThresholds: { focused: number; hot: number; overdrive: number };
@@ -231,9 +253,49 @@ export type PetStorySettings = {
   soundStyle: "soft" | "cozy" | "playful";
   volume: number;
   cueIds: string[];
+  cueVolumes: Record<"wake" | "purr" | "drop" | "snack" | "milestone" | "hot" | "rest", number>;
+  interactionRules: { click: boolean; drag: boolean; drop: boolean; feed: boolean; cursor: boolean };
+  safety: {
+    batteryLowPause: boolean;
+    muteDuringFocus: boolean;
+    quietHoursEnabled: boolean;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+    screenSharingStillness: boolean;
+    respectSystemVolume: boolean;
+  };
+  reactionRules: { oneShotOnThreshold: boolean; coolDownAfterOverdrive: boolean };
+  companionSettings: { keepTinyMenuForm: boolean; showMemoryCards: boolean; celebrateMilestones: boolean };
   pinnedStage: PetLifeStage | null;
   lastAction: { id: PetActionId; nonce: number } | null;
+  journey: PetJourneyState;
 };
+
+export type PetBurnRate = "quiet" | "steady" | "hot" | "overdrive";
+export type QuickPlayActionId =
+  | "click_purr"
+  | "token_snack"
+  | "play_cursor"
+  | "drag_dangle"
+  | "toss_yarn"
+  | "nap_here"
+  | "wake_up"
+  | "summon_to_screen"
+  | "capture_moment";
+export type PetDirectorEvent =
+  | { type: "actor.actionRequested"; action: PetActionId }
+  | { type: "ambient.blink" }
+  | { type: "ambient.rest"; reason: "inactivity" | "night" }
+  | { type: "ambient.wake"; reason: "startup" | "day" | "activity" }
+  | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId }
+  | { type: "pointer.click" }
+  | { type: "pointer.dragStart" }
+  | { type: "pointer.drop" }
+  | { type: "quickPlay.action"; action: QuickPlayActionId }
+  | { type: "token.delta"; tokens: number; burnRate: PetBurnRate }
+  | { type: "milestone.reached"; milestone: string }
+  | { type: "lifecycle.stageChanged"; stage: PetLifeStage }
+  | { type: "day.digestReady" };
 
 export type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
 
@@ -243,10 +305,17 @@ export type TokenPetBridge = {
   getAppSettings: () => Promise<AppSettings>;
   setAppSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => Promise<AppSettings>;
   onAppSettingsChanged: (callback: (settings: AppSettings) => void) => () => void;
-  openConsole: () => void;
+  openConsole: (tab?: ConsoleTab) => void;
+  onConsoleNavigation: (callback: (tab: ConsoleTab) => void) => () => void;
   quit: () => void;
   togglePopover: () => void;
+  dispatchPetAction: (action: QuickPlayActionId) => Promise<{ accepted: boolean }>;
+  onPetDirectorEvent: (callback: (event: PetDirectorEvent) => void) => () => void;
+  summonPet: () => Promise<{ moved: boolean }>;
+  capturePetMoment: () => Promise<{ saved: boolean; filePath?: string }>;
+  onCursorPosition: (callback: (position: { x: number; y: number }) => void) => () => void;
   startDrag: () => Promise<{ started: boolean }>;
   endDrag: () => Promise<{ moved: boolean }>;
+  closePopover: () => void;
   close: () => void;
 };

@@ -2,115 +2,147 @@
 
 > TokenPet makes local AI usage visible, playful, and private.
 
-TokenPet turns local token flow into a tiny desktop companion. The Golden British actor wakes, breathes, reacts to clicks and drag/drop, reflects usage moods, and keeps a gentle local Journey without chores, punishment, accounts, or cloud telemetry.
+TokenPet is a macOS-first desktop companion for local AI coding workflows. It reads local usage through the bundled `ccusage` dependency, turns token flow into a small pet mood and Journey, and keeps settings, milestones, and memories on the machine.
 
-## Pet story
+![TokenPet launch story: wake, token update, click, drag, drop, and milestone](docs/screenshots/pet-story/tokenpet-story-demo.gif)
 
-- **Manifest-driven actor:** the desktop pet, console preview, and Quick Play use the same generated actor bundle and dynamic token/mood slots.
-- **Pet Director:** stable action ids flow through a capability gate before playback. Missing dedicated frames use declared fallbacks; unsupported features are not presented as ready.
-- **Quick Play:** double-click the pet for a compact remote with Pet, Feed snack, Play cursor, Dangle toy, Toss yarn, Nap, Wake, Summon, and Capture actions.
-- **Gentle Journey:** lifecycle progress and local memories derive from local use. Switching cat type never resets shared behavior or progress.
-- **Local first:** usage, settings, thresholds, journey state, and memories remain on the machine.
+![TokenPet Pet console](docs/screenshots/pet-story/console-appearance.png)
 
-Golden British is the first actor-ready cat. Other cat types intentionally use approved static fallback images until an actor bundle is available.
-
-A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.
-
-TokenPet is a local-first desktop companion for AI coding workflows. The pet lives on your desktop, shows a compact token counter, and opens richer usage views from the pet, menu bar, or local dashboard.
+<p>
+  <img src="docs/screenshots/pet-story/quick-play.png" alt="TokenPet Quick Play remote" width="405" />
+  <img src="docs/screenshots/pet-story/desktop-pet.png" alt="TokenPet desktop pet" width="260" />
+</p>
 
 ## Status
 
-v0.6.1 prototype. The desktop pet now has a frame-based action system, matching cat animation assets, burn-rate-aware mood states, adjustable size/opacity, persistent settings, and real local token usage through the bundled `ccusage` dependency.
+The current integrated release is `v0.8.0`.
 
-## Preview
+- **One actor pipeline:** the desktop pet and every Console preview use the same generated Golden British actor bundle.
+- **Dynamic slots:** token and mood text render only inside manifest-declared slots. The actor artwork already contains its cream token frame.
+- **Pet Director:** click, drag/drop, token changes, lifecycle events, milestones, and Quick Play actions go through one priority and capability gate.
+- **Ambient story loop:** non-Egg companions wake on startup/new days, blink on deterministic mode-aware intervals, rest at night or after inactivity, and wake again when local activity resumes.
+- **Quick Play:** double-click the pet to open the compact 3×3 interaction remote. It contains no duplicate token analytics, source list, or repeated cat preview.
+- **Five Pet pages:** Appearance, Actions, Mood & Reactions, Sound Cues, and Journey, plus Cat Type, Mood Looks, and Accessories subpages.
+- **Local story state:** behavior, thresholds, sound cues, safety controls, Journey, memories, milestones, position, and appearance persist locally.
 
-The screenshots below use bundled demo data for documentation only. The app itself reads local usage metadata from your machine.
+## First-minute demo
 
-![TokenPet console](docs/screenshots/console-v05.png)
+Install and launch:
 
-<p>
-  <img src="docs/screenshots/menubar-v05.png" alt="TokenPet menu bar panel" width="360" />
-  <img src="docs/screenshots/pet-v05.png" alt="TokenPet desktop pet" width="260" />
-</p>
-
-## v0.6.1 Features
-
-- Transparent always-on-top desktop pet window
-- Draggable yellow-gold cat companion with frame-based idle breathing, blink/look, and wave actions
-- Reproducible action-frame assets generated from the current cat artwork
-- Live token counter displayed on the pet
-- Click or double-click to open the usage summary popover, with a feedback animation
-- Burn-rate-aware pet mood states: sleepy, focused, and hot
-- macOS menu bar icon with a richer status panel
-- Refresh, open console, and quit controls from the menu bar panel
-- Persistent settings for launch at login, pet visibility, always-on-top mode, pet theme, pet size, and pet opacity
-- Tabbed console with Overview, Breakdown, Cost & Efficiency, Pet, and Settings views
-- Daily trend, forecast, model breakdown, session breakdown, cost structure, and activity heatmap charts
-- Polished card styling, status badges, empty states, and loading/error handling
-- Basic pet color theme switching
-- Real local usage snapshot from `ccusage` for Codex and Claude Code
-- Source status rows for Codex, Claude Code, Cursor, and ccusage
-- Today, 7 days, Local all time, Top model, burn rate, and provider status
-- macOS-focused Electron prototype
-
-TokenPet uses the local `node_modules/.bin/ccusage` installed with this project. It reads local usage metadata only; no prompts, code, paths, or session content are sent anywhere.
-
-## Planned Scope
-
-- Desktop pet with a live token/quota display
-- Clickable pet popover with key usage numbers
-- Menu bar/tray companion with detailed status and settings
-- Local dashboard for full token analytics and pet customization
-- Provider adapters for tools such as Codex, Claude Code, Cursor, and ccusage-compatible sources
-- macOS first, with Windows and Linux planned later
-
-## Repository Layout
-
-```text
-apps/desktop/electron/main.ts       Electron window, tray, IPC, and app lifecycle
-apps/desktop/electron/usage.ts      Local ccusage/provider loading and aggregation
-apps/desktop/electron/types.ts      Main-process data contracts
-apps/desktop/src/App.tsx            Renderer view router
-apps/desktop/src/views              Pet, popover, menu bar, and console screens
-apps/desktop/src/components         Shared UI, charts, and pet components
-apps/desktop/src/hooks              Renderer data/settings hooks
-apps/desktop/src/state              Fallback renderer state
-apps/desktop/src/styles             Split CSS by base, pet, panels, and console
-apps/desktop/src/types.ts           Renderer data contracts
+```bash
+npm install
+npm run launch
 ```
 
-Future shared packages such as `packages/providers`, `packages/pet-engine`, and
-`packages/ui` can be introduced once the desktop app has more repeated logic to
-extract.
+Then follow this short demo path:
+
+1. Watch the generated Golden British actor appear with its local token value.
+2. Click the cat for `click_purr`.
+3. Drag and release it for `drag_dangle` → `drop_bounce`.
+4. Double-click it to open Quick Play.
+5. Try Feed snack, Play cursor, Toss yarn, Nap here, Wake up, Summon, and Capture.
+6. Choose **Open Console**, then review all five Pet pages.
+
+Regenerate the launch GIF from the real renderer, Director, and approved actor bundle with synthetic local usage:
+
+```bash
+npm run demo:pet-story
+```
+
+The script drives `wake_up` → token update → `click_purr` → `drag_dangle` → `drop_bounce` → `milestone_celebrate`, records frame hashes, and verifies that every beat uses exactly one generated actor with its embedded token frame. GIF regeneration needs Python with Pillow; set `TOKENPET_PYTHON` if it is not available as `python3`.
+
+Run the complete deterministic acceptance suite with synthetic data and no private user data:
+
+```bash
+npm run qa:pet-story
+```
+
+That command type-checks and builds the app, validates the actor schema and generated bundle, exercises the real Electron main process plus Pet/Quick Play/Menu Bar/Console renderers, checks crash recovery, native Capture/Summon/drag behavior, fallback/shared-state behavior, setting persistence, and layout overflow, then regenerates the screenshots and launch GIF under `docs/screenshots/pet-story`.
+
+## Actor and capability status
+
+Golden British is the first fully actor-ready cat. Its generated PNG states currently include the core loops and all nine Quick Play actions. The runtime never recreates cat anatomy with CSS, inline SVG, emoji, or primitive canvas shapes.
+
+Other cat types use approved static fallback images as complete compositions. They remain selectable as appearance choices, but actor-only motion, dynamic token frames, mood loops, and runtime wearables are suppressed until a generated bundle declares them compatible; TokenPet does not draw a guessed canvas pill over the fallback. The approved mood-badge UI overlay may remain available because it does not alter cat anatomy. Cat type changes appearance only; it never resets behavior, thresholds, sound, Journey, milestones, or memories.
+
+Capability-gated work that is intentionally not presented as fully shipped:
+
+- `hatch` currently resolves to `milestone_celebrate`.
+- `level_up` currently resolves to `milestone_celebrate`.
+- `daily_digest` is a local data-model milestone; its final visual card is planned.
+- Rich memory-shelf and lifecycle-room art is planned.
+- Lifecycle thresholds are fixed in this release at 1M/50M/500M tokens plus 7/30 active days; user-customizable lifecycle thresholds are target-design work for a later release.
+- The target-design alternative “first completed focus session” path to Desk Buddy is planned; this release does not claim a reliable focus-session completion signal.
+- Additional actor-ready cat bundles are planned; static fallbacks remain in place.
+- Arbitrary runtime wearables are not supported for the generated actor. Only baked/manifest-compatible looks may be presented as usable.
+
+The generated manifest is the source of truth: `ready` plays a same-id animation, `fallback` resolves through a declared chain, `planned` is disabled, and `unavailable` is hidden.
+
+## Pet surfaces
+
+### Appearance
+
+Select the cat image, actor-safe token display, mood badge, Mood Looks, and compatible appearance options. Changes apply immediately. Cat Type is visual-only; thresholds belong in Mood & Reactions.
+
+### Actions
+
+Configure behavior mode, inspect implementation ids, test actor states, and adjust interaction and motion-safety rules. Direct manipulation has higher priority than reactions, milestones, mood loops, and lifecycle idle.
+
+### Mood & Reactions
+
+Configure ordered local token thresholds and map Sleepy, Focused, Hot, and Overdrive to `sleep_loop`, `focus_loop`, `hot_loop`, and `overdrive_loop`.
+
+### Sound Cues
+
+Optional local WebAudio cues support wake, purr, drag/drop, snack, milestone, hot, and rest moments. Master/cue volume, quiet hours, and focus muting are persisted. Audio always goes through the operating-system mixer. Automatic screen-sharing detection is planned and its UI control remains disabled; it is not presented as shipped.
+
+### Journey
+
+Lifecycle progress follows local sources, all-time tokens, and active days. Milestones and memories are gentle local records—not chores, hunger bars, missions, stores, or punishment loops.
+
+## Local-first privacy
+
+TokenPet reads local usage metadata only. It does not need an account or cloud telemetry, and it does not send prompts, code, paths, or session content anywhere. Capture exports are created locally.
+
+## Verification
+
+```bash
+npm run typecheck
+npm run build
+npm run test:pet-story
+npm run demo:pet-story
+npm run qa:pet-story
+```
+
+See the full plan-to-implementation acceptance matrix in [docs/pet-story/verification.md](docs/pet-story/verification.md) and implementation notes in [docs/pet-story/implementation.md](docs/pet-story/implementation.md).
+
+## Repository layout
+
+```text
+apps/desktop/electron                 Electron windows, IPC, persistence, local usage
+apps/desktop/public/pet-actors        Generated runtime actor bundles
+apps/desktop/src/features/pet-story   Pet Director, capability gate, story pages, sound cues
+apps/desktop/src/features/pet-*       Actor rendering and Appearance surfaces
+assets/source/pet-actors              Approved source actor specs and raster poses
+packages/pet-asset-schema             Actor/source contracts and validators
+tools/pet-asset-studio                Deterministic actor-bundle generator and QA artifacts
+scripts                               Build, launch, static QA, interaction QA, screenshots
+docs/pet-story                        Product plan, implementation, and verification evidence
+```
 
 ## Development
 
 Requires Node.js 20.19+ or 22.12+.
-
-Install dependencies and start the desktop app for development:
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build and run the production bundle in the foreground:
+Build and run the production app in the foreground:
 
 ```bash
-npm run build
 npm start
-```
-
-Launch TokenPet in the background so it keeps running after the terminal closes:
-
-```bash
-npm run launch
-```
-
-Regenerate README screenshots with deterministic demo data:
-
-```bash
-npm run screenshots
 ```
 
 ## License

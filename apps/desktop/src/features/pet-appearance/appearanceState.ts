@@ -263,12 +263,23 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
   const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
   const catTypeId = pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId);
   const normalizedAccessoryIds = normalizeAccessories(source.accessoryIds);
+  const normalizedAccessorySettings = normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds);
+  const actorReady = catTypeId === "golden-british";
+  const hideGoldenValue = normalizedAccessorySettings.tokenFrameId === "hidden" || source.tokenBubbleId === "hidden";
+  const capabilitySafeAccessorySettings: AccessorySettings = {
+    ...normalizedAccessorySettings,
+    tokenFrameId: actorReady ? (hideGoldenValue ? "hidden" : "embedded") : "hidden",
+    neckId: actorReady ? "collar" : "none",
+    headId: "none",
+    baseId: "none",
+    effectId: "none",
+  };
 
   return {
     catTypeId,
     catDetails: normalizeCatDetails(source.catDetails, catTypeId),
     themeId: pickKnown(source.themeId ?? settings.petTheme, petThemeIds, defaultPetAppearance.themeId),
-    tokenBubbleId: pickKnown(source.tokenBubbleId, tokenBubbleIds, defaultPetAppearance.tokenBubbleId),
+    tokenBubbleId: actorReady ? (hideGoldenValue ? "hidden" : "pill") : "hidden",
     size: clampNumber(source.size ?? settings.petScale, 0.75, 1.25, defaultPetAppearance.size),
     opacity: clampNumber(source.opacity ?? settings.petOpacity, 0.45, 1, defaultPetAppearance.opacity),
     shadow: clampNumber(source.shadow, 0, 1, defaultPetAppearance.shadow),
@@ -278,8 +289,8 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
       ...defaultMoodBadgeSettings,
       ...(source.moodBadge ?? {}),
     },
-    accessoryIds: normalizedAccessoryIds,
-    accessorySettings: normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds),
+    accessoryIds: actorReady ? ["collar"] : [],
+    accessorySettings: capabilitySafeAccessorySettings,
     motionSettings: normalizeMotionSettings(source.motionSettings),
   };
 }

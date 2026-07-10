@@ -78,6 +78,9 @@ export function getCatSkin(catTypeId: CatTypeId): CatSkin {
   const cat = getCatType(catTypeId);
   const rig = getCatRig(catTypeId);
   const bounds = skinBounds[catTypeId] ?? generatedSittingBounds;
+  const anchors = Object.fromEntries(
+    Object.entries(rig.anchors).map(([key, anchor]) => [key, { ...anchor, width: anchor.width ?? 0.01, height: anchor.height ?? 0.01 }]),
+  ) as CatSkin["anchors"];
 
   return {
     id: cat.id,
@@ -94,7 +97,7 @@ export function getCatSkin(catTypeId: CatTypeId): CatSkin {
       head: normalizeRect(bounds.head),
       tokenFrame: bounds.tokenFrame ? normalizeRect(bounds.tokenFrame) : undefined,
     },
-    anchors: rig.anchors,
+    anchors,
     footLineY: bounds.footLineY,
     tokenFrameMode: rig.tokenFrameMode ?? "below",
     builtInAccessoryIds: rig.builtInAccessoryIds,

@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars, TokenActivityGrid } from "../components/charts";
-import { GoldCat } from "../components/GoldCat";
 import { AppearancePanel } from "../features/pet-appearance/AppearancePanel";
+import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
+import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
 import { MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
@@ -316,9 +317,13 @@ function SettingsTab(props: {
 }
 
 export function ConsoleApp() {
-  const { usage, refresh, loading, error } = useUsage();
+  const { usage } = useUsage();
   const { settings, setSetting } = useAppSettings();
-  const [activeTab, setActiveTab] = useState<ConsoleTab>("overview");
+  const normalizedAppearance = normalizePetAppearance(settings);
+  const sidebarAppearance = { ...normalizedAppearance, moodBadge: { ...normalizedAppearance.moodBadge, showMood: false } };
+  const requestedTab = new URLSearchParams(window.location.search).get("section");
+  const [activeTab, setActiveTab] = useState<ConsoleTab>(requestedTab === "pet" ? "pet" : "overview");
+  useEffect(() => window.tokenpet?.onConsoleNavigation?.(setActiveTab), []);
   const tabs: Array<{ id: ConsoleTab; label: string }> = [
     { id: "overview", label: "Overview" },
     { id: "breakdown", label: "Breakdown" },
@@ -344,6 +349,7 @@ export function ConsoleApp() {
               className={activeTab === tab.id ? "active" : ""}
               key={tab.id}
               type="button"
+              data-console-tab={tab.id}
               onClick={() => setActiveTab(tab.id)}
             >
               <span>
@@ -357,7 +363,9 @@ export function ConsoleApp() {
           <span className="provider-dot connected" />
           <strong>All systems good</strong>
           <small>Updated {lastUpdated(usage.generatedAt)}</small>
-          <GoldCat variant="summary" />
+          <div className="sidebar-pet-actor" data-testid="sidebar-pet-actor">
+            <PetAppearanceVisual appearance={sidebarAppearance} usage={usage} storyActionId="idle_breathe" reduceMotion surface="preview" />
+          </div>
         </div>
       </aside>
 
@@ -367,16 +375,6 @@ export function ConsoleApp() {
             <strong>{tabs.find((tab) => tab.id === activeTab)?.label ?? "Overview"}</strong>
             <span>{subtitles[activeTab]}</span>
           </div>
-          {activeTab === "pet" ? null : (
-            <div className="console-header-actions">
-              <button className="range-button" type="button">
-                Last 30 Days
-              </button>
-              <button type="button" onClick={() => void refresh()} disabled={loading}>
-                {loading ? "Refreshing" : "Refresh"}
-              </button>
-            </div>
-          )}
         </header>
 
         <div className="console-content">

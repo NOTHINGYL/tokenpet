@@ -59,7 +59,7 @@ const roundOcclusionMasks: CatRig["occlusionMasks"] = {
 };
 
 function rig(id: CatTypeId, overrides: Partial<Omit<CatRig, "id">> = {}): CatRig {
-  const occlusionMasks = overrides.occlusionMasks ?? roundOcclusionMasks;
+  const occlusionMasks: NonNullable<CatRig["occlusionMasks"]> = overrides.occlusionMasks ?? roundOcclusionMasks ?? {};
 
   return {
     id,

@@ -1,12 +1,16 @@
 import type { SyntheticEvent } from "react";
-import type { MoodLookId, MotionActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { PetCompositor } from "./PetCompositor";
 
 type PetAppearanceVisualProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
   moodId?: MoodLookId;
+  actionId?: PetActionId;
+  storyActionId?: PetActionId;
   motionActionId?: MotionActionId;
+  reduceMotion?: boolean;
+  pointerOffset?: { x: number; y: number };
   surface: "preview" | "desktop";
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

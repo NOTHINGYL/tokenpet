@@ -1,22 +1,36 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, screen, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from "electron";
 import type { Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, UsageSnapshot } from "./types.js";
+import type { AppSettings, PetDirectorEvent, QuickPlayActionId, UsageSnapshot } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
+import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
+import {
+  clampBoundsToWorkArea,
+  clampValue,
+  hasPngSignature,
+  popoverPositionForBounds,
+  summonBoundsForCursor,
+} from "./window-behavior.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const isDev = process.env.TOKENPET_DEV_SERVER_URL !== undefined;
 const devServerUrl = process.env.TOKENPET_DEV_SERVER_URL;
+const isMainProcessQa = process.env.TOKENPET_MAIN_PROCESS_QA === "1";
 
 let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
 let menuBarWindow: BrowserWindow | null = null;
 let consoleWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let cursorTrackingTimer: NodeJS.Timeout | null = null;
+let lastStoryReconcileAt = 0;
+const pendingDirectorEvents: PetDirectorEvent[] = [];
+const rendererGoneWindows = new WeakSet<BrowserWindow>();
+let mainProcessQaCursor: { x: number; y: number } | null = null;
 let dragState:
   | {
       timer: NodeJS.Timeout;
@@ -36,14 +50,14 @@ const DEFAULT_SETTINGS: AppSettings = {
   petScale: 1,
   petOpacity: 0.92,
   petAppearance: defaultPetAppearance,
-  petStory: { behaviorMode: "balanced", moodThresholds: { focused: 1000, hot: 10000, overdrive: 50000 }, quietMode: false, followCursor: false, lockPosition: false, reduceMotion: false, soundEnabled: false, soundStyle: "soft", volume: 45, cueIds: ["wake", "purr", "drop", "snack", "milestone"], pinnedStage: null, lastAction: null },
+  petStory: defaultPetStory,
 };
 
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
 
 const POPOVER_SIZE = {
-  width: 390,
-  height: 360,
+  width: 405,
+  height: 480,
 };
 
 const POPOVER_MARGIN = 12;
@@ -59,16 +73,46 @@ const PET_WINDOW_SIZE = {
   height: 260,
 };
 
-function rendererUrl(view: "pet" | "popover" | "menubar" | "console") {
-  if (isDev && devServerUrl) {
-    return `${devServerUrl}/?view=${view}`;
-  }
+type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
 
-  return `file://${join(__dirname, "../dist-renderer/index.html")}?view=${view}`;
+function isUsableWindow(window: BrowserWindow | null): window is BrowserWindow {
+  return Boolean(window && !window.isDestroyed() && !rendererGoneWindows.has(window) && !window.webContents.isCrashed());
 }
 
-async function loadWindow(window: BrowserWindow, view: "pet" | "popover" | "menubar" | "console") {
-  await window.loadURL(rendererUrl(view));
+function trackWindowHealth(window: BrowserWindow) {
+  window.webContents.on("render-process-gone", (_event, details) => {
+    if (details.reason !== "clean-exit") rendererGoneWindows.add(window);
+  });
+}
+
+function disposeStaleWindow(window: BrowserWindow | null) {
+  if (window && !window.isDestroyed()) window.destroy();
+}
+
+function closeUsableWindow(window: BrowserWindow | null) {
+  if (isUsableWindow(window)) window.close();
+  else disposeStaleWindow(window);
+}
+
+function currentCursorScreenPoint() {
+  return isMainProcessQa && mainProcessQaCursor ? mainProcessQaCursor : screen.getCursorScreenPoint();
+}
+
+function rendererUrl(view: "pet" | "popover" | "menubar" | "console", params: Record<string, string> = {}) {
+  const query = new URLSearchParams({ view, ...params }).toString();
+  if (isDev && devServerUrl) {
+    return `${devServerUrl}/?${query}`;
+  }
+
+  return `file://${join(__dirname, "../dist-renderer/index.html")}?${query}`;
+}
+
+async function loadWindow(
+  window: BrowserWindow,
+  view: "pet" | "popover" | "menubar" | "console",
+  params?: Record<string, string>,
+) {
+  await window.loadURL(rendererUrl(view, params));
 }
 
 function verifyBridge(window: BrowserWindow, label: string) {
@@ -85,10 +129,14 @@ function verifyBridge(window: BrowserWindow, label: string) {
 }
 
 function quitTokenPet() {
-  menuBarWindow?.close();
-  consoleWindow?.close();
-  popoverWindow?.close();
-  petWindow?.close();
+  if (cursorTrackingTimer) {
+    clearInterval(cursorTrackingTimer);
+    cursorTrackingTimer = null;
+  }
+  closeUsableWindow(menuBarWindow);
+  closeUsableWindow(consoleWindow);
+  closeUsableWindow(popoverWindow);
+  closeUsableWindow(petWindow);
   app.quit();
 }
 
@@ -99,13 +147,35 @@ function compactNumber(value: number) {
   }).format(value);
 }
 
-function clamp(value: number, min: number, max: number) {
-  if (max < min) return min;
-  return Math.min(Math.max(value, min), max);
-}
-
 function settingsPath() {
   return join(app.getPath("userData"), "settings.json");
+}
+
+type StoredPetPosition = { x: number; y: number; width: number; height: number };
+
+function petPositionPath() {
+  return join(app.getPath("userData"), "pet-position.json");
+}
+
+function readStoredPetPosition(): StoredPetPosition | null {
+  const path = petPositionPath();
+  if (!existsSync(path)) return null;
+  try {
+    const value = JSON.parse(readFileSync(path, "utf8")) as Partial<StoredPetPosition>;
+    if (![value.x, value.y, value.width, value.height].every((entry) => Number.isFinite(entry))) return null;
+    return value as StoredPetPosition;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredPetPosition(bounds: Rectangle) {
+  try {
+    mkdirSync(app.getPath("userData"), { recursive: true });
+    writeFileSync(petPositionPath(), JSON.stringify(bounds, null, 2));
+  } catch (error) {
+    console.warn("[tokenpet] failed to write pet position", error);
+  }
 }
 
 function readStoredSettings() {
@@ -123,7 +193,11 @@ function readStoredSettings() {
 function writeStoredSettings() {
   try {
     mkdirSync(app.getPath("userData"), { recursive: true });
-    writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+    const persistedSettings = {
+      ...settings,
+      petStory: { ...settings.petStory, lastAction: null },
+    };
+    writeFileSync(settingsPath(), JSON.stringify(persistedSettings, null, 2));
   } catch (error) {
     console.warn("[tokenpet] failed to write settings", error);
   }
@@ -135,7 +209,7 @@ function hydrateSettings() {
   settings = syncLegacyAppearanceFields({
     ...DEFAULT_SETTINGS,
     ...storedSettings,
-    petStory: { ...DEFAULT_SETTINGS.petStory, ...(storedSettings.petStory ?? {}), moodThresholds: { ...DEFAULT_SETTINGS.petStory.moodThresholds, ...(storedSettings.petStory?.moodThresholds ?? {}) } },
+    petStory: normalizePetStory(storedSettings.petStory),
     launchAtLogin: app.getLoginItemSettings().openAtLogin,
   }, appearance) as AppSettings;
 }
@@ -172,9 +246,37 @@ function updateTray(snapshot?: UsageSnapshot) {
   }
 }
 
+function emitPetDirectorEvent(event: PetDirectorEvent) {
+  if (!isUsableWindow(petWindow) || petWindow.webContents.isLoading()) {
+    pendingDirectorEvents.push(event);
+    if (settings.petVisible && app.isReady() && !isUsableWindow(petWindow)) createPetWindow();
+    return;
+  }
+  petWindow.webContents.send("pet:director-event", event);
+}
+
+function flushPendingDirectorEvents() {
+  if (!isUsableWindow(petWindow) || petWindow.webContents.isLoading()) return;
+  while (pendingDirectorEvents.length) {
+    const event = pendingDirectorEvents.shift();
+    if (event) petWindow.webContents.send("pet:director-event", event);
+  }
+}
+
 async function loadAndPublishUsage(options: { force?: boolean } = {}) {
   const snapshot = await loadUsageSnapshot(options);
   updateTray(snapshot);
+  const now = Date.now();
+  if (options.force || lastStoryReconcileAt === 0 || now - lastStoryReconcileAt >= 60_000) {
+    lastStoryReconcileAt = now;
+    const reconciliation = reconcilePetStory(settings.petStory, snapshot);
+    if (reconciliation.changed) {
+      settings = { ...settings, petStory: reconciliation.story };
+      writeStoredSettings();
+      publishSettings(currentSettings());
+    }
+    reconciliation.events.forEach(emitPetDirectorEvent);
+  }
   return snapshot;
 }
 
@@ -209,17 +311,17 @@ function createTray() {
 
 function menuBarPosition() {
   const trayBounds = tray?.getBounds();
-  const cursor = screen.getCursorScreenPoint();
+  const cursor = currentCursorScreenPoint();
   const display = trayBounds ? screen.getDisplayMatching(trayBounds) : screen.getDisplayNearestPoint(cursor);
   const workArea = display.workArea;
   const anchorX = trayBounds ? trayBounds.x + trayBounds.width / 2 : cursor.x;
   const anchorY = trayBounds ? trayBounds.y + trayBounds.height : workArea.y;
-  const x = clamp(
+  const x = clampValue(
     Math.round(anchorX - MENUBAR_SIZE.width / 2),
     workArea.x + POPOVER_MARGIN,
     workArea.x + workArea.width - MENUBAR_SIZE.width - POPOVER_MARGIN,
   );
-  const y = clamp(
+  const y = clampValue(
     Math.round(anchorY + POPOVER_GAP),
     workArea.y + POPOVER_MARGIN,
     workArea.y + workArea.height - MENUBAR_SIZE.height - POPOVER_MARGIN,
@@ -229,9 +331,17 @@ function menuBarPosition() {
 }
 
 function createMenuBarWindow() {
+  if (isUsableWindow(menuBarWindow)) {
+    menuBarWindow.show();
+    menuBarWindow.focus();
+    return;
+  }
+  disposeStaleWindow(menuBarWindow);
+  menuBarWindow = null;
+
   const { x, y } = menuBarPosition();
 
-  menuBarWindow = new BrowserWindow({
+  const createdWindow = new BrowserWindow({
     width: MENUBAR_SIZE.width,
     height: MENUBAR_SIZE.height,
     x,
@@ -250,46 +360,70 @@ function createMenuBarWindow() {
       nodeIntegration: false,
     },
   });
+  menuBarWindow = createdWindow;
+  trackWindowHealth(createdWindow);
 
-  menuBarWindow.setAlwaysOnTop(true, "floating");
-  verifyBridge(menuBarWindow, "menubar");
-  void loadWindow(menuBarWindow, "menubar");
+  createdWindow.setAlwaysOnTop(true, "floating");
+  verifyBridge(createdWindow, "menubar");
+  void loadWindow(createdWindow, "menubar");
 
-  menuBarWindow.on("blur", () => {
-    menuBarWindow?.close();
+  createdWindow.on("blur", () => {
+    closeUsableWindow(createdWindow);
   });
 
-  menuBarWindow.on("closed", () => {
-    menuBarWindow = null;
+  createdWindow.on("closed", () => {
+    if (menuBarWindow === createdWindow) menuBarWindow = null;
   });
 }
 
 function toggleMenuBarWindow() {
-  if (menuBarWindow) {
+  if (isUsableWindow(menuBarWindow)) {
     menuBarWindow.close();
     return;
   }
 
+  disposeStaleWindow(menuBarWindow);
+  menuBarWindow = null;
   createMenuBarWindow();
 }
 
-function openConsoleWindow() {
+function openConsoleWindow(initialTab: ConsoleTab = "overview") {
+  if (!isUsableWindow(consoleWindow)) {
+    disposeStaleWindow(consoleWindow);
+    consoleWindow = null;
+  }
+
   if (consoleWindow) {
-    consoleWindow.show();
-    consoleWindow.focus();
+    const existingWindow = consoleWindow;
+    if (existingWindow.isMinimized()) existingWindow.restore();
+    existingWindow.show();
+    existingWindow.focus();
+    if (existingWindow.webContents.isLoading()) {
+      existingWindow.webContents.once("did-finish-load", () => {
+        if (isUsableWindow(existingWindow)) existingWindow.webContents.send("app:navigate-console", initialTab);
+      });
+    } else {
+      existingWindow.webContents.send("app:navigate-console", initialTab);
+    }
     return;
   }
 
-  const display = screen.getPrimaryDisplay();
-  const consoleWidth = Math.min(1280, Math.max(980, display.workAreaSize.width - 160));
-  const consoleHeight = Math.max(760, display.workAreaSize.height - 8);
+  const display = screen.getDisplayNearestPoint(currentCursorScreenPoint());
+  const workArea = display.workArea;
+  const availableWidth = Math.max(640, workArea.width - 48);
+  const availableHeight = Math.max(560, workArea.height - 48);
+  const consoleWidth = Math.min(1280, availableWidth);
+  const consoleHeight = Math.min(900, availableHeight);
+  const x = workArea.x + Math.round((workArea.width - consoleWidth) / 2);
+  const y = workArea.y + Math.round((workArea.height - consoleHeight) / 2);
 
-  consoleWindow = new BrowserWindow({
+  const createdWindow = new BrowserWindow({
     width: consoleWidth,
     height: consoleHeight,
-    minWidth: 980,
-    minHeight: 760,
-    center: true,
+    x,
+    y,
+    minWidth: Math.min(900, consoleWidth),
+    minHeight: Math.min(640, consoleHeight),
     title: "TokenPet Console",
     ...(process.platform === "darwin"
       ? {
@@ -303,41 +437,31 @@ function openConsoleWindow() {
       nodeIntegration: false,
     },
   });
+  consoleWindow = createdWindow;
+  trackWindowHealth(createdWindow);
 
-  verifyBridge(consoleWindow, "console");
-  void loadWindow(consoleWindow, "console");
+  verifyBridge(createdWindow, "console");
+  createdWindow.webContents.once("did-finish-load", () => {
+    if (isUsableWindow(createdWindow)) createdWindow.webContents.send("app:navigate-console", initialTab);
+  });
+  void loadWindow(createdWindow, "console", { section: initialTab });
 
-  consoleWindow.on("closed", () => {
-    consoleWindow = null;
+  createdWindow.on("closed", () => {
+    if (consoleWindow === createdWindow) consoleWindow = null;
   });
 }
 
 function popoverPositionForPet(petBounds: Rectangle, popoverBounds = POPOVER_SIZE) {
   const display = screen.getDisplayMatching(petBounds);
-  const workArea = display.workArea;
-  const centeredX = petBounds.x + petBounds.width / 2 - popoverBounds.width / 2;
-  const x = clamp(
-    Math.round(centeredX),
-    workArea.x + POPOVER_MARGIN,
-    workArea.x + workArea.width - popoverBounds.width - POPOVER_MARGIN,
-  );
-
-  const belowY = petBounds.y + petBounds.height + POPOVER_GAP;
-  const aboveY = petBounds.y - popoverBounds.height - POPOVER_GAP;
-  const maxY = workArea.y + workArea.height - popoverBounds.height - POPOVER_MARGIN;
-  const minY = workArea.y + POPOVER_MARGIN;
-  const preferredY = belowY <= maxY ? belowY : aboveY;
-  const y = clamp(Math.round(preferredY), minY, maxY);
-
-  return { x, y };
+  return popoverPositionForBounds(petBounds, popoverBounds, display.workArea, POPOVER_MARGIN, POPOVER_GAP);
 }
 
 function positionAccessoryWindows() {
-  if (!petWindow) return;
+  if (!isUsableWindow(petWindow)) return;
 
   const petBounds = petWindow.getBounds();
 
-  if (popoverWindow) {
+  if (isUsableWindow(popoverWindow)) {
     const popoverBounds = popoverWindow.getBounds();
     const { x, y } = popoverPositionForPet(petBounds, popoverBounds);
     popoverWindow.setPosition(x, y, false);
@@ -350,7 +474,7 @@ function currentSettings() {
 }
 
 function applyAlwaysOnTop() {
-  if (!petWindow) return;
+  if (!isUsableWindow(petWindow)) return;
 
   if (settings.alwaysOnTop) {
     petWindow.setAlwaysOnTop(true, "floating");
@@ -369,7 +493,9 @@ function setPetVisible(enabled: boolean) {
   settings.petVisible = enabled;
 
   if (enabled) {
-    if (!petWindow) {
+    if (!isUsableWindow(petWindow)) {
+      disposeStaleWindow(petWindow);
+      petWindow = null;
       createPetWindow();
     } else {
       petWindow.show();
@@ -377,8 +503,12 @@ function setPetVisible(enabled: boolean) {
     return;
   }
 
-  popoverWindow?.close();
-  petWindow?.hide();
+  closeUsableWindow(popoverWindow);
+  if (isUsableWindow(petWindow)) petWindow.hide();
+  else {
+    disposeStaleWindow(petWindow);
+    petWindow = null;
+  }
 }
 
 function setAlwaysOnTop(enabled: boolean) {
@@ -399,7 +529,7 @@ function setPetTheme(theme: AppSettings["petTheme"]) {
 
 function publishSettings(nextSettings: AppSettings) {
   BrowserWindow.getAllWindows().forEach((window) => {
-    window.webContents.send("app:settings-updated", nextSettings);
+    if (isUsableWindow(window)) window.webContents.send("app:settings-updated", nextSettings);
   });
 }
 
@@ -421,7 +551,7 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
   }
 
   if (key === "petScale") {
-    settings.petScale = clamp(Number(value), 0.75, 1.25);
+    settings.petScale = clampValue(Number(value), 0.75, 1.25);
     settings.petAppearance = normalizePetAppearance({
       ...settings,
       petAppearance: {
@@ -432,7 +562,7 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
   }
 
   if (key === "petOpacity") {
-    settings.petOpacity = clamp(Number(value), 0.45, 1);
+    settings.petOpacity = clampValue(Number(value), 0.45, 1);
     settings.petAppearance = normalizePetAppearance({
       ...settings,
       petAppearance: {
@@ -449,6 +579,10 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
     });
   }
 
+  if (key === "petStory") {
+    settings.petStory = normalizePetStory(value);
+  }
+
   settings = syncLegacyAppearanceFields(settings, settings.petAppearance) as AppSettings;
 
   const nextSettings = currentSettings();
@@ -460,8 +594,12 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
 function showPetContextMenu() {
   Menu.buildFromTemplate([
     {
-      label: "Open Summary",
+      label: "Open Quick Play",
       click: () => togglePopover(),
+    },
+    {
+      label: "Hide Pet",
+      click: () => setSetting("petVisible", false),
     },
     {
       type: "separator",
@@ -470,23 +608,42 @@ function showPetContextMenu() {
       label: "Quit TokenPet",
       click: () => quitTokenPet(),
     },
-  ]).popup({ window: petWindow ?? undefined });
+  ]).popup({ window: isUsableWindow(petWindow) ? petWindow : undefined });
+}
+
+function clampPetBoundsToDisplay(bounds: Rectangle) {
+  const display = screen.getDisplayMatching(bounds);
+  return clampBoundsToWorkArea(bounds, display.workArea);
+}
+
+function initialPetBounds(): Rectangle {
+  const stored = readStoredPetPosition();
+  if (stored) {
+    return clampPetBoundsToDisplay({ ...stored, width: PET_WINDOW_SIZE.width, height: PET_WINDOW_SIZE.height });
+  }
+
+  const display = screen.getPrimaryDisplay();
+  const workArea = display.workArea;
+  return {
+    width: PET_WINDOW_SIZE.width,
+    height: PET_WINDOW_SIZE.height,
+    x: workArea.x + workArea.width - PET_WINDOW_SIZE.width - 50,
+    y: clampValue(workArea.y + 120, workArea.y, workArea.y + workArea.height - PET_WINDOW_SIZE.height),
+  };
 }
 
 function createPetWindow() {
-  if (petWindow) {
+  if (isUsableWindow(petWindow)) {
     petWindow.show();
     return;
   }
+  disposeStaleWindow(petWindow);
+  petWindow = null;
 
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width } = primaryDisplay.workAreaSize;
+  const initialBounds = initialPetBounds();
 
-  petWindow = new BrowserWindow({
-    width: PET_WINDOW_SIZE.width,
-    height: PET_WINDOW_SIZE.height,
-    x: Math.max(24, width - PET_WINDOW_SIZE.width - 50),
-    y: 120,
+  const createdWindow = new BrowserWindow({
+    ...initialBounds,
     frame: false,
     transparent: true,
     backgroundColor: "#00000000",
@@ -502,37 +659,47 @@ function createPetWindow() {
       nodeIntegration: false,
     },
   });
+  petWindow = createdWindow;
+  trackWindowHealth(createdWindow);
 
-  petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  createdWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   applyAlwaysOnTop();
-  petWindow.webContents.on("context-menu", () => {
+  createdWindow.webContents.on("context-menu", () => {
     showPetContextMenu();
   });
-  verifyBridge(petWindow, "pet");
-  void loadWindow(petWindow, "pet");
+  verifyBridge(createdWindow, "pet");
+  createdWindow.webContents.on("did-finish-load", flushPendingDirectorEvents);
+  void loadWindow(createdWindow, "pet");
 
-  petWindow.on("move", () => {
-    positionAccessoryWindows();
+  createdWindow.on("move", () => {
+    if (petWindow === createdWindow) positionAccessoryWindows();
   });
 
-  petWindow.on("blur", () => {
+  createdWindow.on("blur", () => {
     stopDrag();
   });
 
-  petWindow.on("closed", () => {
-    petWindow = null;
-    popoverWindow?.close();
-    stopDrag();
+  createdWindow.on("closed", () => {
+    if (petWindow === createdWindow) {
+      petWindow = null;
+      closeUsableWindow(popoverWindow);
+      stopDrag();
+    }
   });
 }
 
 function createPopoverWindow() {
-  if (!petWindow) return;
+  if (!isUsableWindow(petWindow)) {
+    disposeStaleWindow(petWindow);
+    petWindow = null;
+    if (settings.petVisible) createPetWindow();
+  }
+  if (!isUsableWindow(petWindow)) return;
 
   const petBounds = petWindow.getBounds();
   const popoverPosition = popoverPositionForPet(petBounds);
 
-  popoverWindow = new BrowserWindow({
+  const createdWindow = new BrowserWindow({
     width: POPOVER_SIZE.width,
     height: POPOVER_SIZE.height,
     x: popoverPosition.x,
@@ -550,49 +717,152 @@ function createPopoverWindow() {
       nodeIntegration: false,
     },
   });
+  popoverWindow = createdWindow;
+  trackWindowHealth(createdWindow);
 
-  popoverWindow.setAlwaysOnTop(true, "floating");
-  verifyBridge(popoverWindow, "popover");
-  void loadWindow(popoverWindow, "popover");
+  createdWindow.setAlwaysOnTop(true, "floating");
+  verifyBridge(createdWindow, "popover");
+  void loadWindow(createdWindow, "popover");
 
-  popoverWindow.on("blur", () => {
-    popoverWindow?.close();
+  createdWindow.on("blur", () => {
+    closeUsableWindow(createdWindow);
   });
 
-  popoverWindow.on("closed", () => {
-    popoverWindow = null;
+  createdWindow.on("closed", () => {
+    if (popoverWindow === createdWindow) popoverWindow = null;
   });
 
   positionAccessoryWindows();
 }
 
 function togglePopover() {
-  if (popoverWindow) {
+  if (isUsableWindow(popoverWindow)) {
     popoverWindow.close();
     return;
   }
 
+  disposeStaleWindow(popoverWindow);
+  popoverWindow = null;
   createPopoverWindow();
 }
 
-app.whenReady().then(() => {
+function summonPetToCurrentScreen() {
+  if (!settings.petVisible) {
+    settings.petVisible = true;
+    createPetWindow();
+    writeStoredSettings();
+    publishSettings(currentSettings());
+  } else if (!isUsableWindow(petWindow)) {
+    disposeStaleWindow(petWindow);
+    petWindow = null;
+    createPetWindow();
+  }
+  if (!isUsableWindow(petWindow)) return { moved: false };
+
+  const cursor = currentCursorScreenPoint();
+  const workArea = screen.getDisplayNearestPoint(cursor).workArea;
+  const bounds = petWindow.getBounds();
+  const nextBounds = summonBoundsForCursor(bounds, cursor, workArea);
+  petWindow.setBounds(nextBounds, true);
+  petWindow.showInactive();
+  writeStoredPetPosition(nextBounds);
+  positionAccessoryWindows();
+  return { moved: true };
+}
+
+async function capturePetMoment() {
+  if (!isUsableWindow(petWindow) || petWindow.webContents.isLoading()) return { saved: false };
+  const targetWindow = petWindow;
+
+  const image = await (async () => {
+    await targetWindow.webContents.executeJavaScript(`document.querySelector('.pet-close')?.setAttribute('data-capture-hidden', document.querySelector('.pet-close')?.style.visibility || ''); if (document.querySelector('.pet-close')) document.querySelector('.pet-close').style.visibility = 'hidden';`);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 34));
+      return await targetWindow.webContents.capturePage();
+    } finally {
+      if (isUsableWindow(targetWindow)) {
+        await targetWindow.webContents.executeJavaScript(`if (document.querySelector('.pet-close')) { document.querySelector('.pet-close').style.visibility = document.querySelector('.pet-close').getAttribute('data-capture-hidden') || ''; document.querySelector('.pet-close').removeAttribute('data-capture-hidden'); }`);
+      }
+    }
+  })();
+  if (image.isEmpty()) return { saved: false };
+  const png = image.toPNG();
+  if (!hasPngSignature(png)) return { saved: false };
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const dialogParent = [popoverWindow, consoleWindow, targetWindow].find(isUsableWindow);
+  const qaCapturePath = isMainProcessQa ? process.env.TOKENPET_MAIN_PROCESS_QA_CAPTURE_PATH : undefined;
+  const saveDialogOptions = {
+    title: "Save TokenPet moment",
+    defaultPath: join(app.getPath("pictures"), `TokenPet-${timestamp}.png`),
+    filters: [{ name: "PNG image", extensions: ["png"] }],
+  };
+  const result = qaCapturePath
+    ? { canceled: false, filePath: qaCapturePath }
+    : dialogParent
+      ? await dialog.showSaveDialog(dialogParent, saveDialogOptions)
+      : await dialog.showSaveDialog(saveDialogOptions);
+  if (result.canceled || !result.filePath) return { saved: false };
+
+  writeFileSync(result.filePath, png);
+  return { saved: true, filePath: result.filePath };
+}
+
+function startCursorTracking() {
+  if (cursorTrackingTimer) return;
+  cursorTrackingTimer = setInterval(() => {
+    if (!isUsableWindow(petWindow) || !settings.petStory.followCursor || dragState) return;
+    const cursor = currentCursorScreenPoint();
+    const bounds = petWindow.getBounds();
+    const centerX = bounds.x + bounds.width / 2;
+    const centerY = bounds.y + bounds.height / 2;
+    petWindow.webContents.send("pet:cursor-position", {
+      x: clampValue((cursor.x - centerX) / Math.max(bounds.width * 1.5, 1), -1, 1),
+      y: clampValue((cursor.y - centerY) / Math.max(bounds.height * 1.5, 1), -1, 1),
+    });
+  }, 120);
+  cursorTrackingTimer.unref();
+}
+
+export const tokenPetReady = app.whenReady().then(() => {
   hydrateSettings();
   if (process.platform === "darwin") {
     app.dock?.hide();
   }
 
-  createTray();
+  if (!isMainProcessQa) createTray();
+  startCursorTracking();
   if (settings.petVisible) {
     createPetWindow();
   }
-  void loadAndPublishUsage({ force: true });
+  if (!isMainProcessQa) void loadAndPublishUsage({ force: true });
 
   app.on("activate", () => {
-    if (settings.petVisible && BrowserWindow.getAllWindows().length === 0) {
-      createPetWindow();
-    }
+    if (settings.petVisible && !isUsableWindow(petWindow)) createPetWindow();
   });
 });
+
+export const mainProcessQa = {
+  enabled: isMainProcessQa,
+  getWindow(kind: "pet" | "popover" | "menubar" | "console") {
+    return { pet: petWindow, popover: popoverWindow, menubar: menuBarWindow, console: consoleWindow }[kind];
+  },
+  getSettings() {
+    return currentSettings();
+  },
+  isWindowUsable: isUsableWindow,
+  setCursorPoint(point: { x: number; y: number } | null) {
+    if (!isMainProcessQa) throw new Error("QA cursor override is unavailable outside main-process QA");
+    mainProcessQaCursor = point;
+  },
+  openConsole(tab: ConsoleTab = "pet") {
+    openConsoleWindow(tab);
+  },
+  toggleMenuBar: toggleMenuBarWindow,
+  togglePopover,
+  setSetting,
+  summonPetToCurrentScreen,
+  capturePetMoment,
+};
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -615,30 +885,64 @@ ipcMain.on("pet:toggle-popover", () => {
 });
 
 ipcMain.on("pet:close", () => {
-  quitTokenPet();
+  setSetting("petVisible", false);
 });
 
-ipcMain.on("app:open-console", () => {
-  openConsoleWindow();
+ipcMain.on("popover:close", () => {
+  closeUsableWindow(popoverWindow);
+});
+
+ipcMain.on("app:open-console", (_event, requestedTab: ConsoleTab = "pet") => {
+  const tab: ConsoleTab = ["overview", "breakdown", "cost", "pet", "settings"].includes(requestedTab) ? requestedTab : "pet";
+  openConsoleWindow(tab);
 });
 
 ipcMain.on("app:quit", () => {
   quitTokenPet();
 });
 
+const quickPlayActionIds = new Set<QuickPlayActionId>([
+  "click_purr",
+  "token_snack",
+  "play_cursor",
+  "drag_dangle",
+  "toss_yarn",
+  "nap_here",
+  "wake_up",
+  "summon_to_screen",
+  "capture_moment",
+]);
+
+ipcMain.handle("pet:dispatch-action", (_event, action: QuickPlayActionId) => {
+  if (!quickPlayActionIds.has(action)) return { accepted: false };
+  emitPetDirectorEvent({ type: "quickPlay.action", action });
+  return { accepted: true };
+});
+
+ipcMain.handle("pet:summon", () => summonPetToCurrentScreen());
+
+ipcMain.handle("pet:capture-moment", () => capturePetMoment());
+
 function stopDrag() {
   if (!dragState) return;
 
+  const moved = dragState.moved;
   clearInterval(dragState.timer);
   dragState = null;
+  if (moved && isUsableWindow(petWindow)) {
+    const bounds = clampPetBoundsToDisplay(petWindow.getBounds());
+    petWindow.setBounds(bounds, false);
+    writeStoredPetPosition(bounds);
+    positionAccessoryWindows();
+  }
 }
 
 ipcMain.handle("pet:start-drag", () => {
-  if (!petWindow) return { started: false };
+  if (!isUsableWindow(petWindow) || settings.petStory.lockPosition) return { started: false };
 
   stopDrag();
 
-  const pointer = screen.getCursorScreenPoint();
+  const pointer = currentCursorScreenPoint();
   const bounds = petWindow.getBounds();
 
   dragState = {
@@ -648,9 +952,9 @@ ipcMain.handle("pet:start-drag", () => {
     windowY: bounds.y,
     moved: false,
     timer: setInterval(() => {
-      if (!petWindow || !dragState) return;
+      if (!isUsableWindow(petWindow) || !dragState) return;
 
-      const nextPointer = screen.getCursorScreenPoint();
+      const nextPointer = currentCursorScreenPoint();
       const deltaX = nextPointer.x - dragState.pointerX;
       const deltaY = nextPointer.y - dragState.pointerY;
 
@@ -669,5 +973,11 @@ ipcMain.handle("pet:start-drag", () => {
 ipcMain.handle("pet:end-drag", () => {
   const moved = dragState?.moved ?? false;
   stopDrag();
+  if (moved && isUsableWindow(petWindow)) {
+    const bounds = clampPetBoundsToDisplay(petWindow.getBounds());
+    petWindow.setBounds(bounds, false);
+    writeStoredPetPosition(bounds);
+    positionAccessoryWindows();
+  }
   return { moved };
 });

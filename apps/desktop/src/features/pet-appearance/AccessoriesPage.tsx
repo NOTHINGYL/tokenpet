@@ -85,6 +85,7 @@ function TokenFramePreview(props: { frameId: TokenFrameId }) {
 }
 
 function TokenFrameSection(props: {
+  actorId: PetAppearanceSettings["catTypeId"];
   selectedFrame: TokenFrameId;
   onSelectFrame: (frameId: TokenFrameId) => void;
 }) {
@@ -95,20 +96,32 @@ function TokenFrameSection(props: {
         <span>(Pick one)</span>
       </div>
       <div className="accessory-frame-grid">
-        {tokenFrameOptions.map((frame) => (
+        {tokenFrameOptions.map((frame) => {
+          const supported = props.actorId === "golden-british"
+            ? frame.id === "embedded" || frame.id === "hidden"
+            : frame.id === "hidden";
+          const displayLabel = props.actorId === "golden-british" && frame.id === "hidden" ? "Hide value" : frame.label;
+          const displayDetail = props.actorId === "golden-british" && frame.id === "hidden"
+            ? "Baked cream frame remains"
+            : props.actorId !== "golden-british" && frame.id === "hidden"
+              ? "No approved token-frame asset for this static fallback"
+              : frame.detail;
+          return (
           <button
-            className={`accessories-choice-card token-frame-choice ${props.selectedFrame === frame.id ? "selected" : ""}`}
+            className={`accessories-choice-card token-frame-choice ${props.selectedFrame === frame.id ? "selected" : ""} ${supported ? "" : "planned"}`.trim()}
             key={frame.id}
             type="button"
             data-token-frame-id={frame.id}
-            onClick={() => props.onSelectFrame(frame.id)}
+            disabled={!supported}
+            title={supported ? displayDetail : "Requires a generated actor bundle with an approved token-frame asset."}
+            onClick={() => { if (supported) props.onSelectFrame(frame.id); }}
           >
             <span className="accessory-card-radio" aria-hidden="true" />
             <TokenFramePreview frameId={frame.id} />
-            <strong>{frame.label}</strong>
-            <small>{frame.detail}</small>
+            <strong>{displayLabel}</strong>
+            <small>{supported ? displayDetail : "Planned · actor variant"}</small>
           </button>
-        ))}
+        );})}
       </div>
     </section>
   );
@@ -117,15 +130,18 @@ function TokenFrameSection(props: {
 function AccessoryChoiceCard(props: {
   option: { id: AccessoryChoiceId; label: string; image?: string; locked?: boolean };
   selected: boolean;
+  available: boolean;
+  availabilityLabel: string;
   onSelect: () => void;
 }) {
   return (
     <button
-      className={`accessories-choice-card ${props.selected ? "selected" : ""} ${props.option.locked ? "locked" : ""}`}
+      className={`accessories-choice-card ${props.selected ? "selected" : ""} ${props.option.locked || !props.available ? "locked planned" : ""}`}
       type="button"
       data-accessory-choice-id={props.option.id}
       onClick={props.onSelect}
-      disabled={Boolean(props.option.locked)}
+      disabled={Boolean(props.option.locked) || !props.available}
+      title={props.availabilityLabel}
     >
       <span className="accessory-card-radio" aria-hidden="true" />
       {props.option.image ? (
@@ -134,11 +150,13 @@ function AccessoryChoiceCard(props: {
         <span className="accessory-none-mark" aria-hidden="true" />
       )}
       <strong>{props.option.label}</strong>
+      <small className="accessory-capability-label">{props.availabilityLabel}</small>
     </button>
   );
 }
 
 function AccessoryCategorySection(props: {
+  actorId: PetAppearanceSettings["catTypeId"];
   section: (typeof accessorySections)[number];
   selectedId: AccessoryChoiceId;
   onSelect: (choiceId: AccessoryChoiceId) => void;
@@ -155,6 +173,8 @@ function AccessoryCategorySection(props: {
             key={option.id}
             option={option}
             selected={props.selectedId === option.id}
+            available={props.actorId === "golden-british" ? (props.section.id === "neck" ? option.id === "collar" : option.id === "none") : option.id === "none"}
+            availabilityLabel={props.actorId === "golden-british" && option.id === "collar" ? "Baked · fixed" : props.actorId === "golden-british" && props.section.id === "neck" && option.id === "none" ? "Baked collar cannot be removed" : option.id === "none" ? "Available" : "Requires actor variant"}
             onSelect={() => {
               if (!option.locked) props.onSelect(option.id);
             }}
@@ -167,6 +187,7 @@ function AccessoryCategorySection(props: {
 
 function AccessoriesDetails(props: {
   settings: AccessorySettings;
+  disabled: boolean;
   onPatchSettings: (patch: AccessorySettingsPatch) => void;
 }) {
   const scale = Math.round(props.settings.scale * 100);
@@ -180,6 +201,8 @@ function AccessoriesDetails(props: {
         <PetIcon name="info" />
       </div>
 
+      {props.disabled ? <p className="accessory-capability-notice">Fit, color, and position are baked into the current actor bundle. Generate a compatible actor variant to customize these controls.</p> : null}
+
       <div className="accessory-detail-group">
         <strong>Color</strong>
         <div className="accessory-color-row">
@@ -188,6 +211,7 @@ function AccessoriesDetails(props: {
               className={`accessory-color-swatch ${color.className} ${props.settings.colorId === color.id ? "selected" : ""}`}
               key={color.id}
               type="button"
+              disabled={props.disabled}
               aria-label={`${color.label} accessories`}
               onClick={() => props.onPatchSettings({ colorId: color.id as AccessoryColorId })}
             />
@@ -208,6 +232,7 @@ function AccessoriesDetails(props: {
           onInput={(event) => props.onPatchSettings({ scale: Number(event.currentTarget.value) / 100 })}
           style={{ "--range-progress": `${((scale - 70) / 65) * 100}%` } as CSSProperties}
           aria-label="Accessory scale"
+          disabled={props.disabled}
         />
       </label>
 
@@ -219,6 +244,7 @@ function AccessoriesDetails(props: {
               className={props.settings.position === position.id ? "selected" : ""}
               key={position.id}
               type="button"
+              disabled={props.disabled}
               onClick={() => props.onPatchSettings({ position: position.id as AccessoryPosition })}
             >
               {position.label}
@@ -230,6 +256,7 @@ function AccessoriesDetails(props: {
       <button
         className="accessory-toggle-row"
         type="button"
+        disabled={props.disabled}
         onClick={() => props.onPatchSettings({ textOnlyFrame: !props.settings.textOnlyFrame })}
       >
         <span>Text only for built-in frame</span>
@@ -242,6 +269,7 @@ function AccessoriesDetails(props: {
           <button
             key={mood.id}
             type="button"
+            disabled={props.disabled}
             onClick={() =>
               props.onPatchSettings({
                 moodVisibility: {
@@ -268,9 +296,10 @@ export function AccessoriesPage(props: AccessoriesPageProps) {
   const resetAccessories = () => {
     props.onPatchAppearance(patchAccessorySettings(props.appearance, defaultAccessorySettings));
   };
+  const actorPreviewAppearance = { ...props.appearance, moodBadge: { ...props.appearance.moodBadge, showMood: false } };
 
   return (
-    <div className="accessories-page">
+    <div className="accessories-page" data-testid="accessories-page">
       <AccessoriesToolbar canUndo={props.canUndo} onBack={props.onBack} onUndo={props.onUndo} onReset={resetAccessories} />
 
       <div className="accessories-page-heading">
@@ -288,22 +317,23 @@ export function AccessoriesPage(props: AccessoriesPageProps) {
               <PetIcon name="info" />
             </div>
             <div className="accessories-live-preview-stage">
-              <PetAppearanceVisual appearance={props.appearance} usage={props.usage} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} surface="preview" />
             </div>
             <span className="accessory-preview-chip">
               Token frame: <strong>{tokenFrameOptions.find((option) => option.id === props.appearance.accessorySettings.tokenFrameId)?.label}</strong>
             </span>
           </section>
-          <AccessoriesDetails settings={props.appearance.accessorySettings} onPatchSettings={patchSettings} />
+          <AccessoriesDetails settings={props.appearance.accessorySettings} disabled onPatchSettings={patchSettings} />
         </aside>
 
         <div className="accessories-library-column">
-          <TokenFrameSection selectedFrame={props.appearance.accessorySettings.tokenFrameId} onSelectFrame={(tokenFrameId) => patchSettings({ tokenFrameId })} />
+          <TokenFrameSection actorId={props.appearance.catTypeId} selectedFrame={props.appearance.accessorySettings.tokenFrameId} onSelectFrame={(tokenFrameId) => patchSettings({ tokenFrameId })} />
           {accessorySections.map((section) => {
             const settingKey = categorySettingKeys[section.id];
             return (
               <AccessoryCategorySection
                 key={section.id}
+                actorId={props.appearance.catTypeId}
                 section={section}
                 selectedId={props.appearance.accessorySettings[settingKey]}
                 onSelect={(choiceId) => patchSettings({ [settingKey]: choiceId } as Partial<AccessorySettings>)}

@@ -8,6 +8,8 @@ out/
 .turbo/
 .vite/
 coverage/
+__pycache__/
+*.py[cod]
 *.log
 .env
 .env.*

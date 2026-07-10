@@ -258,7 +258,7 @@ export const catTypes: CatTypeOption[] = [
   },
 ];
 
-export const featuredCatTypes = catTypes.slice(0, 4);
+export const featuredCatTypes = catTypes.slice(0, 5);
 
 export const defaultExternalTokenBubbleLayout: TokenBubbleLayout = {
   mode: "external",
@@ -645,7 +645,7 @@ function accessoryChoice(accessoryId: AccessoryId): AccessoryChoiceOption {
 }
 
 export const accessorySections: Array<{
-  id: AccessoryCategoryId;
+  id: Exclude<AccessoryCategoryId, "tokenFrame">;
   label: string;
   detail: string;
   options: AccessoryChoiceOption[];
@@ -816,4 +816,4 @@ export const moodBadgeOptions = [
     detail: "Hide when you're focused",
     enabled: false,
   },
-];
+] as const;

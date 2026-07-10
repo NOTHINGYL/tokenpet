@@ -5,11 +5,10 @@ import type {
   PetActorAnimation,
   PetActorFrameAsset,
   PetActorManifest,
-  PetActorMood,
   PetActorRect,
   PetActorTokenMode,
 } from "../../../../../packages/pet-asset-schema/src";
-import type { MoodLookId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
+import type { MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { getEffectiveTokenBubbleId, getMoodLabel, getTokenBubbleLabel, getTokenFrameOption, moodToneClass, shouldShowMoodBadge } from "../pet-appearance/appearanceView";
 import type { PetActorProps, PetSurface } from "../pet-actor/actorTypes";
 
@@ -18,7 +17,6 @@ type GeneratedActorImageMap = Map<string, HTMLImageElement>;
 type GeneratedActorRenderPlan = {
   manifest: PetActorManifest;
   animation: PetActorAnimation;
-  frame: PetActorFrameAsset;
   moodId: MoodLookId;
   surface: PetSurface;
   appearance: PetAppearanceSettings;
@@ -29,11 +27,13 @@ type GeneratedActorRenderPlan = {
   moodBadgeRect: PetActorRect | null;
   className: string;
   styleVars: Record<string, string>;
+  reduceMotion: boolean;
+  pointerOffset: { x: number; y: number } | null;
 };
 
 const GENERATED_ACTOR_IDS = new Set(["golden-british"]);
 const generatedActorManifests: Record<string, PetActorManifest> = {
-  "golden-british": goldenBritishActorManifestJson as PetActorManifest,
+  "golden-british": goldenBritishActorManifestJson as unknown as PetActorManifest,
 };
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
 
@@ -81,17 +81,52 @@ async function loadGeneratedActorImages(manifest: PetActorManifest) {
 }
 
 function resolveAnimation(manifest: PetActorManifest, moodId: MoodLookId) {
-  return manifest.animations[`${moodId}.idle`] ?? manifest.animations[manifest.defaultAnimation] ?? Object.values(manifest.animations)[0];
+  return manifest.animations[`action.${moodId}_loop`] ?? manifest.animations[`${moodId}.idle`] ?? manifest.animations[manifest.defaultAnimation] ?? Object.values(manifest.animations)[0];
 }
 
-function resolveActionAnimation(manifest: PetActorManifest, actionId: string | undefined, moodId: MoodLookId) {
+const storyActionForLegacyMotion: Record<MotionActionId, PetActionId> = {
+  "idle-breathe": "idle_breathe",
+  "tail-wag": "hot_loop",
+  blink: "blink",
+  stretch: "drag_dangle",
+  "run-across": "play_cursor",
+  jump: "drop_bounce",
+  "desk-nap": "sleep_loop",
+  celebrate: "milestone_celebrate",
+  "pounce-cursor": "play_cursor",
+  "edge-peek": "idle_breathe",
+};
+
+const legacyAnimationForStoryAction: Partial<Record<PetActionId, MotionActionId>> = {
+  idle_breathe: "idle-breathe",
+  blink: "blink",
+  sleep_loop: "desk-nap",
+  focus_loop: "idle-breathe",
+  hot_loop: "tail-wag",
+  overdrive_loop: "jump",
+  click_purr: "blink",
+  drag_dangle: "stretch",
+  drop_bounce: "jump",
+  token_snack: "blink",
+  play_cursor: "pounce-cursor",
+  milestone_celebrate: "celebrate",
+  level_up: "celebrate",
+  daily_digest: "desk-nap",
+};
+
+function resolveActionAnimation(
+  manifest: PetActorManifest,
+  storyActionId: PetActionId | undefined,
+  legacyMotionId: MotionActionId | undefined,
+  moodId: MoodLookId,
+) {
+  const actionId = storyActionId ?? (legacyMotionId ? storyActionForLegacyMotion[legacyMotionId] : undefined);
   if (actionId) {
-    const actionAnimation = manifest.animations[`action.${actionId}`];
+    const legacyId = legacyAnimationForStoryAction[actionId];
+    const actionAnimation = manifest.animations[`action.${actionId}`] ?? (legacyId ? manifest.animations[`action.${legacyId}`] : undefined);
     if (actionAnimation) return actionAnimation;
   }
 
-  const defaultAction = manifest.animations[manifest.defaultAnimation];
-  if (defaultAction) return defaultAction;
   return resolveAnimation(manifest, moodId);
 }
 
@@ -100,6 +135,8 @@ function resolveTokenMode(appearance: PetAppearanceSettings, manifest: PetActorM
   const frame = getTokenFrameOption(appearance);
 
   if (tokenBubbleId === "hidden" || frame.mode === "hidden") return "hidden";
+  const tokenFramePolicy = (manifest.compatibility as PetActorManifest["compatibility"] & { tokenFramePolicy?: string }).tokenFramePolicy;
+  if (tokenFramePolicy === "embedded-only") return "embedded";
   if (frame.mode === "floating") return "floating";
   if (manifest.defaultTokenMode === "embedded" && frame.mode === "embedded" && appearance.accessorySettings.textOnlyFrame) return "embedded";
   return "below";
@@ -112,26 +149,30 @@ function resolveRenderScale(surface: PetSurface, appearance: PetAppearanceSettin
 
 function resolveTokenRect(manifest: PetActorManifest, tokenMode: PetActorTokenMode) {
   if (tokenMode === "hidden") return null;
-  if (tokenMode === "embedded") return manifest.dynamicSlots.tokenText;
+  if (tokenMode === "embedded") return manifest.tokenSlot ?? manifest.dynamicSlots.tokenText;
   return manifest.dynamicSlots.externalToken ?? manifest.dynamicSlots.tokenText;
 }
 
-function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): GeneratedActorRenderPlan {
+function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): GeneratedActorRenderPlan | null {
   const moodId = props.moodId ?? props.appearance.moodId;
-  const animation = resolveActionAnimation(manifest, props.motionActionId ?? props.appearance.motionSettings.actionId, moodId);
-  const frame = animation.frames[0];
+  const animation = resolveActionAnimation(
+    manifest,
+    props.storyActionId ?? props.actionId,
+    props.motionActionId,
+    moodId,
+  );
+  if (!animation?.frames.length) return null;
   const tokenMode = resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
-  const moodBadgeRect = shouldShowMoodBadge(props.appearance, moodId) ? manifest.dynamicSlots.moodBadge : null;
+  const moodBadgeRect = shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
   const tokenCenterX = tokenRect ? tokenRect.x + tokenRect.width / 2 : 0;
   const tokenCenterY = tokenRect ? tokenRect.y + tokenRect.height / 2 : 0;
 
   return {
     manifest,
     animation,
-    frame,
     moodId,
     surface: props.surface,
     appearance: props.appearance,
@@ -152,6 +193,8 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
       "--pet-actor-token-w": tokenRect ? `${(tokenRect.width / manifest.artboard.width) * 100}%` : "0%",
       "--pet-actor-token-h": tokenRect ? `${(tokenRect.height / manifest.artboard.height) * 100}%` : "0%",
     },
+    reduceMotion: props.reduceMotion ?? props.appearance.motionSettings.safety.reduceMotion,
+    pointerOffset: props.pointerOffset ?? null,
   };
 }
 
@@ -194,8 +237,9 @@ function drawTokenText(context: CanvasRenderingContext2D, plan: GeneratedActorRe
   if (!plan.tokenLabel || !plan.tokenRect) return;
 
   const rect = plan.tokenRect;
-  const maxFontSize = plan.tokenMode === "embedded" ? plan.manifest.dynamicSlots.tokenText.maxFontSize : plan.manifest.dynamicSlots.externalToken?.maxFontSize ?? 68;
-  const fontSize = fitFontSize(context, plan.tokenLabel, maxFontSize * plan.appearance.bubbleScale, rect.width * 0.82, plan.manifest.dynamicSlots.tokenText.fontWeight);
+  const tokenSlot = plan.manifest.tokenSlot ?? plan.manifest.dynamicSlots.tokenText;
+  const maxFontSize = plan.tokenMode === "embedded" ? tokenSlot.maxFontSize : plan.manifest.dynamicSlots.externalToken?.maxFontSize ?? 68;
+  const fontSize = fitFontSize(context, plan.tokenLabel, maxFontSize * plan.appearance.bubbleScale, rect.width * 0.82, tokenSlot.fontWeight);
 
   if (plan.tokenMode !== "embedded") {
     const scaled = {
@@ -208,10 +252,10 @@ function drawTokenText(context: CanvasRenderingContext2D, plan: GeneratedActorRe
   }
 
   context.save();
-  context.fillStyle = plan.manifest.dynamicSlots.tokenText.color;
+  context.fillStyle = tokenSlot.color;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = `${plan.manifest.dynamicSlots.tokenText.fontWeight} ${fontSize}px Inter, system-ui, sans-serif`;
+  context.font = `${tokenSlot.fontWeight} ${fontSize}px Inter, system-ui, sans-serif`;
   context.shadowColor = "rgba(255, 255, 255, 0.86)";
   context.shadowBlur = 3;
   context.fillText(plan.tokenLabel, rect.x + rect.width / 2, rect.y + rect.height / 2 + 2);
@@ -221,14 +265,14 @@ function drawTokenText(context: CanvasRenderingContext2D, plan: GeneratedActorRe
 function drawMoodBadge(context: CanvasRenderingContext2D, plan: GeneratedActorRenderPlan, time: number) {
   if (!plan.moodBadgeRect) return;
 
-  const rect = { ...plan.moodBadgeRect, y: plan.moodBadgeRect.y + Math.sin(time * 2.1) * 4 };
+  const rect = { ...plan.moodBadgeRect, y: plan.moodBadgeRect.y + (plan.reduceMotion ? 0 : Math.sin(time * 2.1) * 4) };
   const palette: Record<MoodLookId, { bg: string; stroke: string; text: string }> = {
     sleepy: { bg: "rgba(239, 246, 255, 0.96)", stroke: "rgba(49, 84, 120, 0.18)", text: "#315478" },
     focused: { bg: "rgba(225, 246, 232, 0.96)", stroke: "rgba(47, 148, 97, 0.18)", text: "#176c3a" },
     hot: { bg: "rgba(255, 237, 213, 0.96)", stroke: "rgba(179, 90, 2, 0.18)", text: "#a34308" },
     overdrive: { bg: "rgba(255, 228, 230, 0.96)", stroke: "rgba(200, 48, 48, 0.2)", text: "#b42318" },
   };
-  const tone = palette[plan.moodId];
+  const tone = plan.appearance.moodBadge.colorByState ? palette[plan.moodId] : palette.focused;
   const label = getMoodLabel(plan.moodId);
 
   context.save();
@@ -241,7 +285,7 @@ function drawMoodBadge(context: CanvasRenderingContext2D, plan: GeneratedActorRe
   context.fillStyle = tone.text;
   context.textAlign = "center";
   context.textBaseline = "middle";
-  context.font = `850 ${plan.manifest.dynamicSlots.moodBadge.maxFontSize}px Inter, system-ui, sans-serif`;
+  context.font = `850 ${(plan.manifest.moodBadgeSlot ?? plan.manifest.dynamicSlots.moodBadge).maxFontSize}px Inter, system-ui, sans-serif`;
   context.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2 + 1);
   context.restore();
 }
@@ -259,20 +303,28 @@ function jumpPhase(phase01: number) {
   return Math.sin(Math.PI * phase01);
 }
 
-function applyGeneratedBodyMotion(context: CanvasRenderingContext2D, plan: GeneratedActorRenderPlan, time: number, hover: boolean) {
-  const frame = plan.frame;
+function applyGeneratedBodyMotion(
+  context: CanvasRenderingContext2D,
+  plan: GeneratedActorRenderPlan,
+  frame: PetActorFrameAsset,
+  time: number,
+  hover: boolean,
+) {
   const transform = frame.bodyTransform;
+  if (plan.pointerOffset) {
+    context.translate(plan.pointerOffset.x * 7, plan.pointerOffset.y * 3);
+  }
   if (!transform) return;
 
-  const speed = plan.appearance.motionSettings.safety.reduceMotion ? 0.35 : plan.appearance.motionSettings.animationSpeed / 80;
-  const energy = plan.appearance.motionSettings.safety.reduceMotion ? 0.28 : 0.45 + plan.appearance.motionSettings.motionEnergy / 100;
+  const speed = plan.reduceMotion ? 0.35 : plan.appearance.motionSettings.animationSpeed / 80;
+  const energy = plan.reduceMotion ? 0.2 : 0.45 + plan.appearance.motionSettings.motionEnergy / 100;
   const durationSeconds = Math.max(0.4, frame.durationMs / 1000 / Math.max(speed, 0.2));
   const phase01 = (time % durationSeconds) / durationSeconds;
   const sine = Math.sin(phase01 * Math.PI * 2);
   const jump = jumpPhase(phase01);
   const travel = travelPhase(phase01);
   const origin = transform.origin;
-  const motionState = plan.animation.motionState;
+  const motionState = String(plan.animation.motionState);
   const jumpBoost = plan.appearance.motionSettings.jumpHeight / 70;
   const translateX =
     motionState === "run-across" || motionState === "edge-peek" || motionState === "pounce-cursor"
@@ -293,24 +345,40 @@ function applyGeneratedBodyMotion(context: CanvasRenderingContext2D, plan: Gener
   context.translate(-origin.x, -origin.y);
 }
 
+function frameAtTime(animation: PetActorAnimation, elapsedMs: number) {
+  if (animation.frames.length === 1) return animation.frames[0];
+  const totalDuration = animation.frames.reduce((sum, frame) => sum + Math.max(frame.durationMs, 1), 0);
+  const boundedTime = animation.loop
+    ? ((elapsedMs % totalDuration) + totalDuration) % totalDuration
+    : Math.min(Math.max(elapsedMs, 0), totalDuration - 1);
+  let cursor = 0;
+  for (const frame of animation.frames) {
+    cursor += Math.max(frame.durationMs, 1);
+    if (boundedTime < cursor) return frame;
+  }
+  return animation.frames.at(-1)!;
+}
+
 function renderGeneratedPetActorCanvas(
   context: CanvasRenderingContext2D,
   plan: GeneratedActorRenderPlan,
   images: GeneratedActorImageMap,
   timeMs: number,
+  animationStartedAt = 0,
   interactiveState: { hover: boolean } = { hover: false },
 ) {
-  const frameImage = images.get(resolveFrameUrl(plan.manifest.actorId, plan.frame));
+  const frame = frameAtTime(plan.animation, Math.max(0, timeMs - animationStartedAt));
+  const frameImage = images.get(resolveFrameUrl(plan.manifest.actorId, frame));
   if (!frameImage) return;
 
-  const time = timeMs / 1000;
+  const time = Math.max(0, timeMs - animationStartedAt) / 1000;
   context.clearRect(0, 0, plan.manifest.artboard.width, plan.manifest.artboard.height);
   context.save();
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
 
   context.save();
-  applyGeneratedBodyMotion(context, plan, time, interactiveState.hover);
+  applyGeneratedBodyMotion(context, plan, frame, time, interactiveState.hover);
   context.drawImage(frameImage, 0, 0, plan.manifest.artboard.width, plan.manifest.artboard.height);
   if (plan.tokenMode === "embedded") drawTokenText(context, plan);
   context.restore();
@@ -330,29 +398,29 @@ export async function exportGeneratedPetActorCanvas(props: PetActorProps) {
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Unable to create generated pet actor canvas");
   const images = await loadGeneratedActorImages(manifest);
-  renderGeneratedPetActorCanvas(context, plan, images, performance.now());
+  if (!plan) throw new Error(`Generated actor ${manifest.actorId} has no renderable animation`);
+  renderGeneratedPetActorCanvas(context, plan, images, 0, 0);
   return canvas;
 }
 
 export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hoverRef = useRef(false);
-  const [manifest, setManifest] = useState<PetActorManifest | null>(null);
+  const [manifest, setManifest] = useState<PetActorManifest | null>(() => generatedActorManifests[props.appearance.catTypeId] ?? null);
   const [images, setImages] = useState<GeneratedActorImageMap | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setManifest(null);
     setImages(null);
     setFailed(false);
 
     async function prepare() {
       try {
         const nextManifest = await loadGeneratedActorManifest(props.appearance.catTypeId);
+        if (!cancelled) setManifest(nextManifest);
         const nextImages = await loadGeneratedActorImages(nextManifest);
         if (cancelled) return;
-        setManifest(nextManifest);
         setImages(nextImages);
       } catch (error) {
         console.error(error);
@@ -373,10 +441,11 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     if (!plan || !images) return;
 
     let animationFrame = 0;
+    const animationStartedAt = performance.now();
     const draw = (time: number) => {
       const canvas = canvasRef.current;
       const context = canvas?.getContext("2d");
-      if (canvas && context) renderGeneratedPetActorCanvas(context, plan, images, time, { hover: hoverRef.current });
+      if (canvas && context) renderGeneratedPetActorCanvas(context, plan, images, time, animationStartedAt, { hover: hoverRef.current });
       animationFrame = window.requestAnimationFrame(draw);
     };
 

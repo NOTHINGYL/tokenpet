@@ -24,6 +24,9 @@ export function CatTypeGrid(props: CatTypeGridProps) {
             {props.selectedCat === cat.id ? <span className="cat-selected-check" aria-hidden="true" /> : null}
           </span>
           <strong>{cat.label}</strong>
+          <em className={cat.id === "golden-british" ? "actor-ready" : "fallback-image"}>
+            {cat.id === "golden-british" ? "Actor-ready" : "Fallback image"}
+          </em>
         </button>
       ))}
     </div>
@@ -40,13 +43,14 @@ export function CatTypeCard(props: {
       <div className="pet-card-header">
         <div>
           <strong>Cat Type</strong>
-          <span>Choose your companion's breed.</span>
+          <span>Cat type changes appearance only.</span>
         </div>
-        <button className="pet-section-action" type="button" aria-label="View all cat types" onClick={props.onViewAll}>
+        <button className="pet-section-action" type="button" aria-label="View all cat types" onClick={props.onViewAll} data-testid="open-cat-type">
           <span>View all</span>
           <span aria-hidden="true">-&gt;</span>
         </button>
       </div>
+      <span className="actor-ready-inline"><i />Golden British is actor-ready</span>
       <CatTypeGrid cats={featuredCatTypes} selectedCat={props.selectedCat} onSelectCat={props.onSelectCat} />
     </section>
   );

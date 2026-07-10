@@ -1,15 +1,16 @@
 import type { AppSettings, UsageSnapshot } from "../types";
 import { defaultPetAppearance } from "../features/pet-appearance/appearanceState";
+import { defaultPetStory } from "../features/pet-story/PetDirector";
 
 export const fallbackUsage: UsageSnapshot = {
-  todayTokens: 128420,
-  sevenDayTokens: 8920000,
-  allTimeTokens: 925000000,
-  todayCost: 8.34,
-  sevenDayCost: 716.7,
-  topModel: "gpt-5.5",
-  topTool: "Codex",
-  burnRate: "steady",
+  todayTokens: 0,
+  sevenDayTokens: 0,
+  allTimeTokens: 0,
+  todayCost: 0,
+  sevenDayCost: 0,
+  topModel: "Checking local usage",
+  topTool: "Local sources",
+  burnRate: "quiet",
   status: "loading",
   generatedAt: new Date(0).toISOString(),
   providers: [
@@ -77,5 +78,5 @@ export const fallbackSettings: AppSettings = {
   petScale: 1,
   petOpacity: 0.92,
   petAppearance: defaultPetAppearance,
-  petStory: { behaviorMode: "balanced", moodThresholds: { focused: 1000, hot: 10000, overdrive: 50000 }, quietMode: false, followCursor: false, lockPosition: false, reduceMotion: false, soundEnabled: false, soundStyle: "soft", volume: 45, cueIds: ["wake", "purr", "drop", "snack", "milestone"], pinnedStage: null, lastAction: null },
+  petStory: defaultPetStory,
 };

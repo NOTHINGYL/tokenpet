@@ -6,7 +6,7 @@ import type {
   MoodLookId,
   PetAppearanceSettings,
   PetThemeId,
-  TokenBubbleId,
+  TokenFrameId,
   UsageSnapshot,
 } from "../../types";
 import {
@@ -17,13 +17,14 @@ import {
   moodLooks,
   petConsoleSections,
   skinThemes,
-  tokenBubbleOptions,
+  tokenFrameOptions,
   type PetConsoleSection,
 } from "./catalog";
-import { getTokenFrameForBubble, patchAccessorySettings } from "./accessorySettings";
+import { patchAccessorySettings } from "./accessorySettings";
 import { AccessoriesPage } from "./AccessoriesPage";
 import { CatTypePage } from "./CatTypePage";
 import { CatTypeCard } from "./CatTypePicker";
+import { MoodLooksPage } from "./MoodLooksPage";
 import { PetStoryPanel } from "../pet-story/PetStoryPanel";
 import { exportPetPreview } from "./previewExport";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
@@ -36,9 +37,9 @@ type AppearancePanelProps = {
   usage: UsageSnapshot;
 };
 
-function HeaderAction(props: { label: string; onClick?: () => void }) {
+function HeaderAction(props: { label: string; onClick?: () => void; testId?: string }) {
   return (
-    <button className="pet-section-action" type="button" aria-label={props.label} onClick={props.onClick}>
+    <button className="pet-section-action" type="button" aria-label={props.label} onClick={props.onClick} data-testid={props.testId}>
       <span>{props.label}</span>
       <span aria-hidden="true">-&gt;</span>
     </button>
@@ -56,6 +57,7 @@ function PetSubnav(props: { activeSection: PetConsoleSection; onSelectSection: (
             key={section.id}
             type="button"
             aria-current={section.id === props.activeSection ? "page" : undefined}
+            data-pet-section={section.id}
             onClick={() => {
               if (enabled) props.onSelectSection(section.id);
             }}
@@ -116,6 +118,9 @@ function RangeControl(props: {
   value: number;
   min?: number;
   max?: number;
+  disabled?: boolean;
+  valueLabel?: string;
+  disabledReason?: string;
   onChange: (value: number) => void;
 }) {
   const min = props.min ?? 0;
@@ -135,12 +140,14 @@ function RangeControl(props: {
           min={min}
           max={max}
           value={props.value}
+          disabled={props.disabled}
+          title={props.disabled ? props.disabledReason : undefined}
           data-range-id={props.label.toLowerCase().replace(/\s+/g, "-")}
           onInput={(event) => props.onChange(Number(event.currentTarget.value))}
           style={{ "--range-progress": `${progress}%` } as CSSProperties}
           aria-label={props.label}
         />
-        <small>{props.value}%</small>
+        <small>{props.valueLabel ?? `${props.value}%`}</small>
       </span>
     </label>
   );
@@ -150,6 +157,7 @@ function DisplayCard(props: {
   appearance: PetAppearanceSettings;
   onPatchAppearance: (patch: Partial<PetAppearanceSettings>) => void;
 }) {
+  const generatedGolden = props.appearance.catTypeId === "golden-british";
   return (
     <section className="pet-card display-card">
       <div className="pet-card-header">
@@ -179,14 +187,20 @@ function DisplayCard(props: {
           icon="shadow"
           label="Shadow"
           value={Math.round(props.appearance.shadow * 100)}
+          disabled={generatedGolden}
+          valueLabel={generatedGolden ? "Baked" : undefined}
+          disabledReason={generatedGolden ? "The approved Golden British actor already contains its contact shadow." : undefined}
           onChange={(value) => props.onPatchAppearance({ shadow: value / 100 })}
         />
         <RangeControl
           icon="bubble"
-          label="Bubble scale"
+          label={generatedGolden ? "Token text scale" : "Token frame scale"}
           min={70}
           max={125}
           value={Math.round(props.appearance.bubbleScale * 100)}
+          disabled={!generatedGolden}
+          valueLabel={generatedGolden ? undefined : "Unavailable"}
+          disabledReason={!generatedGolden ? "No approved token-frame asset is available for this static fallback image." : undefined}
           onChange={(value) => props.onPatchAppearance({ bubbleScale: value / 100 })}
         />
       </div>
@@ -194,13 +208,14 @@ function DisplayCard(props: {
   );
 }
 
-function SkinCard(props: { selectedSkin: PetThemeId; onSelectSkin: (skinId: PetThemeId) => void }) {
+function SkinCard(props: { selectedSkin: PetThemeId; catTypeId: PetAppearanceSettings["catTypeId"]; onSelectSkin: (skinId: PetThemeId) => void }) {
+  const actorReady = props.catTypeId === "golden-british";
   return (
     <section className="pet-card skin-card">
       <div className="pet-card-header">
         <div>
           <strong>Skin &amp; Color</strong>
-          <span>Customize fur palette.</span>
+          <span>{actorReady ? "Baked into the approved actor art." : "Approved static fallback; color variants are planned."}</span>
         </div>
       </div>
       <div className="skin-grid">
@@ -210,6 +225,8 @@ function SkinCard(props: { selectedSkin: PetThemeId; onSelectSkin: (skinId: PetT
             key={theme.id}
             type="button"
             data-skin-id={theme.id}
+            disabled
+            title={actorReady ? "Golden British colors are baked into its generated actor bundle." : "This approved static fallback cannot be recolored at runtime."}
             onClick={() => props.onSelectSkin(theme.id)}
           >
             <span className={`skin-swatch ${theme.className}`} />
@@ -221,34 +238,49 @@ function SkinCard(props: { selectedSkin: PetThemeId; onSelectSkin: (skinId: PetT
   );
 }
 
-function TokenBubbleCard(props: { selectedBubble: TokenBubbleId; onSelectBubble: (bubbleId: TokenBubbleId) => void }) {
+function TokenFrameCard(props: { catTypeId: PetAppearanceSettings["catTypeId"]; selectedFrame: TokenFrameId; onSelectFrame: (frameId: TokenFrameId) => void }) {
+  const actorReady = props.catTypeId === "golden-british";
   return (
     <section className="pet-card token-bubble-card">
       <div className="pet-card-header">
         <div>
           <strong>Token Frame</strong>
-          <span>Choose the manifest-safe token display.</span>
+          <span>How your token value is displayed.</span>
         </div>
       </div>
+      <span className={`actor-ready-inline ${actorReady ? "" : "fallback"}`.trim()}><i />{actorReady ? "Actor-ready" : "Static fallback · token frame unavailable"}</span>
       <div className="token-bubble-list">
-        {tokenBubbleOptions.map((option) => (
+        {tokenFrameOptions.map((option) => {
+          const supported = props.catTypeId === "golden-british"
+            ? option.id === "embedded" || option.id === "hidden"
+            : option.id === "hidden";
+          const displayLabel = props.catTypeId === "golden-british" && option.id === "hidden" ? "Hide value" : option.label;
+          const displayDetail = props.catTypeId === "golden-british" && option.id === "hidden"
+            ? "Baked frame remains"
+            : props.catTypeId !== "golden-british" && option.id === "hidden"
+              ? "No approved token-frame asset for this static fallback"
+              : option.detail;
+          return (
           <button
-            className={props.selectedBubble === option.id ? "selected" : ""}
+            className={`${props.selectedFrame === option.id ? "selected" : ""} ${supported ? "" : "planned"}`.trim()}
             key={option.id}
             type="button"
-            data-bubble-id={option.id}
-            onClick={() => props.onSelectBubble(option.id)}
+            data-token-frame-id={option.id}
+            disabled={!supported}
+            title={supported ? displayDetail : "Requires a generated actor bundle with an approved token-frame asset."}
+            onClick={() => { if (supported) props.onSelectFrame(option.id); }}
           >
-            <span className="bubble-option-icon">
-              <PetIcon name={option.icon} />
+            <span className={`main-token-frame-preview ${option.id}`}>
+              {option.id === "hidden" ? <PetIcon name="hidden" /> : <><small>{option.id === "cost" ? "$ +" : ""}</small><strong>61.5M</strong></>}
             </span>
             <span>
-              <strong>{option.label}</strong>
-              <small>{option.detail}</small>
+              <strong>{displayLabel}</strong>
+              {supported && props.catTypeId === "golden-british" && option.id === "hidden" ? <small>{displayDetail}</small> : null}
+              {!supported ? <small>Planned actor asset</small> : null}
             </span>
-            {props.selectedBubble === option.id ? <span className="bubble-radio" /> : null}
+            {props.selectedFrame === option.id ? <span className="bubble-radio" /> : null}
           </button>
-        ))}
+        );})}
       </div>
     </section>
   );
@@ -302,23 +334,25 @@ function MoodBadgeCard(props: {
   );
 }
 
-function MoodLooksCard(props: { selectedMood: MoodLookId; onSelectMood: (moodId: MoodLookId) => void }) {
+function MoodLooksCard(props: { actorReady: boolean; selectedMood: MoodLookId; onSelectMood: (moodId: MoodLookId) => void; onCustomize: () => void }) {
   return (
     <section className="pet-card mood-looks-card">
       <div className="pet-card-header">
         <div>
           <strong>Mood Looks</strong>
-          <span>See how your pet looks in different moods.</span>
+          <span>{props.actorReady ? "Preview the actor loops used by each mood." : "Static fallback image; actor mood loops are planned."}</span>
         </div>
-        <HeaderAction label="Customize looks" />
+        <HeaderAction label="Customize looks" onClick={props.onCustomize} testId="open-mood-looks" />
       </div>
       <div className="mood-look-grid">
         {moodLooks.map((mood) => (
           <button
-            className={`mood-look-option ${mood.id} ${props.selectedMood === mood.id ? "selected" : ""}`}
+            className={`mood-look-option ${mood.id} ${props.selectedMood === mood.id ? "selected" : ""} ${props.actorReady ? "" : "planned"}`.trim()}
             key={mood.id}
             type="button"
             data-mood-id={mood.id}
+            disabled={!props.actorReady}
+            title={props.actorReady ? `${mood.label} actor loop` : "This cat currently uses an approved static fallback image; actor loops are planned."}
             onClick={() => props.onSelectMood(mood.id)}
           >
             <span className="mood-look-title">
@@ -327,6 +361,7 @@ function MoodLooksCard(props: { selectedMood: MoodLookId; onSelectMood: (moodId:
             </span>
             <em>{mood.badge}</em>
             <img src={mood.image} alt="" draggable={false} aria-hidden="true" />
+            {!props.actorReady ? <small className="mood-look-capability">Planned actor loop</small> : null}
           </button>
         ))}
       </div>
@@ -335,6 +370,7 @@ function MoodLooksCard(props: { selectedMood: MoodLookId; onSelectMood: (moodId:
 }
 
 function AccessoriesCard(props: {
+  catTypeId: PetAppearanceSettings["catTypeId"];
   selectedAccessories: AccessoryId[];
   onToggleAccessory: (accessoryId: AccessoryId) => void;
   onViewAll: () => void;
@@ -344,29 +380,26 @@ function AccessoriesCard(props: {
       <div className="pet-card-header">
         <div>
           <strong>Accessories</strong>
-          <span>Dress up your pet with accessories.</span>
+          <span>Dress your pet with signature compatible looks.</span>
         </div>
-        <HeaderAction label="View all" onClick={props.onViewAll} />
+        <HeaderAction label="View all" onClick={props.onViewAll} testId="open-accessories" />
       </div>
       <div className="accessory-grid">
         {accessories.map((accessory) => (
           <button
             className={`accessory-option ${props.selectedAccessories.includes(accessory.id) ? "selected" : ""} ${
-              accessory.locked ? "locked" : ""
+              accessory.id === "collar" && props.catTypeId === "golden-british" ? "baked" : "planned"
             }`}
             key={accessory.id}
             type="button"
             data-accessory-id={accessory.id}
-            onClick={() => {
-              if (!accessory.locked) props.onToggleAccessory(accessory.id);
-            }}
-            disabled={Boolean(accessory.locked)}
+            title={accessory.id === "collar" && props.catTypeId === "golden-british" ? "Baked into this actor bundle." : "Requires a generated actor variant."}
+            disabled
           >
             <strong>{accessory.label}</strong>
             <img src={accessory.image} alt="" draggable={false} aria-hidden="true" />
-            <em className={accessory.locked ? "locked" : props.selectedAccessories.includes(accessory.id) ? "equipped" : ""}>
-              {accessory.locked ? <PetIcon name="lock" /> : null}
-              {props.selectedAccessories.includes(accessory.id) ? "Equipped" : accessory.badge}
+            <em className={accessory.id === "collar" && props.catTypeId === "golden-british" ? "equipped" : "locked"}>
+              {accessory.id === "collar" && props.catTypeId === "golden-british" ? "Baked signature" : <><PetIcon name="lock" />Planned</>}
             </em>
           </button>
         ))}
@@ -376,7 +409,7 @@ function AccessoriesCard(props: {
 }
 
 export function AppearancePanel(props: AppearancePanelProps) {
-  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type" | "accessories">("appearance");
+  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type" | "mood-looks" | "accessories">("appearance");
   const [activeSection, setActiveSection] = useState<PetConsoleSection>("appearance");
   const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(
     props.settings,
@@ -400,12 +433,19 @@ export function AppearancePanel(props: AppearancePanelProps) {
   };
 
   const selectCatType = (catTypeId: PetAppearanceSettings["catTypeId"]) => {
+    const golden = catTypeId === "golden-british";
     patchAppearance({
       catTypeId,
+      tokenBubbleId: golden ? "pill" : "hidden",
       catDetails: getDefaultCatDetails(catTypeId),
+      accessoryIds: [],
       accessorySettings: {
         ...appearance.accessorySettings,
-        tokenFrameId: getTokenFrameForBubble(appearance.tokenBubbleId, catTypeId),
+        tokenFrameId: golden ? "embedded" : "hidden",
+        neckId: golden ? "collar" : "none",
+        headId: "none",
+        baseId: "none",
+        effectId: "none",
       },
     });
   };
@@ -417,7 +457,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
 
   if (activeAppearancePage === "cat-type") {
     return (
-      <div className="pet-appearance-panel pet-cat-type-panel">
+      <div className="pet-appearance-panel pet-cat-type-panel" data-pet-page="cat-type" data-testid="cat-type-page-shell">
         <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
         <CatTypePage
           appearance={appearance}
@@ -431,9 +471,25 @@ export function AppearancePanel(props: AppearancePanelProps) {
     );
   }
 
+  if (activeAppearancePage === "mood-looks") {
+    return (
+      <div className="pet-appearance-panel pet-mood-looks-panel" data-pet-page="mood-looks">
+        <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
+        <MoodLooksPage
+          appearance={appearance}
+          usage={props.usage}
+          canUndo={canUndo}
+          onBack={() => setActiveAppearancePage("appearance")}
+          onPatchAppearance={patchAppearance}
+          onUndo={undoAppearance}
+        />
+      </div>
+    );
+  }
+
   if (activeAppearancePage === "accessories") {
     return (
-      <div className="pet-appearance-panel pet-accessories-panel">
+      <div className="pet-appearance-panel pet-accessories-panel" data-pet-page="accessories" data-testid="accessories-page-shell">
         <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
         <AccessoriesPage
           appearance={appearance}
@@ -448,10 +504,16 @@ export function AppearancePanel(props: AppearancePanelProps) {
   }
 
   return (
-    <div className={`pet-appearance-panel ${activeSection !== "appearance" ? "pet-story-root" : ""}`}>
+    <div className={`pet-appearance-panel ${activeSection !== "appearance" ? "pet-story-root" : ""}`} data-pet-page={activeSection} data-testid={`pet-page-${activeSection}`}>
       <PetSubnav activeSection={activeSection} onSelectSection={selectConsoleSection} />
       {activeSection !== "appearance" ? (
-        <PetStoryPanel section={activeSection} settings={props.settings} usage={props.usage} setStory={(petStory) => props.setSetting("petStory", petStory)} />
+        <PetStoryPanel
+          section={activeSection}
+          settings={props.settings}
+          usage={props.usage}
+          setStory={(petStory) => props.setSetting("petStory", petStory)}
+          setAppearance={patchAppearance}
+        />
       ) : (
         <>
           <div className="pet-appearance-grid">
@@ -471,27 +533,25 @@ export function AppearancePanel(props: AppearancePanelProps) {
               />
               <div className="pet-lower-controls">
                 <DisplayCard appearance={appearance} onPatchAppearance={patchAppearance} />
-                <SkinCard selectedSkin={appearance.themeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
+                <SkinCard selectedSkin={appearance.themeId} catTypeId={appearance.catTypeId} onSelectSkin={(themeId) => patchAppearance({ themeId })} />
               </div>
             </div>
             <div className="pet-side-column">
-              <TokenBubbleCard
-                selectedBubble={appearance.tokenBubbleId}
-                onSelectBubble={(tokenBubbleId) =>
-                  patchAppearance({
-                    tokenBubbleId,
-                    accessorySettings: {
-                      ...appearance.accessorySettings,
-                      tokenFrameId: getTokenFrameForBubble(tokenBubbleId, appearance.catTypeId),
-                    },
-                  })
-                }
+              <TokenFrameCard
+                catTypeId={appearance.catTypeId}
+                selectedFrame={appearance.accessorySettings.tokenFrameId}
+                onSelectFrame={(tokenFrameId) => {
+                  const option = tokenFrameOptions.find((item) => item.id === tokenFrameId);
+                  if (!option) return;
+                  patchAppearance({ tokenBubbleId: option.tokenBubbleId, accessorySettings: { ...appearance.accessorySettings, tokenFrameId } });
+                }}
               />
               <MoodBadgeCard appearance={appearance} onPatchAppearance={patchAppearance} />
             </div>
             <div className="pet-bottom-row">
-              <MoodLooksCard selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} />
+              <MoodLooksCard actorReady={appearance.catTypeId === "golden-british"} selectedMood={appearance.moodId} onSelectMood={(moodId) => patchAppearance({ moodId })} onCustomize={() => setActiveAppearancePage("mood-looks")} />
               <AccessoriesCard
+                catTypeId={appearance.catTypeId}
                 selectedAccessories={appearance.accessoryIds}
                 onToggleAccessory={toggleAccessory}
                 onViewAll={() => setActiveAppearancePage("accessories")}

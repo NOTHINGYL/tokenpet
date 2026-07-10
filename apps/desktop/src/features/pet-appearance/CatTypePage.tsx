@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import type { CatBreedDetails, CatEyeColor, CatTypeId, PetAppearanceSettings, UsageSnapshot } from "../../types";
-import { getTokenFrameForBubble } from "./accessorySettings";
 import { catEyeColors, catTypeFilters, catTypes, getDefaultCatDetails, type CatTypeFilter } from "./catalog";
 import { CatTypeGrid } from "./CatTypePicker";
 import { PetAppearanceVisual } from "./PetAppearanceVisual";
@@ -36,6 +35,7 @@ function CatDetailRange(props: {
   minLabel: string;
   maxLabel: string;
   onChange: (value: number) => void;
+  disabled?: boolean;
 }) {
   return (
     <label className="cat-detail-range">
@@ -52,6 +52,7 @@ function CatDetailRange(props: {
           onInput={(event) => props.onChange(Number(event.currentTarget.value))}
           style={{ "--range-progress": `${props.value}%` } as CSSProperties}
           aria-label={props.label}
+          disabled={props.disabled}
         />
         <small>{props.maxLabel}</small>
       </span>
@@ -64,6 +65,9 @@ function PreviewColumn(props: {
   usage: UsageSnapshot;
   onPatchDetails: (patch: Partial<CatBreedDetails>) => void;
 }) {
+  const actorReady = props.appearance.catTypeId === "golden-british";
+  const detailsLocked = true;
+  const actorPreviewAppearance = { ...props.appearance, moodBadge: { ...props.appearance.moodBadge, showMood: false } };
   return (
     <aside className="cat-type-preview-column">
       <section className="pet-card cat-type-preview-card">
@@ -74,7 +78,7 @@ function PreviewColumn(props: {
           <PetIcon name="info" />
         </div>
         <div className="cat-type-page-preview-stage">
-          <PetAppearanceVisual appearance={props.appearance} usage={props.usage} surface="preview" />
+          <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} surface="preview" />
         </div>
       </section>
 
@@ -92,6 +96,7 @@ function PreviewColumn(props: {
             maxLabel="Long"
             value={props.appearance.catDetails.furLength}
             onChange={(furLength) => props.onPatchDetails({ furLength })}
+            disabled={detailsLocked}
           />
 
           <div className="cat-eye-color-field">
@@ -105,6 +110,7 @@ function PreviewColumn(props: {
                   key={eyeColor.id}
                   type="button"
                   aria-label={`${eyeColor.label} eyes`}
+                  disabled={detailsLocked}
                   onClick={() => props.onPatchDetails({ eyeColor: eyeColor.id as CatEyeColor })}
                 />
               ))}
@@ -117,11 +123,12 @@ function PreviewColumn(props: {
             maxLabel={patternLabel(props.appearance.catDetails.patternIntensity)}
             value={props.appearance.catDetails.patternIntensity}
             onChange={(patternIntensity) => props.onPatchDetails({ patternIntensity })}
+            disabled={detailsLocked}
           />
 
-          <p>
-            Stripe / coat pattern strength
-            <span>Adjusts how visible stripes, spots, and coat patterns are recorded for this cat type.</span>
+          <p className="cat-details-locked-note">
+            {actorReady ? "Actor appearance is baked" : "Approved static fallback image"}
+            <span>{actorReady ? "Fur, eyes, and markings stay faithful to the approved generated actor bundle." : "Fur, eye, and pattern variants require a generated actor bundle; the approved fallback image is shown unchanged."}</span>
           </p>
         </div>
       </section>
@@ -143,12 +150,19 @@ export function CatTypePage(props: CatTypePageProps) {
   };
 
   const selectCat = (catTypeId: CatTypeId) => {
+    const golden = catTypeId === "golden-british";
     props.onPatchAppearance({
       catTypeId,
+      tokenBubbleId: golden ? "pill" : "hidden",
       catDetails: getDefaultCatDetails(catTypeId),
+      accessoryIds: [],
       accessorySettings: {
         ...props.appearance.accessorySettings,
-        tokenFrameId: getTokenFrameForBubble(props.appearance.tokenBubbleId, catTypeId),
+        tokenFrameId: golden ? "embedded" : "hidden",
+        neckId: golden ? "collar" : "none",
+        headId: "none",
+        baseId: "none",
+        effectId: "none",
       },
     });
   };
@@ -156,16 +170,22 @@ export function CatTypePage(props: CatTypePageProps) {
   const resetCatType = () => {
     props.onPatchAppearance({
       catTypeId: "golden-british",
+      tokenBubbleId: "pill",
       catDetails: getDefaultCatDetails("golden-british"),
+      accessoryIds: [],
       accessorySettings: {
         ...props.appearance.accessorySettings,
-        tokenFrameId: getTokenFrameForBubble(props.appearance.tokenBubbleId, "golden-british"),
+        tokenFrameId: "embedded",
+        neckId: "collar",
+        headId: "none",
+        baseId: "none",
+        effectId: "none",
       },
     });
   };
 
   return (
-    <div className="cat-type-page">
+    <div className="cat-type-page" data-testid="cat-type-page">
       <div className="cat-type-page-toolbar">
         <button className="cat-type-back" type="button" onClick={props.onBack}>
           <PetIcon name="back" />

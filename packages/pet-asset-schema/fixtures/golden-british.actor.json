@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "pet-actor/v2",
+  "actorId": "golden-british",
+  "displayName": "Golden British",
+  "breedId": "golden-british",
+  "sourceVersion": "fixture-v1",
+  "lifecycleStage": "deskBuddy",
+  "generatedBy": "fixture",
+  "generatedAt": "2026-07-09T00:00:00.000Z",
+  "contentHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "sourceAssetHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "artboard": { "width": 1024, "height": 1024 },
+  "footLineY": 832,
+  "defaultAnimation": "action.idle_breathe",
+  "defaultTokenMode": "embedded",
+  "tokenSlot": {
+    "mode": "embedded",
+    "x": 348,
+    "y": 714,
+    "width": 328,
+    "height": 94,
+    "align": "center",
+    "maxTextLength": 12,
+    "maxFontSize": 70,
+    "fontWeight": 850,
+    "color": "#0b4f7c"
+  },
+  "moodBadgeSlot": {
+    "x": 408,
+    "y": 72,
+    "width": 208,
+    "height": 70,
+    "align": "center",
+    "maxTextLength": 10,
+    "maxFontSize": 44
+  },
+  "dynamicSlots": {
+    "tokenText": {
+      "mode": "embedded",
+      "x": 348,
+      "y": 714,
+      "width": 328,
+      "height": 94,
+      "align": "center",
+      "maxTextLength": 12,
+      "maxFontSize": 70,
+      "fontWeight": 850,
+      "color": "#0b4f7c"
+    },
+    "moodBadge": {
+      "x": 408,
+      "y": 72,
+      "width": 208,
+      "height": 70,
+      "align": "center",
+      "maxTextLength": 10,
+      "maxFontSize": 44
+    }
+  },
+  "animations": {
+    "action.idle_breathe": {
+      "id": "action.idle_breathe",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "idle_breathe",
+      "fps": 12,
+      "loop": true,
+      "frames": [
+        {
+          "id": "idle-breathe-1",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": { "x": 0, "y": 0, "width": 1024, "height": 1024 },
+          "durationMs": 1200,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "sourceAssetId": "idle_breathe:1"
+        }
+      ]
+    }
+  },
+  "capabilities": [
+    { "id": "idle_breathe", "status": "ready", "uiBehavior": "show" },
+    { "id": "click_purr", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "token_snack", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "play_cursor", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "drag_dangle", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "toss_yarn", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "nap_here", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "wake_up", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "summon_to_screen", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "capture_moment", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" }
+  ],
+  "fallbackStaticImage": "../../assets/pets/appearance/cat-types/golden-british.png",
+  "visualReferences": ["docs/designs/gpt-v15-actor-state-reference.png"],
+  "compatibility": {
+    "bakedAccessories": ["embedded-token-frame"],
+    "runtimeAccessoryPolicy": "disabled",
+    "supportedCatTypes": ["golden-british"],
+    "tokenFramePolicy": "embedded-only"
+  },
+  "reproducibility": {
+    "generator": "fixture",
+    "generatorVersion": "1",
+    "sourceSpecSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "inputSetSha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+  }
+}

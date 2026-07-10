@@ -1,22 +1,142 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
+const assert = require("node:assert/strict");
 const { mkdirSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { pathToFileURL } = require("node:url");
+const { settings: initialSettings, snapshot } = require("./pet-story-screenshot-fixture.cjs");
 
 const root = join(__dirname, "..");
-const rendererUrl = (view) => `file://${join(root, "dist-renderer/index.html")}?view=${view}`;
-const outputDir = join(root, "docs", "screenshots");
+const rendererFile = join(root, "dist-renderer/index.html");
+const outputDir = join(root, "docs", "screenshots", "pet-story");
 const windows = [];
+const settings = structuredClone(initialSettings);
+const report = {
+  generatedAt: new Date().toISOString(),
+  fixture: "synthetic local demo data; no private user data",
+  checks: [],
+  screenshots: [],
+  failure: null,
+};
+const qaState = {
+  actions: [],
+  captures: 0,
+  summons: 0,
+  openConsoleCalls: [],
+  togglePopoverCalls: 0,
+  closePopoverCalls: 0,
+  closePetCalls: 0,
+  setSettingCalls: [],
+  dragStarts: 0,
+  dragEnds: 0,
+};
+let expectedReduceMotion = initialSettings.petStory.reduceMotion;
+
+const quickPlayIds = [
+  "click_purr",
+  "token_snack",
+  "play_cursor",
+  "drag_dangle",
+  "toss_yarn",
+  "nap_here",
+  "wake_up",
+  "summon_to_screen",
+  "capture_moment",
+];
+
+app.commandLine.appendSwitch("disable-background-timer-throttling");
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
 
 app.on("window-all-closed", () => {
-  // Keep the screenshot runner alive until all captures finish.
+  // The QA runner owns app shutdown after every assertion and capture completes.
 });
 
-async function capture(view, fileName, options) {
+function clone(value) {
+  return structuredClone(value);
+}
+
+function record(name, detail) {
+  report.checks.push({ name, detail });
+}
+
+function verify(name, condition, detail) {
+  assert.ok(condition, `${name}: ${detail}`);
+  record(name, detail);
+}
+
+function rendererUrl(view, params = {}) {
+  const url = new URL(pathToFileURL(rendererFile));
+  url.searchParams.set("view", view);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.href;
+}
+
+function broadcast(channel, value) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send(channel, clone(value));
+  }
+}
+
+function resetFixtureSettings() {
+  for (const key of Object.keys(settings)) delete settings[key];
+  Object.assign(settings, clone(initialSettings));
+  expectedReduceMotion = settings.petStory.reduceMotion;
+  broadcast("qa:settings-updated", settings);
+}
+
+function registerFixtureBridge() {
+  ipcMain.handle("qa:get-usage", () => clone(snapshot));
+  ipcMain.handle("qa:refresh-usage", () => clone(snapshot));
+  ipcMain.handle("qa:get-settings", () => clone(settings));
+  ipcMain.handle("qa:set-setting", (_event, key, value) => {
+    settings[key] = clone(value);
+    qaState.setSettingCalls.push({ key, value: clone(value) });
+    broadcast("qa:settings-updated", settings);
+    return clone(settings);
+  });
+  ipcMain.handle("qa:get-state", () => ({ qaState: clone(qaState), settings: clone(settings) }));
+  ipcMain.handle("qa:dispatch-action", (_event, action) => {
+    if (!quickPlayIds.includes(action)) return { accepted: false };
+    qaState.actions.push(action);
+    broadcast("qa:director-event", { type: "quickPlay.action", action });
+    return { accepted: true };
+  });
+  ipcMain.handle("qa:summon", () => {
+    qaState.summons += 1;
+    return { moved: true };
+  });
+  ipcMain.handle("qa:capture-moment", () => {
+    qaState.captures += 1;
+    return { saved: true, filePath: "synthetic-pet-moment.png" };
+  });
+  ipcMain.handle("qa:start-drag", () => {
+    qaState.dragStarts += 1;
+    return { started: !settings.petStory?.lockPosition };
+  });
+  ipcMain.handle("qa:end-drag", () => {
+    qaState.dragEnds += 1;
+    return { moved: true };
+  });
+  ipcMain.on("qa:open-console", (_event, tab) => qaState.openConsoleCalls.push(tab));
+  ipcMain.on("qa:toggle-popover", () => {
+    qaState.togglePopoverCalls += 1;
+  });
+  ipcMain.on("qa:close-popover", () => {
+    qaState.closePopoverCalls += 1;
+  });
+  ipcMain.on("qa:close-pet", () => {
+    qaState.closePetCalls += 1;
+  });
+  ipcMain.on("qa:quit", () => undefined);
+}
+
+function createWindow({ width, height, transparent = false }) {
   const window = new BrowserWindow({
-    width: options.width,
-    height: options.height,
+    width,
+    height,
     show: false,
-    backgroundColor: "#eef2f6",
+    frame: false,
+    transparent,
+    backgroundColor: transparent ? "#00000000" : "#f5f7fa",
     webPreferences: {
       preload: join(__dirname, "screenshot-preload.cjs"),
       contextIsolation: true,
@@ -24,39 +144,575 @@ async function capture(view, fileName, options) {
     },
   });
   windows.push(window);
+  return window;
+}
 
-  await window.loadURL(rendererUrl(view));
-  await window.webContents.insertCSS(`
-    html,
-    body {
-      background: #eef2f6 !important;
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function evaluate(window, callback, ...args) {
+  const source = `(${callback.toString()})(...${JSON.stringify(args)})`;
+  return window.webContents.executeJavaScript(source, true);
+}
+
+async function waitFor(window, callback, args, label, timeoutMs = 12_000) {
+  const startedAt = Date.now();
+  let lastError;
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      if (await evaluate(window, callback, ...(args ?? []))) return;
+    } catch (error) {
+      lastError = error;
     }
+    await delay(50);
+  }
+  throw new Error(`Timed out waiting for ${label}${lastError ? `: ${lastError.message}` : ""}`);
+}
 
-    body {
-      padding: 24px !important;
-    }
+async function waitForSelector(window, selector, timeoutMs) {
+  await waitFor(window, (value) => Boolean(document.querySelector(value)), [selector], selector, timeoutMs);
+}
 
-    #root {
-      width: calc(100vw - 48px) !important;
-      height: calc(100vh - 48px) !important;
-    }
-  `);
-  await new Promise((resolve) => setTimeout(resolve, 700));
+async function waitForActor(window) {
+  await waitForSelector(window, ".pet-generated-actor-canvas-root.is-ready", 20_000);
+  await waitFor(
+    window,
+    () => {
+      const canvas = document.querySelector(".pet-generated-actor-canvas");
+      if (!canvas) return false;
+      const context = canvas.getContext("2d");
+      if (!context) return false;
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      for (let index = 3; index < data.length; index += 2048) {
+        if (data[index] > 0) return true;
+      }
+      return false;
+    },
+    [],
+    "non-empty generated actor pixels",
+    20_000,
+  );
+}
 
+async function load(window, view, params = {}) {
+  await window.loadURL(rendererUrl(view, params));
+  await waitForSelector(window, "#root > *");
+  await evaluate(window, async () => {
+    if (document.fonts?.ready) await document.fonts.ready;
+    await Promise.all([...document.images].map((image) => image.complete ? Promise.resolve() : new Promise((resolve) => {
+      image.addEventListener("load", resolve, { once: true });
+      image.addEventListener("error", resolve, { once: true });
+    })));
+  });
+  await delay(160);
+}
+
+async function click(window, selector, label = selector) {
+  const clicked = await evaluate(window, (value) => {
+    const element = document.querySelector(value);
+    if (!element || element.disabled) return false;
+    element.click();
+    return true;
+  }, selector);
+  verify(`click ${label}`, clicked, "control exists, is enabled, and accepted a click");
+}
+
+async function clickButtonWithText(window, text, scope = "document") {
+  const clicked = await evaluate(window, (label, selector) => {
+    const root = selector === "document" ? document : document.querySelector(selector);
+    const button = [...root.querySelectorAll("button")].find((candidate) => candidate.textContent.replace(/\s+/gu, " ").trim().includes(label));
+    if (!button || button.disabled) return false;
+    button.click();
+    return true;
+  }, text, scope);
+  verify(`click ${text}`, clicked, "matching button exists, is enabled, and accepted a click");
+}
+
+async function capture(window, fileName, surface) {
+  await delay(180);
   const image = await window.webContents.capturePage();
-  writeFileSync(join(outputDir, fileName), image.toPNG());
+  const filePath = join(outputDir, fileName);
+  writeFileSync(filePath, image.toPNG());
+  const dimensions = image.getSize();
+  verify(`screenshot ${surface}`, dimensions.width > 0 && dimensions.height > 0, `${fileName} captured at ${dimensions.width}×${dimensions.height}`);
+  report.screenshots.push({ surface, file: `docs/screenshots/pet-story/${fileName}`, ...dimensions });
+}
+
+async function qaStateFor(window) {
+  return evaluate(window, () => window.tokenpet.getScreenshotQaState());
+}
+
+function sharedStoryState(state) {
+  return {
+    moodThresholds: clone(state.settings.petStory.moodThresholds),
+    journeyStage: state.settings.petStory.journey?.stage ?? null,
+    memories: clone(state.settings.petStory.journey?.memories ?? []),
+    milestoneIds: clone(state.settings.petStory.journey?.milestoneIds ?? []),
+  };
+}
+
+async function verifyNoHorizontalOverflow(window, pageLabel) {
+  const fit = await evaluate(window, () => {
+    const shell = document.querySelector(".console-shell, .quick-play, .pet-stage");
+    const page = document.querySelector("[data-pet-page]");
+    const shellRect = shell?.getBoundingClientRect();
+    return {
+      innerWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      bodyWidth: document.body.scrollWidth,
+      shellRight: shellRect?.right ?? 0,
+      pageClientWidth: page?.clientWidth ?? 0,
+      pageScrollWidth: page?.scrollWidth ?? 0,
+    };
+  });
+  const noViewportOverflow = fit.documentWidth <= fit.innerWidth + 1 && fit.bodyWidth <= fit.innerWidth + 1 && fit.shellRight <= fit.innerWidth + 1;
+  const noPageOverflow = fit.pageClientWidth === 0 || fit.pageScrollWidth <= fit.pageClientWidth + 1;
+  verify(`${pageLabel} horizontal fit`, noViewportOverflow && noPageOverflow, `viewport ${fit.innerWidth}px; document ${fit.documentWidth}px; page ${fit.pageScrollWidth}/${fit.pageClientWidth}px`);
+}
+
+async function verifyDesktopPet() {
+  const window = createWindow({ width: 260, height: 260, transparent: true });
+  await load(window, "pet");
+  await waitForActor(window);
+
+  const actor = await evaluate(window, () => ({
+    generatedCanvases: document.querySelectorAll(".pet-generated-actor-canvas").length,
+    embedded: Boolean(document.querySelector(".pet-token-embedded")),
+    fallbackCanvas: Boolean(document.querySelector(".pet-actor-canvas-shell:not(.pet-generated-actor-shell)")),
+    moodBadge: Boolean(document.querySelector(".pet-generated-actor-canvas")),
+  }));
+  verify("desktop generated actor", actor.generatedCanvases === 1 && !actor.fallbackCanvas, "desktop surface has exactly one generated actor canvas and no separate fallback renderer");
+  verify("desktop embedded token frame", actor.embedded, "Golden British uses the embedded token-frame render mode");
+  await verifyNoHorizontalOverflow(window, "desktop pet");
+  await capture(window, "desktop-pet.png", "Desktop pet");
+
+  await evaluate(window, () => document.querySelector(".pet-stage").dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.togglePopoverCalls > 0), [], "desktop double-click bridge");
+  record("desktop double-click", "double-clicking the pet invokes the Quick Play bridge");
+  return window;
+}
+
+async function verifyQuickPlay() {
+  const window = createWindow({ width: 405, height: 480, transparent: true });
+  await load(window, "popover");
+  await waitForSelector(window, "[data-testid=quick-play-panel]");
+
+  const structure = await evaluate(window, () => {
+    const panel = document.querySelector("[data-testid=quick-play-panel]");
+    const actionButtons = [...document.querySelectorAll("[data-action-id]")];
+    const bodyText = document.body.innerText;
+    return {
+      ids: actionButtons.map((button) => button.dataset.actionId),
+      disabled: actionButtons.filter((button) => button.disabled).map((button) => button.dataset.actionId),
+      repeatedPreview: Boolean(document.querySelector(".pet-appearance-visual, .pet-generated-actor-canvas, .cat-image")),
+      forbiddenAnalytics: ["Today", "7-day", "7 days", "All-time tokens", "Source status", "Codex", "Claude Code"].filter((label) => bodyText.includes(label)),
+      clientHeight: panel.clientHeight,
+      scrollHeight: panel.scrollHeight,
+      documentHeight: document.documentElement.scrollHeight,
+      innerHeight: window.innerHeight,
+      smallestActionLabel: Math.min(...actionButtons.map((button) => Number.parseFloat(getComputedStyle(button.querySelector("span")).fontSize))),
+    };
+  });
+  verify("Quick Play 3×3 actions", structure.ids.length === 9 && quickPlayIds.every((id) => structure.ids.includes(id)), `all nine stable ids are visible: ${structure.ids.join(", ")}`);
+  verify("Quick Play ready actions", structure.disabled.length === 0, "the actor-ready Golden British exposes all nine shipped actions as enabled");
+  verify("Quick Play no repeated preview", !structure.repeatedPreview, "panel contains no duplicate cat preview");
+  verify("Quick Play no analytics duplication", structure.forbiddenAnalytics.length === 0, "panel contains no token-stat cards or source lists");
+  verify("Quick Play vertical fit", structure.scrollHeight <= structure.clientHeight + 1 && structure.documentHeight <= structure.innerHeight + 1, `panel ${structure.scrollHeight}/${structure.clientHeight}px; document ${structure.documentHeight}/${structure.innerHeight}px`);
+  verify("Quick Play readable labels", structure.smallestActionLabel >= 9, `smallest action label is ${structure.smallestActionLabel}px CSS (${structure.smallestActionLabel * 2}px at Retina 2×)`);
+  await verifyNoHorizontalOverflow(window, "Quick Play");
+  await capture(window, "quick-play.png", "Quick Play");
+
+  for (const actionId of quickPlayIds) await click(window, `[data-action-id="${actionId}"]`, `Quick Play ${actionId}`);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.actions.length >= 9), [], "all Quick Play actions to reach the bridge");
+  const actionState = await qaStateFor(window);
+  verify("Quick Play action dispatch", quickPlayIds.every((id) => actionState.qaState.actions.includes(id)), "every friendly action dispatched its stable id");
+  const lastInteraction = await evaluate(window, () => document.querySelector(".quick-footer strong")?.textContent);
+  verify("Quick Play feedback", lastInteraction === "Capture", "last-interaction feedback updates after an action");
+
+  for (const mode of ["gentle", "balanced", "playful", "focusFriendly"]) await click(window, `[data-play-mode="${mode}"]`, `Play Mode ${mode}`);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.behaviorMode === "focusFriendly"), [], "Play Mode persistence");
+  record("Quick Play Play Mode", "all four modes are interactive and the selected mode reaches persisted settings");
+
+  const controlBefore = await evaluate(window, () => [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked));
+  for (let index = 0; index < controlBefore.length; index += 1) {
+    await click(window, `.quick-controls label:nth-child(${index + 1}) input`, `Quick Play control ${index + 1}`);
+    await waitFor(window, (controlIndex, previous) => {
+      const input = document.querySelectorAll(".quick-controls input")[controlIndex];
+      return Boolean(input) && input.checked !== previous;
+    }, [index, controlBefore[index]], `Quick Play control ${index + 1} rerender`);
+  }
+  const controlAfter = await evaluate(window, () => [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked));
+  const toggledControls = { before: controlBefore, after: controlAfter, count: controlAfter.length };
+  verify("Quick Play controls", toggledControls.count === 5 && toggledControls.before.every((value, index) => toggledControls.after[index] !== value), "all five control toggles change state");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.setSettingCalls.length >= 9), [], "Quick Play control settings bridge");
+
+  await click(window, ".open-console", "Open Console");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.openConsoleCalls.includes("pet")), [], "Open Console bridge");
+  record("Quick Play Open Console", "Open Console requests the Pet console section");
+
+  await window.reload();
+  await waitForSelector(window, "[data-testid=quick-play-panel]");
+  await waitFor(window, (expectedControls) => {
+    const modeReady = document.querySelector("[data-play-mode=focusFriendly]")?.getAttribute("aria-pressed") === "true";
+    const controls = [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked);
+    return modeReady && controls.join(",") === expectedControls.join(",");
+  }, [toggledControls.after], "Quick Play persisted settings hydration");
+  const persisted = await evaluate(window, () => ({
+    mode: document.querySelector("[data-play-mode=focusFriendly]")?.getAttribute("aria-pressed"),
+    controls: [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked),
+  }));
+  verify("Quick Play reload persistence", persisted.mode === "true" && persisted.controls.join(",") === toggledControls.after.join(","), "Play Mode and all controls survive a renderer reload through the settings bridge");
+  return window;
+}
+
+async function verifyMenuBarTinyPet() {
+  const window = createWindow({ width: 500, height: 360 });
+  await load(window, "menubar");
+  await waitForActor(window);
+
+  const visible = await evaluate(window, () => ({
+    tiny: document.querySelectorAll("[data-testid=menubar-tiny-pet]").length,
+    generated: document.querySelectorAll("[data-testid=menubar-tiny-pet] .pet-generated-actor-canvas").length,
+    fallback: document.querySelectorAll("[data-testid=menubar-tiny-pet] .pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
+  }));
+  verify("MenuBar tiny companion enabled", visible.tiny === 1 && visible.generated === 1 && visible.fallback === 0, "keepTinyMenuForm=true renders one real generated actor in the menu bar");
+
+  await evaluate(window, async () => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petStory", {
+      ...current.petStory,
+      companionSettings: {
+        ...current.petStory.companionSettings,
+        keepTinyMenuForm: false,
+      },
+    });
+  });
+  await waitFor(window, () => !document.querySelector("[data-testid=menubar-tiny-pet]"), [], "MenuBar tiny companion to hide");
+  record("MenuBar tiny companion toggle", "keepTinyMenuForm=false removes the tiny actor immediately");
+
+  await window.reload();
+  await waitForSelector(window, ".menubar-panel");
+  await delay(180);
+  const hiddenAfterReload = await evaluate(window, () => !document.querySelector("[data-testid=menubar-tiny-pet]"));
+  verify("MenuBar tiny companion persistence", hiddenAfterReload, "the hidden state survives a renderer reload through persisted settings");
+}
+
+async function openPetConsole(window) {
+  await click(window, "[data-console-tab=pet]", "Console Pet tab");
+  await waitForSelector(window, "[data-pet-page=appearance]");
+  const state = await evaluate(window, () => ({
+    petActive: document.querySelector("[data-console-tab=pet]")?.classList.contains("active"),
+    header: document.querySelector(".console-header strong")?.textContent,
+    rangeVisible: Boolean(document.querySelector(".console-header-actions")),
+  }));
+  verify("Console Pet tab opens", state.petActive && state.header === "Pet", "clicking Pet activates the Pet console and renders Appearance");
+  verify("Pet unified header", !state.rangeVisible, "legacy range/refresh controls are absent from Pet surfaces");
+}
+
+async function selectPetSection(window, section) {
+  await click(window, `[data-pet-section="${section}"]`, `Pet section ${section}`);
+  await waitForSelector(window, `[data-pet-page="${section}"]`);
+  const active = await evaluate(window, (id) => document.querySelector(`[data-pet-section="${id}"]`)?.getAttribute("aria-current") === "page", section);
+  verify(`Pet section ${section} active`, active, `${section} is selected in the unified Pet rail`);
+}
+
+async function verifyAppearanceAndSubpages(window) {
+  await waitForActor(window);
+  const preview = await evaluate(window, () => ({
+    generatedCanvases: document.querySelectorAll(".pet-preview-card .pet-generated-actor-canvas").length,
+    fallbackCanvas: Boolean(document.querySelector(".pet-preview-card .pet-actor-canvas-shell:not(.pet-generated-actor-shell)")),
+    embedded: Boolean(document.querySelector(".pet-preview-card .pet-token-embedded")),
+    enabledExternalFrames: [...document.querySelectorAll(".token-bubble-card [data-token-frame-id]")]
+      .filter((button) => ["pillow", "compact", "cost", "floating"].includes(button.dataset.tokenFrameId) && !button.disabled)
+      .map((button) => button.dataset.tokenFrameId),
+    enabledSkinButtons: document.querySelectorAll(".skin-card button:not(:disabled)").length,
+    enabledAccessoryCards: document.querySelectorAll(".accessories-card [data-accessory-id]:not(:disabled)").length,
+  }));
+  verify("Appearance shared actor", preview.generatedCanvases === 1 && !preview.fallbackCanvas, "Appearance preview uses exactly one generated actor renderer");
+  verify("Appearance embedded token frame", preview.embedded, "Appearance preview uses the manifest embedded token mode without a second runtime frame");
+  verify("Appearance capability honesty", preview.enabledExternalFrames.length === 0 && preview.enabledSkinButtons === 0 && preview.enabledAccessoryCards === 0, "baked actor colors/accessories and unsupported external frames are not presented as usable");
+  await verifyNoHorizontalOverflow(window, "Appearance");
+  await capture(window, "console-appearance.png", "Console / Appearance");
+
+  const hiddenCopy = await evaluate(window, () => {
+    const button = document.querySelector(".token-bubble-card [data-token-frame-id=hidden]");
+    return button?.textContent.replace(/\s+/gu, " ").trim() ?? "";
+  });
+  verify("Golden Hidden copy is honest", /hide value/iu.test(hiddenCopy) && /baked frame remains/iu.test(hiddenCopy), `Hidden option says what changes and what remains: ${hiddenCopy}`);
+  await click(window, ".token-bubble-card [data-token-frame-id=hidden]", "Golden Hide value");
+  await waitFor(window, () => Boolean(document.querySelector(".pet-preview-card .pet-generated-actor-shell.pet-token-hidden")), [], "Golden hidden token mode");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.tokenBubbleId === "hidden"), [], "Golden hidden token setting persistence");
+  const hiddenMode = await evaluate(window, async () => {
+    const canvas = document.querySelector(".pet-preview-card .pet-generated-actor-canvas");
+    const context = canvas?.getContext("2d");
+    const manifestUrl = new URL("./pet-actors/golden-british/actor.json", location.href);
+    const manifest = await fetch(manifestUrl).then((response) => response.json());
+    const slot = manifest.tokenSlot ?? manifest.dynamicSlots.tokenText;
+    const pixels = context?.getImageData(slot.x, slot.y, slot.width, slot.height).data ?? [];
+    let opaquePixels = 0;
+    let creamPixels = 0;
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index + 3] > 180) opaquePixels += 1;
+      if (pixels[index] > 180 && pixels[index + 1] > 160 && pixels[index + 2] > 110 && pixels[index + 3] > 180) creamPixels += 1;
+    }
+    return {
+      generatedCanvases: document.querySelectorAll(".pet-preview-card .pet-generated-actor-canvas").length,
+      fallbackCanvases: document.querySelectorAll(".pet-preview-card .pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
+      tokenHotspots: document.querySelectorAll(".pet-preview-card .pet-actor-token-hotspot").length,
+      opaquePixels,
+      creamPixels,
+    };
+  });
+  verify("Golden Hidden runtime semantics", hiddenMode.generatedCanvases === 1 && hiddenMode.fallbackCanvases === 0 && hiddenMode.tokenHotspots === 0, "Hidden removes the dynamic token value/hotspot without adding a second or fallback frame");
+  verify("Golden baked frame remains", hiddenMode.opaquePixels > 1_000 && hiddenMode.creamPixels > 1_000, `the manifest token slot still contains approved baked cream-frame pixels (${hiddenMode.creamPixels} cream / ${hiddenMode.opaquePixels} opaque)`);
+  await capture(window, "console-appearance-hidden-value.png", "Console / Appearance / Hide value");
+  await click(window, ".token-bubble-card [data-token-frame-id=embedded]", "restore Golden embedded frame");
+  await waitFor(window, () => Boolean(document.querySelector(".pet-preview-card .pet-generated-actor-shell.pet-token-embedded .pet-actor-token-hotspot")), [], "Golden embedded token mode restore");
+  record("Golden frame restore", "restoring Embedded returns exactly one dynamic token hotspot on the same generated actor");
+
+  const subpages = [
+    { trigger: "[data-testid=open-cat-type]", page: "cat-type", file: "console-cat-type.png", name: "Cat Type" },
+    { trigger: "[data-testid=open-mood-looks]", page: "mood-looks", file: "console-mood-looks.png", name: "Mood Looks" },
+    { trigger: "[data-testid=open-accessories]", page: "accessories", file: "console-accessories.png", name: "Accessories" },
+  ];
+  for (const subpage of subpages) {
+    await click(window, subpage.trigger, `open ${subpage.name}`);
+    await waitForSelector(window, `[data-pet-page="${subpage.page}"]`);
+    await waitForActor(window);
+    if (subpage.page === "cat-type") {
+      const details = await evaluate(window, () => ({
+        enabledRanges: document.querySelectorAll(".cat-breed-details-card input:not(:disabled)").length,
+        enabledEyes: document.querySelectorAll(".cat-eye-color-options button:not(:disabled)").length,
+        note: document.querySelector(".cat-details-locked-note")?.textContent ?? "",
+      }));
+      verify("Cat Type baked-detail gate", details.enabledRanges === 0 && details.enabledEyes === 0 && details.note.includes("baked"), "Golden fur, eye, and pattern controls are disabled and explained as baked actor art");
+
+      const beforeCatChange = sharedStoryState(await qaStateFor(window));
+      await click(window, "[data-cat-id=ragdoll]", "select Ragdoll fallback");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.catTypeId === "ragdoll"), [], "Ragdoll appearance persistence");
+      await waitFor(window, () => Boolean(document.querySelector(".cat-type-page-preview-stage .pet-actor-canvas-root.is-ready")), [], "Ragdoll fallback renderer");
+      await waitFor(window, () => {
+        const canvas = document.querySelector(".cat-type-page-preview-stage .pet-actor-canvas");
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return false;
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        for (let index = 3; index < pixels.length; index += 2048) if (pixels[index] > 0) return true;
+        return false;
+      }, [], "Ragdoll approved fallback pixels");
+      const fallback = await evaluate(window, () => {
+        const canvas = document.querySelector(".cat-type-page-preview-stage .pet-actor-canvas");
+        const context = canvas?.getContext("2d");
+        const pixels = context?.getImageData(0, 0, canvas.width, canvas.height).data ?? [];
+        let opaqueSamples = 0;
+        for (let index = 3; index < pixels.length; index += 2048) if (pixels[index] > 0) opaqueSamples += 1;
+        return {
+          fallbackCanvases: document.querySelectorAll(".cat-type-page-preview-stage .pet-actor-canvas-shell.pet-cat-ragdoll:not(.pet-generated-actor-shell)").length,
+          generatedCanvases: document.querySelectorAll(".cat-type-page-preview-stage .pet-generated-actor-canvas").length,
+          hiddenTokenMode: document.querySelectorAll(".cat-type-page-preview-stage .pet-actor-canvas-shell.pet-cat-ragdoll.pet-token-hidden").length,
+          tokenHotspots: document.querySelectorAll(".cat-type-page-preview-stage .pet-actor-token-hotspot").length,
+          width: canvas?.width ?? 0,
+          height: canvas?.height ?? 0,
+          opaqueSamples,
+        };
+      });
+      verify("Ragdoll approved static fallback", fallback.fallbackCanvases === 1 && fallback.generatedCanvases === 0 && fallback.hiddenTokenMode === 1 && fallback.tokenHotspots === 0 && fallback.opaqueSamples > 0, `Ragdoll uses only the approved non-empty ${fallback.width}×${fallback.height} fallbackStaticImage, with runtime token UI forced hidden: ${JSON.stringify(fallback)}`);
+      verify("Ragdoll fallback does not crash", !window.webContents.isCrashed(), "switching from actor-ready Golden to Ragdoll keeps the renderer alive");
+      verify("Cat type preserves shared story state", JSON.stringify(sharedStoryState(await qaStateFor(window))) === JSON.stringify(beforeCatChange), "journey stage, memories, mood thresholds, and milestone ids are unchanged after selecting Ragdoll");
+      await capture(window, "console-cat-type-ragdoll-fallback.png", "Console / Cat Type / Ragdoll fallback");
+
+      await click(window, "[data-cat-id=golden-british]", "restore Golden British actor");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.catTypeId === "golden-british"), [], "Golden British appearance restore");
+      await waitFor(window, () => Boolean(document.querySelector(".cat-type-page-preview-stage .pet-generated-actor-canvas-root.is-ready")), [], "Golden British generated actor restore");
+      verify("Golden restore preserves shared story state", JSON.stringify(sharedStoryState(await qaStateFor(window))) === JSON.stringify(beforeCatChange), "journey stage, memories, mood thresholds, and milestone ids remain unchanged after switching back to Golden");
+    }
+    if (subpage.page === "mood-looks") {
+      const moodLooks = await evaluate(window, () => ({
+        bakedControls: [...document.querySelectorAll(".mood-editor-card select:disabled, .mood-effects-card button:disabled")].length,
+        bakedLabels: [...document.querySelectorAll(".mood-editor-card strong, .mood-effects-card button, .mood-quick-actions button")].filter((label) => label.textContent.toLowerCase().includes("baked")).length,
+        previewOnlyLabels: [...document.querySelectorAll(".mood-editor-card strong")].filter((label) => label.textContent.includes("preview only")).length,
+      }));
+      verify("Mood Looks honest controls", moodLooks.bakedControls >= 7 && moodLooks.bakedLabels >= 7 && moodLooks.previewOnlyLabels === 1, "baked actor-owned controls/effects are disabled and the sole ephemeral Background wash control is explicitly preview-only");
+    }
+    if (subpage.page === "accessories") {
+      const accessories = await evaluate(window, () => ({
+        enabledExternalFrames: [...document.querySelectorAll(".token-frame-section [data-token-frame-id]")]
+          .filter((button) => ["pillow", "compact", "cost", "floating"].includes(button.dataset.tokenFrameId) && !button.disabled)
+          .map((button) => button.dataset.tokenFrameId),
+        enabledUnsupported: [...document.querySelectorAll("[data-accessory-choice-id]:not(:disabled)")]
+          .map((button) => button.dataset.accessoryChoiceId)
+          .filter((id) => !["none", "collar"].includes(id)),
+        capabilityLabels: document.querySelectorAll(".accessory-capability-label").length,
+      }));
+      verify("Accessories capability gate", accessories.enabledExternalFrames.length === 0 && accessories.enabledUnsupported.length === 0 && accessories.capabilityLabels > 0, "unsupported frames/wearables are disabled and capability-labelled");
+    }
+    await verifyNoHorizontalOverflow(window, subpage.name);
+    await capture(window, subpage.file, `Console / ${subpage.name}`);
+    await click(window, ".cat-type-back", `back from ${subpage.name}`);
+    await waitForSelector(window, "[data-pet-page=appearance]");
+  }
+}
+
+async function verifyActions(window) {
+  await selectPetSection(window, "actions");
+  await waitForActor(window);
+  const state = await evaluate(window, () => ({
+    ids: [...document.querySelectorAll("[data-actor-state]")].map((button) => button.dataset.actorState),
+    disabled: [...document.querySelectorAll("[data-actor-state]")].filter((button) => button.disabled).map((button) => button.dataset.actorState),
+    brokenImages: [...document.querySelectorAll(".actor-state-grid img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
+  }));
+  verify("Actions implementation ids", state.ids.length === 12 && state.ids.includes("click_purr") && state.ids.includes("milestone_celebrate"), `Actions exposes 12 stable actor-state ids`);
+  verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all displayed Golden British actor states are enabled and have loaded thumbnails");
+  await verifyNoHorizontalOverflow(window, "Actions");
+  await capture(window, "console-actions.png", "Console / Actions");
+  await click(window, "[data-actor-state=click_purr]", "Actions click_purr");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.actions.includes("click_purr")), [], "Actions click_purr dispatch");
+
+  const beforeToggle = await qaStateFor(window);
+  expectedReduceMotion = !beforeToggle.settings.petStory.reduceMotion;
+  await clickButtonWithText(window, "Reduce motion", ".actions-safety-card");
+  await waitFor(window, (expected) => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.reduceMotion === expected), [expectedReduceMotion], "Reduce motion persistence");
+  record("Actions reduce motion", "Reduce motion changes persisted story settings");
+}
+
+async function verifyMood(window) {
+  await selectPetSection(window, "mood");
+  await waitForActor(window);
+  const inputs = await evaluate(window, () => [...document.querySelectorAll(".threshold-list input[type=number]")].map((input) => Number(input.value)));
+  verify("Mood thresholds", inputs.length === 3 && inputs[0] < inputs[1] && inputs[1] < inputs[2], `three ordered thresholds are editable: ${inputs.join(" < ")}`);
+  await verifyNoHorizontalOverflow(window, "Mood & Reactions");
+  await capture(window, "console-mood-reactions.png", "Console / Mood & Reactions");
+
+  await evaluate(window, () => {
+    const input = document.querySelector(".threshold-list input[type=number]");
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(input, "75000");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.moodThresholds.focused === 75000), [], "Mood threshold persistence");
+  record("Mood threshold persistence", "edited focused threshold reaches persisted story settings");
+  await click(window, "[data-preview-mood=hot]", "Mood hot preview");
+}
+
+async function verifySound(window) {
+  await selectPetSection(window, "sound");
+  await waitForActor(window);
+  await verifyNoHorizontalOverflow(window, "Sound Cues");
+  await capture(window, "console-sound-cues.png", "Console / Sound Cues");
+  await clickButtonWithText(window, "Tiny bell", ".sound-style-card");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.soundStyle === "cozy" && state.settings.petStory.soundEnabled), [], "Sound Style persistence");
+  await click(window, "button[aria-label^='Disable Wake']", "disable Wake cue");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => !state.settings.petStory.cueIds.includes("wake")), [], "Sound cue persistence");
+  record("Sound controls persistence", "sound style and cue toggle reach persisted story settings");
+}
+
+async function verifyJourney(window) {
+  await selectPetSection(window, "journey");
+  await waitForActor(window);
+  const state = await evaluate(window, () => ({
+    cards: [...document.querySelectorAll(".local-memories-card article")].map((card) => card.textContent.replace(/\s+/gu, " ").trim()),
+    externalLinks: document.querySelectorAll(".journey-page a[href]").length,
+    stage: document.querySelector(".journey-stage-badge")?.textContent,
+  }));
+  verify("Journey real local memories", state.cards.length === 3 && state.cards.some((card) => card.includes("A cozy week")), "Journey renders persisted fixture memories rather than static placeholder copy");
+  verify("Journey no external learn-more", state.externalLinks === 0, "Journey has no external learn-more row");
+  verify("Journey shared stage", state.stage === "Flow Companion", "lifecycle stage is derived from shared local usage");
+  await verifyNoHorizontalOverflow(window, "Journey");
+  await capture(window, "console-journey.png", "Console / Journey");
+
+  await clickButtonWithText(window, "Show memory cards", ".companion-settings-card");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.companionSettings.showMemoryCards === false), [], "Journey memory-card setting persistence");
+  await waitFor(window, () => {
+    const container = document.querySelector("[data-memory-cards=hidden]");
+    return Boolean(container) && ![...container.querySelectorAll("article")].some((card) => card.textContent.includes("A cozy week"));
+  }, [], "Journey memory cards to hide");
+  record("Journey memory cards toggle", "showMemoryCards=false hides persisted memory cards immediately while retaining an honest local-data placeholder");
+
+  await window.reload();
+  await waitForSelector(window, "[data-console-tab=overview].active");
+  await openPetConsole(window);
+  await selectPetSection(window, "journey");
+  await waitForActor(window);
+  const memoriesHiddenAfterReload = await evaluate(window, () => {
+    const container = document.querySelector("[data-memory-cards=hidden]");
+    return Boolean(container) && ![...container.querySelectorAll("article")].some((card) => card.textContent.includes("A cozy week"));
+  });
+  verify("Journey memory cards persistence", memoriesHiddenAfterReload, "persisted memory cards remain hidden after a renderer reload");
+  await clickButtonWithText(window, "Pin journey stage", ".companion-settings-card");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.pinnedStage === "flowCompanion"), [], "Journey pin persistence");
+  await click(window, ".journey-celebrate-button", "Journey milestone preview");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.lastAction?.id === "milestone_celebrate"), [], "Journey milestone action");
+  record("Journey controls persistence", "stage pin and milestone preview reach persisted story state");
+}
+
+async function verifyConsole() {
+  const window = createWindow({ width: 1280, height: 900 });
+  await load(window, "console");
+  await waitForSelector(window, "[data-console-tab=overview].active");
+  await openPetConsole(window);
+  await verifyAppearanceAndSubpages(window);
+  await verifyActions(window);
+  await verifyMood(window);
+  await verifySound(window);
+  await verifyJourney(window);
+
+  window.webContents.send("qa:navigate-console", "overview");
+  await waitForSelector(window, "[data-console-tab=overview].active");
+  window.webContents.send("qa:navigate-console", "pet");
+  await waitForSelector(window, "[data-console-tab=pet].active");
+  await waitForSelector(window, "[data-pet-page=appearance]");
+  record("Console IPC navigation", "an existing Console window accepts navigation back to the Pet section");
+
+  await selectPetSection(window, "actions");
+  const persisted = await evaluate(window, () => ({
+    reduceMotion: [...document.querySelectorAll(".actions-safety-card [role=switch]")].find((button) => button.textContent.includes("Reduce motion"))?.getAttribute("aria-checked"),
+  }));
+  verify("Console settings survive section remount", persisted.reduceMotion === String(expectedReduceMotion), "Reduce motion remains selected after navigating away and back");
+  return window;
+}
+
+async function run() {
+  mkdirSync(outputDir, { recursive: true });
+  registerFixtureBridge();
+  await verifyDesktopPet();
+  await verifyQuickPlay();
+  resetFixtureSettings();
+  await verifyMenuBarTinyPet();
+  resetFixtureSettings();
+  await verifyConsole();
+
+  const finalState = clone(qaState);
+  verify("Quick Play summon side effect", finalState.summons >= 1, "summon action reached the desktop pet bridge");
+  verify("Quick Play capture side effect", finalState.captures >= 1, "capture action reached the desktop pet bridge");
+  report.bridgeSummary = {
+    ...finalState,
+    setSettingCalls: {
+      count: finalState.setSettingCalls.length,
+      keys: finalState.setSettingCalls.map((call) => call.key),
+    },
+  };
+  writeFileSync(join(outputDir, "qa-results.json"), `${JSON.stringify(report, null, 2)}\n`);
+  console.log(`Pet Story screenshot QA: ${report.checks.length} checks passed; ${report.screenshots.length} screenshots written.`);
+}
+
+function finish(exitCode) {
+  for (const window of windows) {
+    if (!window.isDestroyed()) window.destroy();
+  }
+  if (exitCode === 0) app.quit();
+  else app.exit(exitCode);
 }
 
 app.whenReady().then(async () => {
-  mkdirSync(outputDir, { recursive: true });
-
-  await capture("console", "console-v05.png", { width: 1280, height: 1400 });
-  await capture("menubar", "menubar-v05.png", { width: 548, height: 408 });
-  await capture("pet", "pet-v05.png", { width: 320, height: 320 });
-
-  for (const window of windows) {
-    window.destroy();
+  try {
+    await run();
+    finish(0);
+  } catch (error) {
+    report.failure = error instanceof Error ? { message: error.message, stack: error.stack } : { message: String(error) };
+    mkdirSync(outputDir, { recursive: true });
+    writeFileSync(join(outputDir, "qa-results.json"), `${JSON.stringify(report, null, 2)}\n`);
+    console.error(error);
+    finish(1);
   }
-
-  app.quit();
 });
