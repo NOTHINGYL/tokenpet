@@ -8,7 +8,7 @@ import {
   resolveActorCapability,
   validatePetActorManifest,
   validatePetActorSourceSpec,
-} from "../src/index.ts";
+} from "../dist/index.js";
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 

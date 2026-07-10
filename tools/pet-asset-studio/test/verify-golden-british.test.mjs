@@ -4,7 +4,7 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { assertValidPetActorManifest, PET_ACTOR_QUICK_PLAY_ACTION_IDS } from "../../../packages/pet-asset-schema/src/index.ts";
+import { assertValidPetActorManifest, PET_ACTOR_QUICK_PLAY_ACTION_IDS } from "../../../packages/pet-asset-schema/dist/index.js";
 import { buildGoldenBritish } from "../src/build-golden-british.mjs";
 
 const toolDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");

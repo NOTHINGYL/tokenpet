@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prebuild:golden-british": "npm --prefix ../../packages/pet-asset-schema run build",
     "build:golden-british": "node src/build-golden-british.mjs",
+    "pretest": "npm --prefix ../../packages/pet-asset-schema run build",
     "test": "node --test test/verify-golden-british.test.mjs",
+    "preverify:golden-british": "npm --prefix ../../packages/pet-asset-schema run build",
     "verify:golden-british": "node --test test/verify-golden-british.test.mjs"
   }
 }

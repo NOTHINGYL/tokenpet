@@ -6,7 +6,7 @@ import {
   assertValidPetActorManifest,
   assertValidPetActorSourceSpec,
   PET_ACTOR_MOODS,
-} from "../../../packages/pet-asset-schema/src/index.ts";
+} from "../../../packages/pet-asset-schema/dist/index.js";
 
 const GENERATOR_NAME = "@tokenpet/pet-asset-studio";
 const GENERATOR_VERSION = "1.0.0-story";

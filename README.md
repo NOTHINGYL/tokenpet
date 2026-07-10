@@ -132,7 +132,7 @@ docs/pet-story                        Product plan, implementation, and verifica
 
 ## Development
 
-Requires Node.js 20.19+ or 22.12+.
+Requires Node.js 18.20+.
 
 ```bash
 npm install

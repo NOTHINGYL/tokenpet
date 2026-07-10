@@ -6,11 +6,15 @@
   "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
-  "packageManager": "npm@11.4.2",
+  "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": ">=18.20.0"
+  },
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "npm run build:pet-assets && npm run build:main && npm run build:renderer",
-    "build:pet-assets": "node tools/pet-asset-studio/src/build-golden-british.mjs",
+    "build:pet-schema": "npm --prefix packages/pet-asset-schema run build",
+    "build:pet-assets": "npm run build:pet-schema && node tools/pet-asset-studio/src/build-golden-british.mjs",
     "build:main": "node -e \"require('node:fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p apps/desktop/electron/tsconfig.json && cp apps/desktop/electron/preload.cjs dist-electron/preload.cjs",
     "build:renderer": "vite build --config apps/desktop/vite.config.ts",
     "screenshots": "npm run qa:pet-story",

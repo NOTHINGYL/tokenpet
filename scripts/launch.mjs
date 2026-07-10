@@ -38,4 +38,4 @@ const child = spawn(electronCommand, ["."], {
 child.unref();
 
 console.log(`TokenPet launched in the background. PID: ${child.pid}`);
-console.log("Quit from the pet close button, the right-click menu, or your system process manager.");
+console.log("The pet close button hides the companion; use Quit TokenPet from its right-click menu to exit the app.");
