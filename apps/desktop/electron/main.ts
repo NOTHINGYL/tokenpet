@@ -3,7 +3,7 @@ import type { Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, PetDirectorEvent, QuickPlayActionId, UsageSnapshot } from "./types.js";
+import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlaySession, UsageSnapshot } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
@@ -33,6 +33,15 @@ let lastStoryReconcileAt = 0;
 const pendingDirectorEvents: PetDirectorEvent[] = [];
 const rendererGoneWindows = new WeakSet<BrowserWindow>();
 let mainProcessQaCursor: { x: number; y: number } | null = null;
+let workspaceRehomeCount = 0;
+let quickPlaySession: QuickPlaySession = {
+  activeAction: null,
+  startedAt: null,
+  startBounds: null,
+  startDirectorState: null,
+  pointerMode: "none",
+};
+let quickPlaySessionTimer: NodeJS.Timeout | null = null;
 type PetTraversalResult = { moved: boolean; canceled?: boolean };
 type PetTraversalState = {
   window: BrowserWindow;
@@ -69,11 +78,11 @@ let settings: AppSettings = { ...DEFAULT_SETTINGS };
 
 const POPOVER_SIZE = {
   width: 405,
-  height: 480,
+  height: 697,
 };
 
 const POPOVER_MARGIN = 12;
-const POPOVER_GAP = 8;
+const POPOVER_GAP = 32;
 
 const MENUBAR_SIZE = {
   width: 500,
@@ -145,6 +154,8 @@ function verifyBridge(window: BrowserWindow, label: string) {
 
 function quitTokenPet() {
   cancelPetTraversal();
+  if (quickPlaySessionTimer) clearTimeout(quickPlaySessionTimer);
+  quickPlaySessionTimer = null;
   if (cursorTrackingTimer) {
     clearInterval(cursorTrackingTimer);
     cursorTrackingTimer = null;
@@ -322,6 +333,9 @@ function hydrateSettings() {
   settings = syncLegacyAppearanceFields({
     ...DEFAULT_SETTINGS,
     ...storedSettings,
+    // Closing the pet is session-scoped. Every new app launch starts with the
+    // companion visible, even if the previous session ended while it was hidden.
+    petVisible: true,
     petStory: normalizePetStory(storedSettings.petStory),
     launchAtLogin: app.getLoginItemSettings().openAtLogin,
   }, appearance) as AppSettings;
@@ -597,6 +611,38 @@ function applyAlwaysOnTop() {
   petWindow.setAlwaysOnTop(false);
 }
 
+function showPetOnCurrentWorkspace(targetWindow: BrowserWindow) {
+  if (!isUsableWindow(targetWindow)) return;
+
+  if (process.platform === "darwin") {
+    const workspaceOptions = { visibleOnFullScreen: true, skipTransformProcessType: true };
+    // Temporarily join the active Space, show there, then immediately return to
+    // single-Space mode. This re-homes a previously hidden pet to the Space the
+    // user is viewing instead of switching back to the pet's old Space.
+    targetWindow.setVisibleOnAllWorkspaces(true, workspaceOptions);
+    targetWindow.showInactive();
+    targetWindow.setVisibleOnAllWorkspaces(false, workspaceOptions);
+  } else {
+    targetWindow.showInactive();
+  }
+
+  targetWindow.moveTop();
+  workspaceRehomeCount += 1;
+}
+
+function revealPetForLaunch() {
+  settings.petVisible = true;
+  if (!isUsableWindow(petWindow)) {
+    disposeStaleWindow(petWindow);
+    petWindow = null;
+    createPetWindow();
+  } else {
+    showPetOnCurrentWorkspace(petWindow);
+  }
+  writeStoredSettings();
+  publishSettings(currentSettings());
+}
+
 function setLaunchAtLogin(enabled: boolean) {
   app.setLoginItemSettings({ openAtLogin: enabled });
   settings.launchAtLogin = app.getLoginItemSettings().openAtLogin;
@@ -611,7 +657,7 @@ function setPetVisible(enabled: boolean) {
       petWindow = null;
       createPetWindow();
     } else {
-      petWindow.show();
+      showPetOnCurrentWorkspace(petWindow);
     }
     return;
   }
@@ -645,6 +691,73 @@ function publishSettings(nextSettings: AppSettings) {
   BrowserWindow.getAllWindows().forEach((window) => {
     if (isUsableWindow(window)) window.webContents.send("app:settings-updated", nextSettings);
   });
+}
+
+const quickPlayPositionActions = new Set<QuickPlayActionId>([
+  "walk_round_trip",
+  "token_snack",
+  "drag_dangle",
+  "toss_yarn",
+  "summon_to_pointer",
+]);
+
+const quickPlayActionDurations: Record<Exclude<QuickPlayActionId, "capture_moment">, number> = {
+  walk_round_trip: 5_500,
+  token_snack: 7_000,
+  play_cursor: 30_000,
+  drag_dangle: 8_000,
+  toss_yarn: 5_500,
+  nap_here: 1_800,
+  wake_up: 5_000,
+  summon_to_pointer: 4_500,
+};
+
+function currentQuickPlaySession(): QuickPlaySession {
+  return {
+    ...quickPlaySession,
+    startBounds: quickPlaySession.startBounds ? { ...quickPlaySession.startBounds } : null,
+  };
+}
+
+function publishQuickPlaySession() {
+  const session = currentQuickPlaySession();
+  BrowserWindow.getAllWindows().forEach((window) => {
+    if (isUsableWindow(window)) window.webContents.send("quick-play:session-changed", session);
+  });
+}
+
+function finishQuickPlaySession(action?: Exclude<QuickPlayActionId, "capture_moment">) {
+  if (action && quickPlaySession.activeAction !== action) return;
+  if (quickPlaySessionTimer) clearTimeout(quickPlaySessionTimer);
+  quickPlaySessionTimer = null;
+  quickPlaySession = {
+    activeAction: null,
+    startedAt: null,
+    startBounds: null,
+    startDirectorState: null,
+    pointerMode: "none",
+  };
+  publishQuickPlaySession();
+}
+
+function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_moment">) {
+  const pointerMode: QuickPlaySession["pointerMode"] = action === "token_snack"
+    ? "snack"
+    : action === "drag_dangle"
+      ? "dangle"
+      : action === "toss_yarn"
+        ? "yarn"
+        : "none";
+  quickPlaySession = {
+    activeAction: action,
+    startedAt: Date.now(),
+    startBounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null,
+    startDirectorState: null,
+    pointerMode,
+  };
+  publishQuickPlaySession();
+  quickPlaySessionTimer = setTimeout(() => finishQuickPlaySession(action), quickPlayActionDurations[action]);
+  quickPlaySessionTimer.unref();
 }
 
 function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
@@ -749,7 +862,7 @@ function initialPetBounds(): Rectangle {
 
 function createPetWindow() {
   if (isUsableWindow(petWindow)) {
-    petWindow.show();
+    showPetOnCurrentWorkspace(petWindow);
     return;
   }
   disposeStaleWindow(petWindow);
@@ -768,6 +881,7 @@ function createPetWindow() {
     acceptFirstMouse: true,
     focusable: true,
     skipTaskbar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -777,13 +891,15 @@ function createPetWindow() {
   petWindow = createdWindow;
   trackWindowHealth(createdWindow);
 
-  createdWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   applyAlwaysOnTop();
   createdWindow.webContents.on("context-menu", () => {
     showPetContextMenu();
   });
   verifyBridge(createdWindow, "pet");
-  createdWindow.webContents.on("did-finish-load", flushPendingDirectorEvents);
+  createdWindow.webContents.on("did-finish-load", () => {
+    flushPendingDirectorEvents();
+    if (petWindow === createdWindow && settings.petVisible) showPetOnCurrentWorkspace(createdWindow);
+  });
   void loadWindow(createdWindow, "pet");
 
   createdWindow.on("move", () => {
@@ -840,10 +956,6 @@ function createPopoverWindow() {
   verifyBridge(createdWindow, "popover");
   void loadWindow(createdWindow, "popover");
 
-  createdWindow.on("blur", () => {
-    closeUsableWindow(createdWindow);
-  });
-
   createdWindow.on("closed", () => {
     if (popoverWindow === createdWindow) popoverWindow = null;
   });
@@ -881,7 +993,7 @@ function summonPetToCurrentScreen() {
   const bounds = petWindow.getBounds();
   const nextBounds = summonBoundsForCursor(bounds, cursor, workArea);
   petWindow.setBounds(nextBounds, true);
-  petWindow.showInactive();
+  showPetOnCurrentWorkspace(petWindow);
   writeStoredPetPosition(nextBounds);
   positionAccessoryWindows();
   return { moved: true };
@@ -940,8 +1052,18 @@ function startCursorTracking() {
   cursorTrackingTimer.unref();
 }
 
-export const tokenPetReady = app.whenReady().then(() => {
+const hasSingleInstanceLock = isMainProcessQa || app.requestSingleInstanceLock();
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else if (!isMainProcessQa) {
+  app.on("second-instance", () => {
+    if (app.isReady()) revealPetForLaunch();
+  });
+}
+
+export const tokenPetReady = hasSingleInstanceLock ? app.whenReady().then(() => {
   hydrateSettings();
+  writeStoredSettings();
   if (process.platform === "darwin") {
     app.dock?.hide();
   }
@@ -954,9 +1076,11 @@ export const tokenPetReady = app.whenReady().then(() => {
   if (!isMainProcessQa) void loadAndPublishUsage({ force: true });
 
   app.on("activate", () => {
-    if (settings.petVisible && !isUsableWindow(petWindow)) createPetWindow();
+    if (!settings.petVisible) return;
+    if (!isUsableWindow(petWindow)) createPetWindow();
+    else showPetOnCurrentWorkspace(petWindow);
   });
-});
+}) : Promise.resolve();
 
 export const mainProcessQa = {
   enabled: isMainProcessQa,
@@ -965,6 +1089,18 @@ export const mainProcessQa = {
   },
   getSettings() {
     return currentSettings();
+  },
+  getWorkspaceRehomeCount() {
+    return workspaceRehomeCount;
+  },
+  getQuickPlaySession() {
+    return currentQuickPlaySession();
+  },
+  finishQuickPlaySession() {
+    finishQuickPlaySession();
+  },
+  simulateSecondInstanceLaunch() {
+    revealPetForLaunch();
   },
   isWindowUsable: isUsableWindow,
   setCursorPoint(point: { x: number; y: number } | null) {
@@ -1020,20 +1156,42 @@ ipcMain.on("app:quit", () => {
 });
 
 const quickPlayActionIds = new Set<QuickPlayActionId>([
-  "click_purr",
+  "walk_round_trip",
   "token_snack",
   "play_cursor",
   "drag_dangle",
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_screen",
+  "summon_to_pointer",
   "capture_moment",
 ]);
+const consolePetActionIds = new Set<PetActionId>([
+  "click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_screen", "capture_moment",
+]);
 
-ipcMain.handle("pet:dispatch-action", (_event, action: QuickPlayActionId) => {
-  if (!quickPlayActionIds.has(action)) return { accepted: false };
-  emitPetDirectorEvent({ type: "quickPlay.action", action });
+ipcMain.handle("quick-play:get-session", () => currentQuickPlaySession());
+
+ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetActionId) => {
+  const fromQuickPlay = new URL(event.sender.getURL()).searchParams.get("view") === "popover";
+  if (!fromQuickPlay && consolePetActionIds.has(action as PetActionId)) {
+    emitPetDirectorEvent({ type: "actor.actionRequested", action: action as PetActionId });
+    return { accepted: true };
+  }
+  if (!quickPlayActionIds.has(action as QuickPlayActionId)) {
+    if (!consolePetActionIds.has(action as PetActionId)) return { accepted: false, reason: "invalid" as const };
+    emitPetDirectorEvent({ type: "actor.actionRequested", action: action as PetActionId });
+    return { accepted: true };
+  }
+  const quickAction = action as QuickPlayActionId;
+  if (quickAction === "capture_moment") {
+    void capturePetMoment();
+    return { accepted: true };
+  }
+  if (quickPlaySession.activeAction) return { accepted: false, reason: "active" as const };
+  if (settings.petStory.lockPosition && quickPlayPositionActions.has(quickAction)) return { accepted: false, reason: "locked" as const };
+  beginQuickPlaySession(quickAction as Exclude<QuickPlayActionId, "capture_moment">);
+  emitPetDirectorEvent({ type: "quickPlay.action", action: quickAction });
   return { accepted: true };
 });
 

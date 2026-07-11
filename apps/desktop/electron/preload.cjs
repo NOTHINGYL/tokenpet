@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld("tokenpet", {
   quit: () => ipcRenderer.send("app:quit"),
   togglePopover: () => ipcRenderer.send("pet:toggle-popover"),
   dispatchPetAction: (action) => ipcRenderer.invoke("pet:dispatch-action", action),
+  getQuickPlaySession: () => ipcRenderer.invoke("quick-play:get-session"),
+  onQuickPlaySessionChanged: (callback) => {
+    const listener = (_event, session) => callback(session);
+    ipcRenderer.on("quick-play:session-changed", listener);
+    return () => ipcRenderer.removeListener("quick-play:session-changed", listener);
+  },
   onPetDirectorEvent: (callback) => {
     const listener = (_event, directorEvent) => callback(directorEvent);
     ipcRenderer.on("pet:director-event", listener);

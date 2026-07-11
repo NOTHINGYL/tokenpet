@@ -49,7 +49,11 @@ test("every ready capability resolves to a same-id production animation", async 
     assert.ok(manifest.animations[animationKey], `${capability.id} cannot claim ready without ${animationKey}`);
   }
   for (const quickPlayId of PET_ACTOR_QUICK_PLAY_ACTION_IDS) {
-    assert.equal(manifest.capabilities.find((entry) => entry.id === quickPlayId)?.status, "ready", `${quickPlayId} should be actor-ready`);
+    const capability = manifest.capabilities.find((entry) => entry.id === quickPlayId);
+    assert.ok(["ready", "fallback"].includes(capability?.status), `${quickPlayId} should resolve through the actor bundle`);
+    if (capability.status === "fallback") {
+      assert.equal(manifest.capabilities.find((entry) => entry.id === capability.fallbackId)?.status, "ready", `${quickPlayId} fallback must terminate at a ready actor state`);
+    }
   }
 });
 

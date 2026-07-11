@@ -38,7 +38,7 @@ function interactionAllowed(event: PetDirectorEvent, story: typeof defaultPetSto
   if (event.type === "pointer.dragStart") return story.interactionRules.drag;
   if (event.type === "pointer.drop") return story.interactionRules.drop;
   if (event.type === "quickPlay.action" || event.type === "actor.actionRequested") {
-    if (event.action === "click_purr") return story.interactionRules.click;
+    if (event.action === "click_purr" || event.action === "walk_round_trip") return story.interactionRules.click;
     if (event.action === "drag_dangle") return story.interactionRules.drag;
     if (event.action === "token_snack") return story.interactionRules.feed;
     if (event.action === "play_cursor" || event.action === "toss_yarn") return story.interactionRules.cursor;

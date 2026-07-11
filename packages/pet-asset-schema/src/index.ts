@@ -24,10 +24,12 @@ export const PET_ACTOR_ACTION_IDS = [
   "token_snack",
   "play_cursor",
   "run_across",
+  "walk_round_trip",
   "toss_yarn",
   "nap_here",
   "wake_up",
   "summon_to_screen",
+  "summon_to_pointer",
   "capture_moment",
   "milestone_celebrate",
   "level_up",
@@ -39,14 +41,14 @@ export const PET_ACTOR_ACTION_IDS = [
 export type PetActorActionId = (typeof PET_ACTOR_ACTION_IDS)[number];
 
 export const PET_ACTOR_QUICK_PLAY_ACTION_IDS = [
-  "click_purr",
+  "walk_round_trip",
   "token_snack",
   "play_cursor",
   "drag_dangle",
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_screen",
+  "summon_to_pointer",
   "capture_moment",
 ] as const;
 export type QuickPlayActionId = (typeof PET_ACTOR_QUICK_PLAY_ACTION_IDS)[number];

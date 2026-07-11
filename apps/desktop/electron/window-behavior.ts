@@ -39,7 +39,7 @@ export function popoverPositionForBounds(
   popoverBounds: Pick<WindowRectangle, "width" | "height">,
   workArea: WindowRectangle,
   margin = 12,
-  gap = 8,
+  gap = 32,
 ) {
   const minX = workArea.x + margin;
   const maxX = workArea.x + workArea.width - popoverBounds.width - margin;
@@ -58,16 +58,6 @@ export function popoverPositionForBounds(
 
   const candidates = [
     {
-      x: centeredX,
-      y: petBounds.y + petBounds.height + gap,
-      fits: petBounds.y + petBounds.height + gap >= minY && petBounds.y + petBounds.height + gap <= maxY,
-    },
-    {
-      x: centeredX,
-      y: petBounds.y - popoverBounds.height - gap,
-      fits: petBounds.y - popoverBounds.height - gap >= minY && petBounds.y - popoverBounds.height - gap <= maxY,
-    },
-    {
       x: petBounds.x + petBounds.width + gap,
       y: centeredY,
       fits: petBounds.x + petBounds.width + gap >= minX && petBounds.x + petBounds.width + gap <= maxX,
@@ -76,6 +66,16 @@ export function popoverPositionForBounds(
       x: petBounds.x - popoverBounds.width - gap,
       y: centeredY,
       fits: petBounds.x - popoverBounds.width - gap >= minX && petBounds.x - popoverBounds.width - gap <= maxX,
+    },
+    {
+      x: centeredX,
+      y: petBounds.y + petBounds.height + gap,
+      fits: petBounds.y + petBounds.height + gap >= minY && petBounds.y + petBounds.height + gap <= maxY,
+    },
+    {
+      x: centeredX,
+      y: petBounds.y - popoverBounds.height - gap,
+      fits: petBounds.y - popoverBounds.height - gap >= minY && petBounds.y - popoverBounds.height - gap <= maxY,
     },
   ];
   const fittingCandidate = candidates.find((candidate) => candidate.fits);

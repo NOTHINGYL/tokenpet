@@ -5,6 +5,10 @@ const { join } = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { settings: initialSettings, snapshot } = require("./pet-story-screenshot-fixture.cjs");
 
+// Transparent offscreen BrowserWindows can retain stale GPU tiles between state
+// captures. Software compositing makes the visual baselines deterministic.
+app.disableHardwareAcceleration();
+
 const root = join(__dirname, "..");
 const rendererFile = join(root, "dist-renderer/index.html");
 const outputDir = join(root, "docs", "screenshots", "pet-story");
@@ -32,16 +36,27 @@ const qaState = {
 let expectedReduceMotion = initialSettings.petStory.reduceMotion;
 
 const quickPlayIds = [
-  "click_purr",
+  "walk_round_trip",
   "token_snack",
   "play_cursor",
   "drag_dangle",
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_screen",
+  "summon_to_pointer",
   "capture_moment",
 ];
+const emptyQuickPlaySession = {
+  activeAction: null,
+  startedAt: null,
+  startBounds: null,
+  startDirectorState: null,
+  pointerMode: "none",
+};
+let quickPlaySession = clone(emptyQuickPlaySession);
+let suppressQuickPlayDirector = false;
+const quickPlayPositionActions = new Set(["walk_round_trip", "token_snack", "drag_dangle", "toss_yarn", "summon_to_pointer"]);
+const consolePetActionIds = new Set(["click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_screen", "capture_moment"]);
 
 const coreActorStateIds = [
   "idle_breathe",
@@ -100,7 +115,9 @@ function resetFixtureSettings() {
   for (const key of Object.keys(settings)) delete settings[key];
   Object.assign(settings, clone(initialSettings));
   expectedReduceMotion = settings.petStory.reduceMotion;
+  quickPlaySession = clone(emptyQuickPlaySession);
   broadcast("qa:settings-updated", settings);
+  broadcast("qa:quick-play-session-changed", quickPlaySession);
 }
 
 function registerFixtureBridge() {
@@ -114,10 +131,43 @@ function registerFixtureBridge() {
     return clone(settings);
   });
   ipcMain.handle("qa:get-state", () => ({ qaState: clone(qaState), settings: clone(settings) }));
-  ipcMain.handle("qa:dispatch-action", (_event, action) => {
-    if (!quickPlayIds.includes(action)) return { accepted: false };
+  ipcMain.handle("qa:get-quick-play-session", () => clone(quickPlaySession));
+  ipcMain.handle("qa:set-quick-play-session", (_event, session) => {
+    quickPlaySession = clone({ ...emptyQuickPlaySession, ...session });
+    broadcast("qa:quick-play-session-changed", quickPlaySession);
+    return clone(quickPlaySession);
+  });
+  ipcMain.handle("qa:set-quick-play-director-suppressed", (_event, suppressed) => {
+    suppressQuickPlayDirector = Boolean(suppressed);
+    return suppressQuickPlayDirector;
+  });
+  ipcMain.handle("qa:dispatch-action", (event, action) => {
+    const fromQuickPlay = new URL(event.sender.getURL()).searchParams.get("view") === "popover";
+    if (!fromQuickPlay && consolePetActionIds.has(action)) {
+      qaState.actions.push(action);
+      broadcast("qa:director-event", { type: "actor.actionRequested", action });
+      return { accepted: true };
+    }
+    if (!quickPlayIds.includes(action)) {
+      if (!consolePetActionIds.has(action)) return { accepted: false };
+      qaState.actions.push(action);
+      broadcast("qa:director-event", { type: "actor.actionRequested", action });
+      return { accepted: true };
+    }
+    if (action !== "capture_moment" && quickPlaySession.activeAction) return { accepted: false, reason: "active" };
+    if (settings.petStory.lockPosition && quickPlayPositionActions.has(action)) return { accepted: false, reason: "locked" };
     qaState.actions.push(action);
-    broadcast("qa:director-event", { type: "quickPlay.action", action });
+    if (action === "capture_moment") qaState.captures += 1;
+    if (action !== "capture_moment") {
+      quickPlaySession = {
+        ...emptyQuickPlaySession,
+        activeAction: action,
+        startedAt: Date.now(),
+        pointerMode: action === "token_snack" ? "snack" : action === "drag_dangle" ? "dangle" : action === "toss_yarn" ? "yarn" : "none",
+      };
+      broadcast("qa:quick-play-session-changed", quickPlaySession);
+      if (!suppressQuickPlayDirector) broadcast("qa:director-event", { type: "quickPlay.action", action });
+    }
     return { accepted: true };
   });
   ipcMain.handle("qa:summon", () => {
@@ -639,58 +689,114 @@ async function verifyDesktopPet() {
 }
 
 async function verifyQuickPlay() {
-  const window = createWindow({ width: 405, height: 480, transparent: true });
+  resetFixtureSettings();
+  const window = createWindow({ width: 405, height: 697, transparent: true });
   await load(window, "popover");
   await waitForSelector(window, "[data-testid=quick-play-panel]");
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlayDirectorSuppressed(true));
 
   const structure = await evaluate(window, () => {
     const panel = document.querySelector("[data-testid=quick-play-panel]");
     const actionButtons = [...document.querySelectorAll("[data-action-id]")];
     const bodyText = document.body.innerText;
+    const actionRects = actionButtons.map((button) => {
+      const rect = button.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    });
+    const controls = [...document.querySelectorAll(".quick-control-copy strong")].map((node) => node.textContent);
+    const orderedAnchors = [".quick-play-header", ".quick-action-grid", ".quick-controls-card", ".quick-footer"].map((selector) => document.querySelector(selector).getBoundingClientRect().top);
     return {
       ids: actionButtons.map((button) => button.dataset.actionId),
       disabled: actionButtons.filter((button) => button.disabled).map((button) => button.dataset.actionId),
+      controls,
+      actionRects,
+      orderedAnchors,
+      title: document.querySelector("h1")?.textContent,
+      subtitle: document.querySelector(".quick-play-heading p")?.textContent,
+      helper: document.querySelector("[data-action-id=play_cursor] small")?.textContent,
+      icons: document.querySelectorAll("[data-action-icon]").length,
+      closeSize: document.querySelector(".quick-play-close").getBoundingClientRect().width,
+      footerWidth: document.querySelector(".open-console").getBoundingClientRect().width,
+      panelWidth: panel.getBoundingClientRect().width,
       repeatedPreview: Boolean(document.querySelector(".pet-appearance-visual, .pet-generated-actor-canvas, .cat-image")),
-      forbiddenAnalytics: ["Today", "7-day", "7 days", "All-time tokens", "Source status", "Codex", "Claude Code"].filter((label) => bodyText.includes(label)),
+      forbiddenContent: ["TokenPet", "All good", "Mood", "Loop", "Play Mode", "Mini Toys", "Last interaction", "Follow cursor", "Reduce motion", "Quiet mode", "Today", "7-day", "All-time tokens", "Source status", "Codex", "Claude Code"].filter((label) => bodyText.includes(label)),
       clientHeight: panel.clientHeight,
       scrollHeight: panel.scrollHeight,
       documentHeight: document.documentElement.scrollHeight,
       innerHeight: window.innerHeight,
-      smallestActionLabel: Math.min(...actionButtons.map((button) => Number.parseFloat(getComputedStyle(button.querySelector("span")).fontSize))),
+      smallestActionLabel: Math.min(...actionButtons.map((button) => Number.parseFloat(getComputedStyle(button.querySelector(".quick-action-label")).fontSize))),
     };
   });
-  verify("Quick Play 3×3 actions", structure.ids.length === 9 && quickPlayIds.every((id) => structure.ids.includes(id)), `all nine stable ids are visible: ${structure.ids.join(", ")}`);
-  verify("Quick Play ready actions", structure.disabled.length === 0, "the actor-ready Golden British exposes all nine shipped actions as enabled");
+  verify("Quick Play v18 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or move your companion.", "the compact controller has the normative title and subtitle");
+  verify("Quick Play 3×3 action order", structure.ids.join(",") === quickPlayIds.join(","), `nine stable ids follow the v18 order: ${structure.ids.join(", ")}`);
+  verify("Quick Play cursor helper", structure.helper === "Tracks your cursor for 30 seconds.", "Play cursor includes the exact required helper copy");
+  verify("Quick Play exactly three controls", structure.controls.join(",") === "Always on top,Lock position,Mute pet sounds", `controls are ${structure.controls.join(", ")}`);
+  verify("Quick Play unlocked actions", structure.disabled.length === 0, "all nine Golden British actions are available before dynamic gates");
   verify("Quick Play no repeated preview", !structure.repeatedPreview, "panel contains no duplicate cat preview");
-  verify("Quick Play no analytics duplication", structure.forbiddenAnalytics.length === 0, "panel contains no token-stat cards or source lists");
+  verify("Quick Play no forbidden modules", structure.forbiddenContent.length === 0, `removed v14/dashboard content: ${structure.forbiddenContent.join(", ") || "none present"}`);
+  verify("Quick Play fixed hierarchy", structure.orderedAnchors.every((value, index) => index === 0 || value > structure.orderedAnchors[index - 1]), `header/grid/controls/footer anchors: ${structure.orderedAnchors.join(", ")}`);
+  verify("Quick Play true 3×3 geometry", new Set(structure.actionRects.map((rect) => rect.x)).size === 3 && new Set(structure.actionRects.map((rect) => rect.y)).size === 3, "action cards form three exact columns and rows");
+  verify("Quick Play consistent cards", Math.max(...structure.actionRects.map((rect) => rect.width)) - Math.min(...structure.actionRects.map((rect) => rect.width)) <= 1 && Math.max(...structure.actionRects.map((rect) => rect.height)) - Math.min(...structure.actionRects.map((rect) => rect.height)) <= 1, "all nine action cards share dimensions within 1px");
+  verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic SVG icons rather than platform emoji");
+  verify("Quick Play close target", structure.closeSize >= 36, `close target is ${structure.closeSize}px`);
+  verify("Quick Play footer shelf", structure.footerWidth / structure.panelWidth >= .72 && structure.footerWidth / structure.panelWidth <= .9, `footer is ${Math.round(structure.footerWidth / structure.panelWidth * 100)}% of panel width`);
   verify("Quick Play vertical fit", structure.scrollHeight <= structure.clientHeight + 1 && structure.documentHeight <= structure.innerHeight + 1, `panel ${structure.scrollHeight}/${structure.clientHeight}px; document ${structure.documentHeight}/${structure.innerHeight}px`);
-  verify("Quick Play readable labels", structure.smallestActionLabel >= 9, `smallest action label is ${structure.smallestActionLabel}px CSS (${structure.smallestActionLabel * 2}px at Retina 2×)`);
+  verify("Quick Play readable labels", structure.smallestActionLabel >= 13, `smallest action label is ${structure.smallestActionLabel}px CSS`);
   await verifyNoHorizontalOverflow(window, "Quick Play");
-  await capture(window, "quick-play.png", "Quick Play");
 
-  for (const actionId of quickPlayIds) await click(window, `[data-action-id="${actionId}"]`, `Quick Play ${actionId}`);
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.actions.length >= 9), [], "all Quick Play actions to reach the bridge");
+  await evaluate(window, async () => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petStory", { ...current.petStory, lockPosition: true });
+  });
+  await waitFor(window, () => document.querySelectorAll("[data-lock-mark]").length === 5, [], "Lock position gate");
+  const lockedState = await evaluate(window, () => ({
+    disabled: [...document.querySelectorAll("[data-action-id]:disabled")].map((button) => button.dataset.actionId),
+    enabled: [...document.querySelectorAll("[data-action-id]:not(:disabled)")].map((button) => button.dataset.actionId),
+    detail: document.body.innerText.includes("Movement actions are locked"),
+  }));
+  verify("Quick Play lock position matrix", lockedState.disabled.join(",") === "walk_round_trip,token_snack,drag_dangle,toss_yarn,summon_to_pointer" && lockedState.enabled.join(",") === "play_cursor,nap_here,wake_up,capture_moment", `disabled ${lockedState.disabled.join(", ")}; enabled ${lockedState.enabled.join(", ")}`);
+  verify("Quick Play lock position copy", lockedState.detail, "the controls card explains that movement actions are locked");
+  await capture(window, "quick-play.png", "Quick Play v18 locked reference state");
+
+  await evaluate(window, async () => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petStory", { ...current.petStory, lockPosition: false });
+    await window.tokenpet.setScreenshotQuickPlaySession({ activeAction: "token_snack", startedAt: Date.now(), pointerMode: "snack" });
+  });
+  await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 8, [], "active action mutex UI");
+  const activeState = await evaluate(window, async () => ({
+    disabled: [...document.querySelectorAll("[data-action-id]:disabled")].map((button) => button.dataset.actionId),
+    enabled: [...document.querySelectorAll("[data-action-id]:not(:disabled)")].map((button) => button.dataset.actionId),
+    session: await window.tokenpet.getQuickPlaySession(),
+  }));
+  verify("Quick Play exclusive action matrix", activeState.disabled.length === 8 && activeState.enabled.join(",") === "capture_moment", "only Capture stays enabled during token_snack");
+  await capture(window, "quick-play-active-action.png", "Quick Play active action");
+  await click(window, "[data-action-id=capture_moment]", "Capture during action");
+  await click(window, "[data-action-id=capture_moment]", "Repeat Capture during action");
+  const afterCaptures = await evaluate(window, async () => window.tokenpet.getQuickPlaySession());
+  verify("Quick Play Capture concurrency", afterCaptures.activeAction === activeState.session.activeAction && afterCaptures.startedAt === activeState.session.startedAt, "repeated Capture leaves the exclusive session unchanged");
+
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
+  await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "clear active action fixture");
+  const closeActions = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "summon_to_pointer"]);
+  for (const actionId of quickPlayIds) {
+    await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
+    await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], `reset before ${actionId}`);
+    const before = (await qaStateFor(window)).qaState.closePopoverCalls;
+    await click(window, `[data-action-id="${actionId}"]`, `Quick Play ${actionId}`);
+    await waitFor(window, (minimum) => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.actions.length >= minimum), [(await qaStateFor(window)).qaState.actions.length], `${actionId} dispatch`);
+    const after = (await qaStateFor(window)).qaState.closePopoverCalls;
+    verify(`Quick Play ${actionId} panel rule`, after - before === (closeActions.has(actionId) ? 1 : 0), closeActions.has(actionId) ? "accepted action closes immediately" : "action keeps the panel open");
+  }
   const actionState = await qaStateFor(window);
   verify("Quick Play action dispatch", quickPlayIds.every((id) => actionState.qaState.actions.includes(id)), "every friendly action dispatched its stable id");
-  const lastInteraction = await evaluate(window, () => document.querySelector(".quick-footer strong")?.textContent);
-  verify("Quick Play feedback", lastInteraction === "Capture", "last-interaction feedback updates after an action");
 
-  for (const mode of ["gentle", "balanced", "playful", "focusFriendly"]) await click(window, `[data-play-mode="${mode}"]`, `Play Mode ${mode}`);
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.behaviorMode === "focusFriendly"), [], "Play Mode persistence");
-  record("Quick Play Play Mode", "all four modes are interactive and the selected mode reaches persisted settings");
-
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
   const controlBefore = await evaluate(window, () => [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked));
-  for (let index = 0; index < controlBefore.length; index += 1) {
-    await click(window, `.quick-controls label:nth-child(${index + 1}) input`, `Quick Play control ${index + 1}`);
-    await waitFor(window, (controlIndex, previous) => {
-      const input = document.querySelectorAll(".quick-controls input")[controlIndex];
-      return Boolean(input) && input.checked !== previous;
-    }, [index, controlBefore[index]], `Quick Play control ${index + 1} rerender`);
-  }
+  for (let index = 0; index < controlBefore.length; index += 1) await click(window, `.quick-controls label:nth-child(${index + 1})`, `Quick Play control ${index + 1}`);
   const controlAfter = await evaluate(window, () => [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked));
   const toggledControls = { before: controlBefore, after: controlAfter, count: controlAfter.length };
-  verify("Quick Play controls", toggledControls.count === 5 && toggledControls.before.every((value, index) => toggledControls.after[index] !== value), "all five control toggles change state");
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.setSettingCalls.length >= 9), [], "Quick Play control settings bridge");
+  verify("Quick Play controls", toggledControls.count === 3 && toggledControls.before.every((value, index) => toggledControls.after[index] !== value), "exactly three v18 controls change state");
 
   await click(window, ".open-console", "Open Console");
   await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.openConsoleCalls.includes("pet")), [], "Open Console bridge");
@@ -699,15 +805,17 @@ async function verifyQuickPlay() {
   await window.reload();
   await waitForSelector(window, "[data-testid=quick-play-panel]");
   await waitFor(window, (expectedControls) => {
-    const modeReady = document.querySelector("[data-play-mode=focusFriendly]")?.getAttribute("aria-pressed") === "true";
     const controls = [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked);
-    return modeReady && controls.join(",") === expectedControls.join(",");
+    return controls.join(",") === expectedControls.join(",");
   }, [toggledControls.after], "Quick Play persisted settings hydration");
   const persisted = await evaluate(window, () => ({
-    mode: document.querySelector("[data-play-mode=focusFriendly]")?.getAttribute("aria-pressed"),
     controls: [...document.querySelectorAll(".quick-controls input")].map((input) => input.checked),
   }));
-  verify("Quick Play reload persistence", persisted.mode === "true" && persisted.controls.join(",") === toggledControls.after.join(","), "Play Mode and all controls survive a renderer reload through the settings bridge");
+  verify("Quick Play reload persistence", persisted.controls.join(",") === toggledControls.after.join(","), "all three controls survive a renderer reload through the settings bridge");
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlayDirectorSuppressed(false));
+  resetFixtureSettings();
+  await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "final unlocked Quick Play state");
+  await capture(window, "quick-play-unlocked.png", "Quick Play unlocked");
   return window;
 }
 
@@ -966,19 +1074,20 @@ async function verifyActions(window, desktopPet) {
   );
   await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => ["click_purr", "drag_dangle", "token_snack", "play_cursor"].every((id) => state.qaState.actions.includes(id))), [], "Actions shared Quick Play dispatches");
 
+  await delay(1_800);
   await click(window, "[data-actor-state=focus_loop]", "Actions focus_loop return baseline");
   await waitForDesktopActorState(desktopPet, "focus_loop");
   await click(window, "[data-actor-state=click_purr]", "Actions click_purr one-shot lifecycle");
   await waitForDesktopActorState(desktopPet, "click_purr");
   await delay(1_300);
-  const clickReturn = await waitForDesktopActorState(desktopPet, "focus_loop");
-  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === "focus_loop", "click_purr visibly plays in the desktop PetApp and then returns to its prior focus loop");
+  const clickReturn = await waitForDesktopActorState(desktopPet, "sleep_loop");
+  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === "sleep_loop", "click_purr visibly plays in the desktop PetApp and then returns to the director-selected nighttime loop");
 
   await click(window, "[data-actor-state=overdrive_loop]", "Actions overdrive bounded lifecycle");
   await waitForDesktopActorState(desktopPet, "overdrive_loop");
   await delay(3_000);
-  const overdriveReturn = await waitForDesktopActorState(desktopPet, "focus_loop");
-  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === "focus_loop", "the intense overdrive state exits back to the prior focus loop instead of becoming a permanent image/transform");
+  const overdriveReturn = await waitForDesktopActorState(desktopPet, "sleep_loop");
+  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === "sleep_loop", "the intense overdrive state exits back to the director-selected nighttime loop instead of becoming permanent");
 
   const beforeToggle = await qaStateFor(window);
   expectedReduceMotion = !beforeToggle.settings.petStory.reduceMotion;
@@ -1097,8 +1206,8 @@ async function run() {
   await verifyConsole(desktopPet);
 
   const finalState = clone(qaState);
-  verify("Quick Play summon side effect", finalState.summons >= 1, "summon action reached the desktop pet bridge");
-  verify("Quick Play capture side effect", finalState.captures >= 1, "capture action reached the desktop pet bridge");
+  verify("Quick Play summon command", finalState.actions.includes("summon_to_pointer"), "Summon dispatched the v18 stable pointer-target action id");
+  verify("Quick Play capture side effect", finalState.captures >= 2, "repeatable Capture bypassed the exclusive actor action path");
   report.bridgeSummary = {
     ...finalState,
     setSettingCalls: {

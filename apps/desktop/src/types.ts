@@ -218,7 +218,7 @@ export type PetActionId =
   | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
   | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor"
   | "run_across" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up"
-  | "settle_down" | "focus_start" | "cool_down" | "summon_to_screen" | "capture_moment";
+  | "settle_down" | "focus_start" | "cool_down" | "walk_round_trip" | "summon_to_screen" | "summon_to_pointer" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";
 export type PetMemoryKind = "firstSource" | "milestone" | "stage" | "dailyDigest";
@@ -273,15 +273,22 @@ export type PetStorySettings = {
 
 export type PetBurnRate = "quiet" | "steady" | "hot" | "overdrive";
 export type QuickPlayActionId =
-  | "click_purr"
+  | "walk_round_trip"
   | "token_snack"
   | "play_cursor"
   | "drag_dangle"
   | "toss_yarn"
   | "nap_here"
   | "wake_up"
-  | "summon_to_screen"
+  | "summon_to_pointer"
   | "capture_moment";
+export type QuickPlaySession = {
+  activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null;
+  startedAt: number | null;
+  startBounds: { x: number; y: number; width: number; height: number } | null;
+  startDirectorState: PetActionId | null;
+  pointerMode: "none" | "snack" | "dangle" | "yarn";
+};
 export type PetDirectorEvent =
   | { type: "actor.actionRequested"; action: PetActionId }
   | { type: "ambient.blink" }
@@ -309,7 +316,9 @@ export type TokenPetBridge = {
   onConsoleNavigation: (callback: (tab: ConsoleTab) => void) => () => void;
   quit: () => void;
   togglePopover: () => void;
-  dispatchPetAction: (action: QuickPlayActionId) => Promise<{ accepted: boolean }>;
+  dispatchPetAction: (action: QuickPlayActionId | PetActionId) => Promise<{ accepted: boolean; reason?: "active" | "locked" | "invalid" }>;
+  getQuickPlaySession: () => Promise<QuickPlaySession>;
+  onQuickPlaySessionChanged: (callback: (session: QuickPlaySession) => void) => () => void;
   onPetDirectorEvent: (callback: (event: PetDirectorEvent) => void) => () => void;
   summonPet: () => Promise<{ moved: boolean }>;
   traversePet: () => Promise<{ moved: boolean; canceled?: boolean }>;

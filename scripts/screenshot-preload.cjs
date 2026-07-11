@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld("tokenpet", {
   quit: () => ipcRenderer.send("qa:quit"),
   togglePopover: () => ipcRenderer.send("qa:toggle-popover"),
   dispatchPetAction: (action) => ipcRenderer.invoke("qa:dispatch-action", action),
+  getQuickPlaySession: () => ipcRenderer.invoke("qa:get-quick-play-session"),
+  onQuickPlaySessionChanged: (callback) => {
+    const listener = (_event, session) => callback(session);
+    ipcRenderer.on("qa:quick-play-session-changed", listener);
+    return () => ipcRenderer.removeListener("qa:quick-play-session-changed", listener);
+  },
   onPetDirectorEvent: (callback) => {
     const listener = (_event, directorEvent) => callback(directorEvent);
     ipcRenderer.on("qa:director-event", listener);
@@ -36,4 +42,6 @@ contextBridge.exposeInMainWorld("tokenpet", {
   closePopover: () => ipcRenderer.send("qa:close-popover"),
   close: () => ipcRenderer.send("qa:close-pet"),
   getScreenshotQaState: () => ipcRenderer.invoke("qa:get-state"),
+  setScreenshotQuickPlaySession: (session) => ipcRenderer.invoke("qa:set-quick-play-session", session),
+  setScreenshotQuickPlayDirectorSuppressed: (suppressed) => ipcRenderer.invoke("qa:set-quick-play-director-suppressed", suppressed),
 });

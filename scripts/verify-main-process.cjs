@@ -16,6 +16,7 @@ const goldenActorManifest = JSON.parse(readFileSync(join(goldenActorRoot, "actor
 
 mkdirSync(userDataPath, { recursive: true });
 mkdirSync(picturesPath, { recursive: true });
+writeFileSync(join(userDataPath, "settings.json"), `${JSON.stringify({ petVisible: false }, null, 2)}\n`);
 process.env.TOKENPET_MAIN_PROCESS_QA = "1";
 process.env.TOKENPET_MAIN_PROCESS_QA_CAPTURE_PATH = capturePath;
 process.env.HOME = temporaryRoot;
@@ -27,7 +28,7 @@ app.commandLine.appendSwitch("disable-renderer-backgrounding");
 
 const report = {
   generatedAt: new Date().toISOString(),
-  environment: "isolated temporary userData with synthetic/default settings; local usage loading disabled",
+  environment: "isolated temporary userData seeded with petVisible=false to verify launch migration; local usage loading disabled",
   checks: [],
   failure: null,
 };
@@ -152,6 +153,12 @@ function boundsFitWorkArea(bounds, workArea) {
 function rectanglesOverlap(left, right) {
   return Math.min(left.x + left.width, right.x + right.width) > Math.max(left.x, right.x)
     && Math.min(left.y + left.height, right.y + right.height) > Math.max(left.y, right.y);
+}
+
+function rectangleClearance(left, right) {
+  const horizontal = Math.max(left.x - (right.x + right.width), right.x - (left.x + left.width), 0);
+  const vertical = Math.max(left.y - (right.y + right.height), right.y - (left.y + left.height), 0);
+  return Math.hypot(horizontal, vertical);
 }
 
 function pointDistanceFromRect(x, y, rect, scale = { x: 1, y: 1 }) {
@@ -298,6 +305,29 @@ async function run() {
   let pet = await waitForWindow(qa, "pet");
   await waitForDom(pet, ".pet-stage");
   await waitForActor(pet);
+  await waitFor(() => pet.isVisible(), "default pet visibility");
+  const launchSettingsOnDisk = JSON.parse(readFileSync(join(userDataPath, "settings.json"), "utf8"));
+  verify(
+    "Launch always reveals the pet",
+    qa.getSettings().petVisible === true && launchSettingsOnDisk.petVisible === true && pet.isVisible(),
+    "a stored petVisible=false is reset to visible for every new app launch",
+  );
+  verify(
+    "Pet is attached only to the current workspace",
+    process.platform !== "darwin" || (!pet.isVisibleOnAllWorkspaces() && qa.getWorkspaceRehomeCount() >= 1),
+    `visibleOnAllWorkspaces=${pet.isVisibleOnAllWorkspaces()}; workspace rehomes=${qa.getWorkspaceRehomeCount()}`,
+  );
+  const launchPetId = pet.id;
+  const launchRehomesBeforeSecondInstance = qa.getWorkspaceRehomeCount();
+  qa.simulateSecondInstanceLaunch();
+  verify(
+    "Second launch reuses the current-space pet",
+    safeWindow(qa, "pet")?.id === launchPetId
+      && qa.getSettings().petVisible
+      && qa.getWorkspaceRehomeCount() > launchRehomesBeforeSecondInstance
+      && (process.platform !== "darwin" || !pet.isVisibleOnAllWorkspaces()),
+    "a second launch reveals and re-homes the existing BrowserWindow instead of creating another pet instance",
+  );
   const bridgeReady = await execute(pet, "Boolean(window.tokenpet?.togglePopover && window.tokenpet?.close)");
   verify("actual pet preload bridge", bridgeReady, "the real preload exposes pet window controls");
 
@@ -305,7 +335,11 @@ async function run() {
   let popover = await waitForWindow(qa, "popover");
   await waitForDom(popover, "[data-testid=quick-play-panel]");
   verify("double-click opens independent Quick Play", popover.getParentWindow() === null, `created independent BrowserWindow ${popover.id}`);
-  verify("Quick Play initially avoids pet", !rectanglesOverlap(pet.getBounds(), popover.getBounds()), "independent panel opens outside the desktop pet bounds");
+  verify(
+    "Quick Play initially avoids pet",
+    !rectanglesOverlap(pet.getBounds(), popover.getBounds()) && rectangleClearance(pet.getBounds(), popover.getBounds()) >= 32,
+    `independent panel opens with ${rectangleClearance(pet.getBounds(), popover.getBounds())}px clearance`,
+  );
   const initialPopoverBounds = popover.getBounds();
 
   const petDisplayWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
@@ -318,9 +352,29 @@ async function run() {
   await waitFor(() => JSON.stringify(popover.getBounds()) !== JSON.stringify(initialPopoverBounds) && !rectanglesOverlap(pet.getBounds(), popover.getBounds()), "Quick Play dynamic pet avoidance");
   verify(
     "Quick Play dynamically avoids centered pet",
-    boundsFitWorkArea(popover.getBounds(), petDisplayWorkArea) && !rectanglesOverlap(pet.getBounds(), popover.getBounds()),
+    boundsFitWorkArea(popover.getBounds(), petDisplayWorkArea)
+      && !rectanglesOverlap(pet.getBounds(), popover.getBounds())
+      && rectangleClearance(pet.getBounds(), popover.getBounds()) >= 32,
     `pet ${JSON.stringify(pet.getBounds())}; panel ${JSON.stringify(popover.getBounds())}`,
   );
+
+  const unlockedStory = qa.getSettings().petStory;
+  qa.setSetting("petStory", { ...unlockedStory, lockPosition: true });
+  const lockedDispatch = await execute(popover, "window.tokenpet.dispatchPetAction('walk_round_trip')");
+  verify("Quick Play native lock gate", lockedDispatch.accepted === false && lockedDispatch.reason === "locked" && qa.getQuickPlaySession().activeAction === null, "main process rejects movement actions while Lock position is enabled");
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, lockPosition: false });
+
+  const acceptedCursor = await execute(popover, "window.tokenpet.dispatchPetAction('play_cursor')");
+  const rejectedWake = await execute(popover, "window.tokenpet.dispatchPetAction('wake_up')");
+  verify("Quick Play native action mutex", acceptedCursor.accepted && rejectedWake.accepted === false && rejectedWake.reason === "active" && qa.getQuickPlaySession().activeAction === "play_cursor", "main process atomically accepts one exclusive action and rejects queued actions");
+  await doubleClickPet(pet);
+  await waitForClosed(qa, "popover");
+  await doubleClickPet(pet);
+  popover = await waitForWindow(qa, "popover");
+  await waitForDom(popover, "[data-testid=quick-play-panel]");
+  const reopenedSession = await execute(popover, "window.tokenpet.getQuickPlaySession()");
+  verify("Quick Play reopening preserves action", reopenedSession.activeAction === "play_cursor", "closing and reopening the panel does not cancel the active action");
+  qa.finishQuickPlaySession();
 
   await doubleClickPet(pet);
   await waitForClosed(qa, "popover");
@@ -601,6 +655,7 @@ async function run() {
   verify("Capture restores pet chrome", closeVisibility === "", "the hidden close control is restored after capture");
 
   const petIdBeforeHide = pet.id;
+  const workspaceRehomesBeforeRestore = qa.getWorkspaceRehomeCount();
   const hideTraversalStartX = pet.getBounds().x;
   const hideCanceledTraversal = qa.traversePetAcrossWorkArea();
   await waitFor(() => pet.getBounds().x !== hideTraversalStartX, "traversal before hide cancellation");
@@ -614,7 +669,14 @@ async function run() {
   );
   await execute(consoleWindow, "window.tokenpet.setAppSetting('petVisible', true)");
   await waitFor(() => qa.getSettings().petVisible && pet.isVisible(), "pet restore");
-  verify("Hidden pet restores", pet.id === petIdBeforeHide && pet.isVisible(), "Show pet reuses and reveals the hidden desktop window");
+  verify(
+    "Hidden pet restores on the current workspace",
+    pet.id === petIdBeforeHide
+      && pet.isVisible()
+      && qa.getWorkspaceRehomeCount() > workspaceRehomesBeforeRestore
+      && (process.platform !== "darwin" || !pet.isVisibleOnAllWorkspaces()),
+    "Show pet reuses the hidden window, re-homes it to the active Space, and leaves all-Spaces mode disabled",
+  );
 
   await doubleClickPet(pet);
   popover = await waitForWindow(qa, "popover");

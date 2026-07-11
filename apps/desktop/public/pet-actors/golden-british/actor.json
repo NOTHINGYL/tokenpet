@@ -7,7 +7,7 @@
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "c091a5d51f4dc2dc855b26b1a870e64a8f3203eb5e88dec3a9d9c02cbf2d0319",
+  "contentHash": "05e9b8dfca6273b991857efd8551ee6e3c790505588bb2d6f6184805a757dd9e",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -1925,6 +1925,14 @@
       "runtimeBehavior": "choreography"
     },
     {
+      "id": "walk_round_trip",
+      "status": "fallback",
+      "fallbackId": "run_across",
+      "uiBehavior": "show",
+      "runtimeBehavior": "choreography",
+      "reason": "Uses the approved walk sequence with native round-trip choreography."
+    },
+    {
       "id": "toss_yarn",
       "status": "ready",
       "uiBehavior": "show",
@@ -1947,6 +1955,14 @@
       "status": "ready",
       "uiBehavior": "show",
       "runtimeBehavior": "reposition"
+    },
+    {
+      "id": "summon_to_pointer",
+      "status": "fallback",
+      "fallbackId": "summon_to_screen",
+      "uiBehavior": "show",
+      "runtimeBehavior": "reposition",
+      "reason": "Uses the approved summon pose while native choreography targets the pointer."
     },
     {
       "id": "capture_moment",
@@ -2020,7 +2036,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.1.0-actions",
-    "sourceSpecSha256": "b34ae7bb5c4942a0e3b813fad9a38df1f4a3d7ad03430365d5ae70e50c3ea61b",
+    "sourceSpecSha256": "a52b0e4d689c0bb722ef1a5c4a20825ed3f99bd635513ccd069e9bee38929a17",
     "inputSetSha256": "187e90d1f86f2e28fd7ab9dfadf6742617455f97f6c2b4e6bda9d747ab25a86f"
   }
 }

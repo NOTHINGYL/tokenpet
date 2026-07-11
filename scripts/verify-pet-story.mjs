@@ -10,14 +10,14 @@ const actorDir = dirname(actorPath);
 const manifest = JSON.parse(readFileSync(actorPath, "utf8"));
 
 const quickPlayIds = [
-  "click_purr",
+  "walk_round_trip",
   "token_snack",
   "play_cursor",
   "drag_dangle",
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_screen",
+  "summon_to_pointer",
   "capture_moment",
 ];
 
@@ -145,6 +145,9 @@ function verifyReachableUi() {
   }
   verify("Quick Play no analytics components", !/MetricCard|ProviderStatusRows|Source status|allTimeTokens|sevenDayTokens|todayTokens/u.test(popoverSource), "Quick Play source contains no token-stat or source-list implementation");
   verify("Quick Play no duplicate actor preview", !/PetAppearanceVisual|PetRenderer|GeneratedPetActorCanvas/u.test(popoverSource), "Quick Play contains no repeated cat preview");
+  verify("Quick Play v18 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v18 controller modules");
+  verify("Quick Play cursor helper copy", popoverSource.includes("Tracks your cursor for 30 seconds."), "the required 30-second helper is visible in source");
+  verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
 
   const appearanceVisual = read("apps/desktop/src/features/pet-appearance/PetAppearanceVisual.tsx");
   const compositor = read("apps/desktop/src/features/pet-appearance/PetCompositor.tsx");
