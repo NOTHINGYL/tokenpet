@@ -77,8 +77,8 @@ const DEFAULT_SETTINGS: AppSettings = {
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
 
 const POPOVER_SIZE = {
-  width: 405,
-  height: 697,
+  width: 292,
+  height: 492,
 };
 
 const POPOVER_MARGIN = 12;

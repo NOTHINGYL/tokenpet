@@ -9,7 +9,7 @@ TokenPet is a macOS-first desktop companion for local AI coding workflows. It re
 ![TokenPet Pet console](docs/screenshots/pet-story/console-appearance.png)
 
 <p>
-  <img src="docs/screenshots/pet-story/quick-play.png" alt="TokenPet Quick Play remote" width="405" />
+  <img src="docs/screenshots/pet-story/quick-play.png" alt="TokenPet Quick Play remote" width="292" />
   <img src="docs/screenshots/pet-story/desktop-pet.png" alt="TokenPet desktop pet" width="260" />
 </p>
 
@@ -22,7 +22,7 @@ The current integrated release is `v0.8.1`.
 - **Pet Director:** click, drag/drop, token changes, lifecycle events, milestones, and Quick Play actions go through one priority and capability gate.
 - **Real desktop choreography:** Actions includes `run_across`, a 12-step Golden British sequence built from four approved action poses that moves the real pet window safely across the active display; Lock position blocks it and Reduce Motion shortens it.
 - **Ambient story loop:** non-Egg companions wake on startup/new days, blink on deterministic mode-aware intervals, rest at night or after inactivity, and wake again when local activity resumes.
-- **Quick Play:** double-click the pet to open the v18 compact controller: nine stable actions, exactly three pet controls, and one Console command. Lock position gates movement actions, an active action leaves only Capture enabled, closing/reopening never cancels the session, and the 405×697 panel keeps a 32px safety gap from the pet.
+- **Quick Play:** double-click the pet to open the v18 compact controller: nine stable actions, exactly three pet controls, and one Console command. Its 292×492 window contains a complete 280×480 design-faithful panel, so it fits compact Retina work areas without clipping while keeping a 32px safety gap from the pet.
 - **Current-Space launch:** every app launch reveals one pet on the active macOS Space. Re-launching reuses and re-homes the existing instance instead of creating duplicate pets across desktops.
 - **Five Pet pages:** Appearance, Actions, Mood & Reactions, Sound Cues, and Journey, plus Cat Type, Mood Looks, and Accessories subpages.
 - **Local story state:** behavior, thresholds, sound cues, safety controls, Journey, memories, milestones, position, and appearance persist locally.

@@ -440,14 +440,14 @@ verify("desktop window placement, safe bounds and PNG contract", () => {
   assert.deepEqual(
     windowBehavior.popoverPositionForBounds(
       { x: -320, y: -300, width: 260, height: 260 },
-      { width: 405, height: 697 },
+      { width: 292, height: 492 },
       workArea,
     ),
-    { x: -757, y: -709 },
+    { x: -644, y: -504 },
   );
 
   const standardWorkArea = { x: 0, y: 0, width: 1512, height: 869 };
-  const popover = { width: 405, height: 697 };
+  const popover = { width: 292, height: 492 };
   const overlapArea = (pet, position) => {
     const width = Math.max(0, Math.min(pet.x + pet.width, position.x + popover.width) - Math.max(pet.x, position.x));
     const height = Math.max(0, Math.min(pet.y + pet.height, position.y + popover.height) - Math.max(pet.y, position.y));
@@ -464,7 +464,7 @@ verify("desktop window placement, safe bounds and PNG contract", () => {
     && bounds.y + bounds.height <= area.y + area.height;
   const centeredPet = { x: 626, y: 305, width: 260, height: 260 };
   const centeredPosition = windowBehavior.popoverPositionForBounds(centeredPet, popover, standardWorkArea);
-  assert.deepEqual(centeredPosition, { x: 918, y: 87 });
+  assert.deepEqual(centeredPosition, { x: 918, y: 189 });
   assert.equal(overlapArea(centeredPet, centeredPosition), 0, "a vertically centered pet must push Quick Play to its side");
   assert.ok(clearance(centeredPet, centeredPosition) >= 32, "Quick Play keeps a visible safety gap from a centered pet");
 
@@ -476,7 +476,7 @@ verify("desktop window placement, safe bounds and PNG contract", () => {
 
   const rightPet = { x: 1240, y: 305, width: 260, height: 260 };
   const rightPosition = windowBehavior.popoverPositionForBounds(rightPet, popover, standardWorkArea);
-  assert.deepEqual(rightPosition, { x: 803, y: 87 });
+  assert.deepEqual(rightPosition, { x: 916, y: 189 });
   assert.equal(overlapArea(rightPet, rightPosition), 0, "a right-edge pet must place Quick Play to its left");
   assert.ok(clearance(rightPet, rightPosition) >= 32, "Quick Play keeps a visible safety gap from a right-edge pet");
 

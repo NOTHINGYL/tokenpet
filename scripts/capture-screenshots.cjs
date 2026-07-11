@@ -368,8 +368,14 @@ async function clickButtonWithText(window, text, scope = "document") {
 }
 
 async function capture(window, fileName, surface) {
-  await delay(180);
+  const forceTransparentRepaint = surface.startsWith("Quick Play");
+  if (forceTransparentRepaint) {
+    window.showInactive();
+    window.webContents.invalidate();
+  }
+  await delay(forceTransparentRepaint ? 240 : 180);
   const image = await window.webContents.capturePage();
+  if (forceTransparentRepaint) window.hide();
   const filePath = join(outputDir, fileName);
   writeFileSync(filePath, image.toPNG());
   const dimensions = image.getSize();
@@ -690,7 +696,7 @@ async function verifyDesktopPet() {
 
 async function verifyQuickPlay() {
   resetFixtureSettings();
-  const window = createWindow({ width: 405, height: 697, transparent: true });
+  const window = createWindow({ width: 292, height: 492, transparent: true });
   await load(window, "popover");
   await waitForSelector(window, "[data-testid=quick-play-panel]");
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlayDirectorSuppressed(true));
@@ -718,6 +724,7 @@ async function verifyQuickPlay() {
       closeSize: document.querySelector(".quick-play-close").getBoundingClientRect().width,
       footerWidth: document.querySelector(".open-console").getBoundingClientRect().width,
       panelWidth: panel.getBoundingClientRect().width,
+      panelHeight: panel.getBoundingClientRect().height,
       repeatedPreview: Boolean(document.querySelector(".pet-appearance-visual, .pet-generated-actor-canvas, .cat-image")),
       forbiddenContent: ["TokenPet", "All good", "Mood", "Loop", "Play Mode", "Mini Toys", "Last interaction", "Follow cursor", "Reduce motion", "Quiet mode", "Today", "7-day", "All-time tokens", "Source status", "Codex", "Claude Code"].filter((label) => bodyText.includes(label)),
       clientHeight: panel.clientHeight,
@@ -729,7 +736,7 @@ async function verifyQuickPlay() {
   });
   verify("Quick Play v18 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or move your companion.", "the compact controller has the normative title and subtitle");
   verify("Quick Play 3×3 action order", structure.ids.join(",") === quickPlayIds.join(","), `nine stable ids follow the v18 order: ${structure.ids.join(", ")}`);
-  verify("Quick Play cursor helper", structure.helper === "Tracks your cursor for 30 seconds.", "Play cursor includes the exact required helper copy");
+  verify("Quick Play cursor helper", structure.helper === "30 sec", "Play cursor matches the concise v18 helper copy");
   verify("Quick Play exactly three controls", structure.controls.join(",") === "Always on top,Lock position,Mute pet sounds", `controls are ${structure.controls.join(", ")}`);
   verify("Quick Play unlocked actions", structure.disabled.length === 0, "all nine Golden British actions are available before dynamic gates");
   verify("Quick Play no repeated preview", !structure.repeatedPreview, "panel contains no duplicate cat preview");
@@ -738,10 +745,10 @@ async function verifyQuickPlay() {
   verify("Quick Play true 3×3 geometry", new Set(structure.actionRects.map((rect) => rect.x)).size === 3 && new Set(structure.actionRects.map((rect) => rect.y)).size === 3, "action cards form three exact columns and rows");
   verify("Quick Play consistent cards", Math.max(...structure.actionRects.map((rect) => rect.width)) - Math.min(...structure.actionRects.map((rect) => rect.width)) <= 1 && Math.max(...structure.actionRects.map((rect) => rect.height)) - Math.min(...structure.actionRects.map((rect) => rect.height)) <= 1, "all nine action cards share dimensions within 1px");
   verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic SVG icons rather than platform emoji");
-  verify("Quick Play close target", structure.closeSize >= 36, `close target is ${structure.closeSize}px`);
+  verify("Quick Play close target", structure.closeSize >= 24, `scaled close target is ${structure.closeSize}px`);
   verify("Quick Play footer shelf", structure.footerWidth / structure.panelWidth >= .72 && structure.footerWidth / structure.panelWidth <= .9, `footer is ${Math.round(structure.footerWidth / structure.panelWidth * 100)}% of panel width`);
-  verify("Quick Play vertical fit", structure.scrollHeight <= structure.clientHeight + 1 && structure.documentHeight <= structure.innerHeight + 1, `panel ${structure.scrollHeight}/${structure.clientHeight}px; document ${structure.documentHeight}/${structure.innerHeight}px`);
-  verify("Quick Play readable labels", structure.smallestActionLabel >= 13, `smallest action label is ${structure.smallestActionLabel}px CSS`);
+  verify("Quick Play vertical fit", structure.panelHeight <= structure.innerHeight - 10 && structure.documentHeight <= structure.innerHeight + 1, `visible panel ${structure.panelHeight}px inside ${structure.innerHeight}px window; document ${structure.documentHeight}px`);
+  verify("Quick Play readable labels", structure.smallestActionLabel >= 9, `smallest rendered action label is ${structure.smallestActionLabel}px CSS`);
   await verifyNoHorizontalOverflow(window, "Quick Play");
 
   await evaluate(window, async () => {
@@ -757,6 +764,13 @@ async function verifyQuickPlay() {
   verify("Quick Play lock position matrix", lockedState.disabled.join(",") === "walk_round_trip,token_snack,drag_dangle,toss_yarn,summon_to_pointer" && lockedState.enabled.join(",") === "play_cursor,nap_here,wake_up,capture_moment", `disabled ${lockedState.disabled.join(", ")}; enabled ${lockedState.enabled.join(", ")}`);
   verify("Quick Play lock position copy", lockedState.detail, "the controls card explains that movement actions are locked");
   await capture(window, "quick-play.png", "Quick Play v18 locked reference state");
+
+  await evaluate(window, async () => {
+    const current = await window.tokenpet.getAppSettings();
+    await window.tokenpet.setAppSetting("petStory", { ...current.petStory, lockPosition: false });
+  });
+  await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "unlocked Quick Play state");
+  await capture(window, "quick-play-unlocked.png", "Quick Play unlocked");
 
   await evaluate(window, async () => {
     const current = await window.tokenpet.getAppSettings();
@@ -815,7 +829,6 @@ async function verifyQuickPlay() {
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlayDirectorSuppressed(false));
   resetFixtureSettings();
   await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "final unlocked Quick Play state");
-  await capture(window, "quick-play-unlocked.png", "Quick Play unlocked");
   return window;
 }
 

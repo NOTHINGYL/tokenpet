@@ -570,7 +570,12 @@ async function run() {
       && boundsFitWorkArea(normalTraversalFinal, traversalWorkArea),
     `Console lastAction ${memoryRequest.id}/${memoryRequest.nonce} traversed in ${normalTraversalElapsed}ms via Pet renderer Director/preload to ${JSON.stringify(normalTraversalFinal)}`,
   );
-  const traversalPositionOnDisk = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
+  const traversalPositionPath = join(userDataPath, "pet-position.json");
+  await waitFor(() => {
+    if (!existsSync(traversalPositionPath)) return false;
+    return JSON.stringify(JSON.parse(readFileSync(traversalPositionPath, "utf8"))) === JSON.stringify(normalTraversalFinal);
+  }, "native traversal persistence flush");
+  const traversalPositionOnDisk = JSON.parse(readFileSync(traversalPositionPath, "utf8"));
   verify("Native traversal persists final bounds", JSON.stringify(traversalPositionOnDisk) === JSON.stringify(normalTraversalFinal), "completed run_across writes the safe opposite-side position");
   qa.setSetting("petStory", { ...qa.getSettings().petStory, lastAction: null });
 
