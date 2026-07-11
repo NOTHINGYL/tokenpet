@@ -6,8 +6,8 @@
 
 .quick-play {
   position: absolute;
-  top: 6px;
-  left: 6px;
+  top: 0;
+  left: 0;
   display: grid;
   grid-template-rows: 42px 234px 105px 34px;
   gap: 8px;
@@ -20,17 +20,8 @@
   background:
     radial-gradient(circle at 50% -20%, rgba(255, 255, 255, .98) 0 48%, transparent 72%),
     linear-gradient(155deg, rgba(255, 254, 250, .985), rgba(255, 255, 255, .98) 58%, rgba(247, 252, 249, .98));
-  box-shadow: 0 19px 48px rgba(15, 29, 52, .2), inset 0 1px rgba(255, 255, 255, .9);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .9);
   backdrop-filter: blur(16px);
-}
-
-.quick-play::before {
-  position: absolute;
-  inset: 3px;
-  z-index: -1;
-  border: 1px solid rgba(255, 255, 255, .78);
-  border-radius: inherit;
-  content: "";
 }
 
 .quick-play-header {

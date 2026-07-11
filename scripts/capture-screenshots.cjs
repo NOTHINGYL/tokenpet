@@ -696,7 +696,7 @@ async function verifyDesktopPet() {
 
 async function verifyQuickPlay() {
   resetFixtureSettings();
-  const window = createWindow({ width: 292, height: 492, transparent: true });
+  const window = createWindow({ width: 280, height: 480, transparent: true, hasShadow: false });
   await load(window, "popover");
   await waitForSelector(window, "[data-testid=quick-play-panel]");
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlayDirectorSuppressed(true));
@@ -725,6 +725,10 @@ async function verifyQuickPlay() {
       footerWidth: document.querySelector(".open-console").getBoundingClientRect().width,
       panelWidth: panel.getBoundingClientRect().width,
       panelHeight: panel.getBoundingClientRect().height,
+      panelLeft: panel.getBoundingClientRect().left,
+      panelTop: panel.getBoundingClientRect().top,
+      panelBeforeContent: getComputedStyle(panel, "::before").content,
+      panelShadow: getComputedStyle(panel).boxShadow,
       repeatedPreview: Boolean(document.querySelector(".pet-appearance-visual, .pet-generated-actor-canvas, .cat-image")),
       forbiddenContent: ["TokenPet", "All good", "Mood", "Loop", "Play Mode", "Mini Toys", "Last interaction", "Follow cursor", "Reduce motion", "Quiet mode", "Today", "7-day", "All-time tokens", "Source status", "Codex", "Claude Code"].filter((label) => bodyText.includes(label)),
       clientHeight: panel.clientHeight,
@@ -747,7 +751,8 @@ async function verifyQuickPlay() {
   verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic SVG icons rather than platform emoji");
   verify("Quick Play close target", structure.closeSize >= 24, `scaled close target is ${structure.closeSize}px`);
   verify("Quick Play footer shelf", structure.footerWidth / structure.panelWidth >= .72 && structure.footerWidth / structure.panelWidth <= .9, `footer is ${Math.round(structure.footerWidth / structure.panelWidth * 100)}% of panel width`);
-  verify("Quick Play vertical fit", structure.panelHeight <= structure.innerHeight - 10 && structure.documentHeight <= structure.innerHeight + 1, `visible panel ${structure.panelHeight}px inside ${structure.innerHeight}px window; document ${structure.documentHeight}px`);
+  verify("Quick Play clean single frame", structure.panelLeft === 0 && structure.panelTop === 0 && structure.panelBeforeContent === "none" && structure.panelShadow.endsWith("inset") && !structure.panelShadow.includes("48px"), `panel fills the window at ${structure.panelLeft},${structure.panelTop}; pseudo-frame ${structure.panelBeforeContent}; shadow ${structure.panelShadow}`);
+  verify("Quick Play vertical fit", structure.panelHeight <= structure.innerHeight && structure.documentHeight <= structure.innerHeight + 1, `visible panel ${structure.panelHeight}px inside ${structure.innerHeight}px window; document ${structure.documentHeight}px`);
   verify("Quick Play readable labels", structure.smallestActionLabel >= 9, `smallest rendered action label is ${structure.smallestActionLabel}px CSS`);
   await verifyNoHorizontalOverflow(window, "Quick Play");
 

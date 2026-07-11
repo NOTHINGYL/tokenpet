@@ -334,11 +334,14 @@ async function run() {
   await doubleClickPet(pet);
   let popover = await waitForWindow(qa, "popover");
   await waitForDom(popover, "[data-testid=quick-play-panel]");
-  verify("double-click opens independent Quick Play", popover.getParentWindow() === null, `created independent BrowserWindow ${popover.id}`);
+  verify("double-click opens independent clean Quick Play", popover.getParentWindow() === null && popover.hasShadow() === false, `created independent shadowless BrowserWindow ${popover.id}`);
+  let visiblePetBounds = qa.getPetPopoverAnchorBounds();
   verify(
     "Quick Play initially avoids pet",
-    !rectanglesOverlap(pet.getBounds(), popover.getBounds()) && rectangleClearance(pet.getBounds(), popover.getBounds()) >= 32,
-    `independent panel opens with ${rectangleClearance(pet.getBounds(), popover.getBounds())}px clearance`,
+    visiblePetBounds
+      && !rectanglesOverlap(visiblePetBounds, popover.getBounds())
+      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 14,
+    `independent panel opens with ${rectangleClearance(visiblePetBounds, popover.getBounds())}px clearance from visible pet bounds`,
   );
   const initialPopoverBounds = popover.getBounds();
 
@@ -349,13 +352,18 @@ async function run() {
     y: petDisplayWorkArea.y + Math.round((petDisplayWorkArea.height - pet.getBounds().height) / 2),
   };
   pet.setBounds(centeredPetBounds, false);
-  await waitFor(() => JSON.stringify(popover.getBounds()) !== JSON.stringify(initialPopoverBounds) && !rectanglesOverlap(pet.getBounds(), popover.getBounds()), "Quick Play dynamic pet avoidance");
+  await waitFor(() => {
+    visiblePetBounds = qa.getPetPopoverAnchorBounds();
+    return visiblePetBounds
+      && JSON.stringify(popover.getBounds()) !== JSON.stringify(initialPopoverBounds)
+      && !rectanglesOverlap(visiblePetBounds, popover.getBounds());
+  }, "Quick Play dynamic pet avoidance");
   verify(
     "Quick Play dynamically avoids centered pet",
     boundsFitWorkArea(popover.getBounds(), petDisplayWorkArea)
-      && !rectanglesOverlap(pet.getBounds(), popover.getBounds())
-      && rectangleClearance(pet.getBounds(), popover.getBounds()) >= 32,
-    `pet ${JSON.stringify(pet.getBounds())}; panel ${JSON.stringify(popover.getBounds())}`,
+      && !rectanglesOverlap(visiblePetBounds, popover.getBounds())
+      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 14,
+    `pet window ${JSON.stringify(pet.getBounds())}; visible pet ${JSON.stringify(visiblePetBounds)}; panel ${JSON.stringify(popover.getBounds())}`,
   );
 
   const unlockedStory = qa.getSettings().petStory;

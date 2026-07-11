@@ -39,7 +39,7 @@ export function popoverPositionForBounds(
   popoverBounds: Pick<WindowRectangle, "width" | "height">,
   workArea: WindowRectangle,
   margin = 12,
-  gap = 32,
+  gap = 14,
 ) {
   const minX = workArea.x + margin;
   const maxX = workArea.x + workArea.width - popoverBounds.width - margin;
@@ -95,6 +95,43 @@ export function popoverPositionForBounds(
   }));
   clampedCandidates.sort((left, right) => overlapArea(left) - overlapArea(right) || left.index - right.index);
   return { x: clampedCandidates[0].x, y: clampedCandidates[0].y };
+}
+
+type PetVisibleBoundsSample = WindowRectangle & { size: number };
+
+// The desktop pet renderer intentionally uses a fixed 260px transparent window so
+// animated poses never resize the native window. These samples are the measured
+// alpha bounds of the complete desktop companion (cat, mood badge, token pill,
+// and close control) at the three supported size anchors.
+const petVisibleBoundsSamples: PetVisibleBoundsSample[] = [
+  { size: 0.75, x: 73.5, y: 103.5, width: 142, height: 138.5 },
+  { size: 1, x: 57, y: 80.5, width: 179.5, height: 152.5 },
+  { size: 1.25, x: 36, y: 34, width: 221, height: 191.5 },
+];
+
+function interpolate(from: number, to: number, progress: number) {
+  return from + (to - from) * progress;
+}
+
+export function petVisibleBoundsForPopover(petBounds: WindowRectangle, petSize = 1): WindowRectangle {
+  const normalizedSize = clampValue(petSize, 0.75, 1.25);
+  const upperIndex = normalizedSize <= 1 ? 1 : 2;
+  const lower = petVisibleBoundsSamples[upperIndex - 1];
+  const upper = petVisibleBoundsSamples[upperIndex];
+  const progress = (normalizedSize - lower.size) / (upper.size - lower.size);
+  const scaleX = petBounds.width / 260;
+  const scaleY = petBounds.height / 260;
+  const left = interpolate(lower.x, upper.x, progress);
+  const top = interpolate(lower.y, upper.y, progress);
+  const right = interpolate(lower.x + lower.width, upper.x + upper.width, progress);
+  const bottom = interpolate(lower.y + lower.height, upper.y + upper.height, progress);
+  const padding = 2;
+  const x = Math.floor(petBounds.x + (left - padding) * scaleX);
+  const y = Math.floor(petBounds.y + (top - padding) * scaleY);
+  const farX = Math.ceil(petBounds.x + (right + padding) * scaleX);
+  const farY = Math.ceil(petBounds.y + (bottom + padding) * scaleY);
+
+  return { x, y, width: farX - x, height: farY - y };
 }
 
 export function summonBoundsForCursor(

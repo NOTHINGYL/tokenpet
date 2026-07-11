@@ -440,14 +440,17 @@ verify("desktop window placement, safe bounds and PNG contract", () => {
   assert.deepEqual(
     windowBehavior.popoverPositionForBounds(
       { x: -320, y: -300, width: 260, height: 260 },
-      { width: 292, height: 492 },
+      { width: 280, height: 480 },
       workArea,
     ),
-    { x: -644, y: -504 },
+    { x: -614, y: -492 },
   );
 
   const standardWorkArea = { x: 0, y: 0, width: 1512, height: 869 };
-  const popover = { width: 292, height: 492 };
+  const popover = { width: 280, height: 480 };
+  assert.deepEqual(windowBehavior.petVisibleBoundsForPopover({ x: 0, y: 0, width: 260, height: 260 }, 0.75), { x: 71, y: 101, width: 147, height: 143 });
+  assert.deepEqual(windowBehavior.petVisibleBoundsForPopover({ x: 0, y: 0, width: 260, height: 260 }, 1), { x: 55, y: 78, width: 184, height: 157 });
+  assert.deepEqual(windowBehavior.petVisibleBoundsForPopover({ x: 0, y: 0, width: 260, height: 260 }, 1.25), { x: 34, y: 32, width: 225, height: 196 });
   const overlapArea = (pet, position) => {
     const width = Math.max(0, Math.min(pet.x + pet.width, position.x + popover.width) - Math.max(pet.x, position.x));
     const height = Math.max(0, Math.min(pet.y + pet.height, position.y + popover.height) - Math.max(pet.y, position.y));
@@ -463,22 +466,25 @@ verify("desktop window placement, safe bounds and PNG contract", () => {
     && bounds.x + bounds.width <= area.x + area.width
     && bounds.y + bounds.height <= area.y + area.height;
   const centeredPet = { x: 626, y: 305, width: 260, height: 260 };
-  const centeredPosition = windowBehavior.popoverPositionForBounds(centeredPet, popover, standardWorkArea);
-  assert.deepEqual(centeredPosition, { x: 918, y: 189 });
-  assert.equal(overlapArea(centeredPet, centeredPosition), 0, "a vertically centered pet must push Quick Play to its side");
-  assert.ok(clearance(centeredPet, centeredPosition) >= 32, "Quick Play keeps a visible safety gap from a centered pet");
+  const centeredVisiblePet = windowBehavior.petVisibleBoundsForPopover(centeredPet, 1);
+  const centeredPosition = windowBehavior.popoverPositionForBounds(centeredVisiblePet, popover, standardWorkArea, 12, 14);
+  assert.deepEqual(centeredPosition, { x: 879, y: 222 });
+  assert.equal(overlapArea(centeredVisiblePet, centeredPosition), 0, "a vertically centered pet must push Quick Play beside its visible pixels");
+  assert.ok(clearance(centeredVisiblePet, centeredPosition) >= 14, "Quick Play keeps a compact visual gap from a centered pet");
 
   const topPet = { x: 626, y: 12, width: 260, height: 260 };
-  const topPosition = windowBehavior.popoverPositionForBounds(topPet, popover, standardWorkArea);
-  assert.deepEqual(topPosition, { x: 918, y: 12 });
-  assert.equal(overlapArea(topPet, topPosition), 0, "a top-edge pet should still prefer a clear side placement");
-  assert.ok(clearance(topPet, topPosition) >= 32, "Quick Play keeps a visible safety gap from a top-edge pet");
+  const topVisiblePet = windowBehavior.petVisibleBoundsForPopover(topPet, 1);
+  const topPosition = windowBehavior.popoverPositionForBounds(topVisiblePet, popover, standardWorkArea, 12, 14);
+  assert.deepEqual(topPosition, { x: 879, y: 12 });
+  assert.equal(overlapArea(topVisiblePet, topPosition), 0, "a top-edge pet should still prefer a clear side placement");
+  assert.ok(clearance(topVisiblePet, topPosition) >= 14, "Quick Play keeps a compact visual gap from a top-edge pet");
 
   const rightPet = { x: 1240, y: 305, width: 260, height: 260 };
-  const rightPosition = windowBehavior.popoverPositionForBounds(rightPet, popover, standardWorkArea);
-  assert.deepEqual(rightPosition, { x: 916, y: 189 });
-  assert.equal(overlapArea(rightPet, rightPosition), 0, "a right-edge pet must place Quick Play to its left");
-  assert.ok(clearance(rightPet, rightPosition) >= 32, "Quick Play keeps a visible safety gap from a right-edge pet");
+  const rightVisiblePet = windowBehavior.petVisibleBoundsForPopover(rightPet, 1);
+  const rightPosition = windowBehavior.popoverPositionForBounds(rightVisiblePet, popover, standardWorkArea, 12, 14);
+  assert.deepEqual(rightPosition, { x: 1001, y: 222 });
+  assert.equal(overlapArea(rightVisiblePet, rightPosition), 0, "a right-edge pet must place Quick Play to its left");
+  assert.ok(clearance(rightVisiblePet, rightPosition) >= 14, "Quick Play keeps a compact visual gap from a right-edge pet");
 
   const traversalStart = { x: 24, y: 300, width: 260, height: 260 };
   const fullTraversal = windowBehavior.createPetTraversalPlan(traversalStart, standardWorkArea, false);

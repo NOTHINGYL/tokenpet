@@ -13,6 +13,7 @@ import {
   createPetTraversalPlan,
   hasPngSignature,
   petTraversalBoundsAtProgress,
+  petVisibleBoundsForPopover,
   popoverPositionForBounds,
   summonBoundsForCursor,
 } from "./window-behavior.js";
@@ -77,12 +78,12 @@ const DEFAULT_SETTINGS: AppSettings = {
 let settings: AppSettings = { ...DEFAULT_SETTINGS };
 
 const POPOVER_SIZE = {
-  width: 292,
-  height: 492,
+  width: 280,
+  height: 480,
 };
 
 const POPOVER_MARGIN = 12;
-const POPOVER_GAP = 32;
+const POPOVER_GAP = 14;
 
 const MENUBAR_SIZE = {
   width: 500,
@@ -580,7 +581,8 @@ function openConsoleWindow(initialTab: ConsoleTab = "overview") {
 
 function popoverPositionForPet(petBounds: Rectangle, popoverBounds = POPOVER_SIZE) {
   const display = screen.getDisplayMatching(petBounds);
-  return popoverPositionForBounds(petBounds, popoverBounds, display.workArea, POPOVER_MARGIN, POPOVER_GAP);
+  const visiblePetBounds = petVisibleBoundsForPopover(petBounds, settings.petAppearance.size);
+  return popoverPositionForBounds(visiblePetBounds, popoverBounds, display.workArea, POPOVER_MARGIN, POPOVER_GAP);
 }
 
 function positionAccessoryWindows() {
@@ -939,7 +941,7 @@ function createPopoverWindow() {
     frame: false,
     transparent: true,
     resizable: false,
-    hasShadow: true,
+    hasShadow: false,
     alwaysOnTop: true,
     acceptFirstMouse: true,
     skipTaskbar: true,
@@ -1095,6 +1097,10 @@ export const mainProcessQa = {
   },
   getQuickPlaySession() {
     return currentQuickPlaySession();
+  },
+  getPetPopoverAnchorBounds() {
+    if (!isUsableWindow(petWindow)) return null;
+    return petVisibleBoundsForPopover(petWindow.getBounds(), settings.petAppearance.size);
   },
   finishQuickPlaySession() {
     finishQuickPlaySession();
