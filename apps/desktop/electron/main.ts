@@ -8,6 +8,7 @@ import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceField
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
 import {
+  alphaBoundsForBitmap,
   clampBoundsToWorkArea,
   clampValue,
   createPetTraversalPlan,
@@ -43,6 +44,7 @@ let quickPlaySession: QuickPlaySession = {
   pointerMode: "none",
 };
 let quickPlaySessionTimer: NodeJS.Timeout | null = null;
+let petVisibleCaptureBounds: Rectangle | null = null;
 type PetTraversalResult = { moved: boolean; canceled?: boolean };
 type PetTraversalState = {
   window: BrowserWindow;
@@ -83,7 +85,7 @@ const POPOVER_SIZE = {
 };
 
 const POPOVER_MARGIN = 12;
-const POPOVER_GAP = 14;
+const POPOVER_GAP = 6;
 
 const MENUBAR_SIZE = {
   width: 500,
@@ -579,9 +581,45 @@ function openConsoleWindow(initialTab: ConsoleTab = "overview") {
   });
 }
 
-function popoverPositionForPet(petBounds: Rectangle, popoverBounds = POPOVER_SIZE) {
+function currentPetVisibleBounds(petBounds: Rectangle) {
+  if (petVisibleCaptureBounds) {
+    return {
+      x: petBounds.x + petVisibleCaptureBounds.x,
+      y: petBounds.y + petVisibleCaptureBounds.y,
+      width: petVisibleCaptureBounds.width,
+      height: petVisibleCaptureBounds.height,
+    };
+  }
+  return petVisibleBoundsForPopover(petBounds, settings.petAppearance.size);
+}
+
+async function capturePetVisibleBounds(targetWindow: BrowserWindow) {
+  if (!isUsableWindow(targetWindow)) return null;
+  try {
+    const image = await targetWindow.capturePage();
+    const bitmap = image.toBitmap();
+    const logicalSize = image.getSize();
+    const expectedBytes = logicalSize.width * logicalSize.height * 4;
+    const representationScale = expectedBytes > 0 ? Math.sqrt(bitmap.length / expectedBytes) : 1;
+    const pixelWidth = Math.max(1, Math.round(logicalSize.width * representationScale));
+    const pixelHeight = Math.max(1, Math.round(logicalSize.height * representationScale));
+    const relativeBounds = alphaBoundsForBitmap(
+      bitmap,
+      pixelWidth,
+      pixelHeight,
+      targetWindow.getBounds().width,
+      targetWindow.getBounds().height,
+    );
+    if (relativeBounds && petWindow === targetWindow) petVisibleCaptureBounds = relativeBounds;
+    return relativeBounds;
+  } catch (error) {
+    console.warn("[tokenpet] unable to capture visible pet bounds", error);
+    return null;
+  }
+}
+
+function popoverPositionForPet(petBounds: Rectangle, popoverBounds = POPOVER_SIZE, visiblePetBounds = currentPetVisibleBounds(petBounds)) {
   const display = screen.getDisplayMatching(petBounds);
-  const visiblePetBounds = petVisibleBoundsForPopover(petBounds, settings.petAppearance.size);
   return popoverPositionForBounds(visiblePetBounds, popoverBounds, display.workArea, POPOVER_MARGIN, POPOVER_GAP);
 }
 
@@ -900,7 +938,10 @@ function createPetWindow() {
   verifyBridge(createdWindow, "pet");
   createdWindow.webContents.on("did-finish-load", () => {
     flushPendingDirectorEvents();
-    if (petWindow === createdWindow && settings.petVisible) showPetOnCurrentWorkspace(createdWindow);
+    if (petWindow === createdWindow && settings.petVisible) {
+      showPetOnCurrentWorkspace(createdWindow);
+      void capturePetVisibleBounds(createdWindow);
+    }
   });
   void loadWindow(createdWindow, "pet");
 
@@ -916,6 +957,7 @@ function createPetWindow() {
     if (traversalState?.window === createdWindow) cancelPetTraversal();
     if (petWindow === createdWindow) {
       petWindow = null;
+      petVisibleCaptureBounds = null;
       closeUsableWindow(popoverWindow);
       stopDrag();
     }
@@ -945,6 +987,7 @@ function createPopoverWindow() {
     alwaysOnTop: true,
     acceptFirstMouse: true,
     skipTaskbar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -956,13 +999,26 @@ function createPopoverWindow() {
 
   createdWindow.setAlwaysOnTop(true, "floating");
   verifyBridge(createdWindow, "popover");
-  void loadWindow(createdWindow, "popover");
+  void loadWindow(createdWindow, "popover").then(async () => {
+    const targetPet = petWindow;
+    if (isUsableWindow(targetPet)) {
+      const relativeBounds = await capturePetVisibleBounds(targetPet);
+      if (isUsableWindow(createdWindow) && popoverWindow === createdWindow) {
+        const petBounds = targetPet.getBounds();
+        const visiblePetBounds = relativeBounds
+          ? { ...relativeBounds, x: petBounds.x + relativeBounds.x, y: petBounds.y + relativeBounds.y }
+          : currentPetVisibleBounds(petBounds);
+        const position = popoverPositionForPet(petBounds, createdWindow.getBounds(), visiblePetBounds);
+        createdWindow.setPosition(position.x, position.y, false);
+      }
+    }
+    if (isUsableWindow(createdWindow) && popoverWindow === createdWindow) createdWindow.showInactive();
+  });
 
   createdWindow.on("closed", () => {
     if (popoverWindow === createdWindow) popoverWindow = null;
   });
 
-  positionAccessoryWindows();
 }
 
 function togglePopover() {
@@ -1100,7 +1156,7 @@ export const mainProcessQa = {
   },
   getPetPopoverAnchorBounds() {
     if (!isUsableWindow(petWindow)) return null;
-    return petVisibleBoundsForPopover(petWindow.getBounds(), settings.petAppearance.size);
+    return currentPetVisibleBounds(petWindow.getBounds());
   },
   finishQuickPlaySession() {
     finishQuickPlaySession();

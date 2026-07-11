@@ -170,7 +170,10 @@ export function normalizePetStory(value: unknown): PetStorySettings {
       coolDownAfterOverdrive: reactionSource.coolDownAfterOverdrive !== false,
     },
     companionSettings: {
-      keepTinyMenuForm: companionSource.keepTinyMenuForm !== false,
+      // The top-bar companion is part of the permanent product identity. Keep
+      // the stored field for schema compatibility, but migrate legacy false
+      // values back to visible.
+      keepTinyMenuForm: true,
       showMemoryCards: companionSource.showMemoryCards !== false,
       celebrateMilestones: companionSource.celebrateMilestones !== false,
     },

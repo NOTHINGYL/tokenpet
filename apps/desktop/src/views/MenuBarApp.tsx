@@ -73,17 +73,15 @@ export function MenuBarApp() {
           <strong>TokenPet</strong>
           <span className="panel-version">v{APP_VERSION}</span>
           <HealthBadge status={usage.status} loading={loading} error={error} />
-          {settings.petStory.companionSettings.keepTinyMenuForm ? (
-            <div className="menubar-tiny-pet" data-testid="menubar-tiny-pet" aria-label="Tiny TokenPet companion">
-              <PetAppearanceVisual
-                appearance={tinyAppearance}
-                usage={usage}
-                storyActionId="idle_breathe"
-                reduceMotion
-                surface="preview"
-              />
-            </div>
-          ) : null}
+          <div className="menubar-tiny-pet" data-testid="menubar-tiny-pet" aria-label="Tiny TokenPet companion">
+            <PetAppearanceVisual
+              appearance={tinyAppearance}
+              usage={usage}
+              storyActionId="idle_breathe"
+              reduceMotion
+              surface="preview"
+            />
+          </div>
         </div>
         <div className="panel-header-actions">
           <IconButton label="Refresh now" onClick={() => void refresh()} disabled={loading}>

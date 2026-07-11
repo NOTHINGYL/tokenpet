@@ -848,7 +848,7 @@ async function verifyMenuBarTinyPet() {
     fallback: document.querySelectorAll("[data-testid=menubar-tiny-pet] .pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
     quit: Boolean(document.querySelector("button[aria-label='Quit TokenPet']")),
   }));
-  verify("MenuBar tiny companion enabled", visible.tiny === 1 && visible.generated === 1 && visible.fallback === 0, "keepTinyMenuForm=true renders one real generated actor in the menu bar");
+  verify("MenuBar tiny companion enabled", visible.tiny === 1 && visible.generated === 1 && visible.fallback === 0, "the top bar always renders one real generated actor");
   verify("MenuBar explicit quit", visible.quit, "a settings-adjacent Quit TokenPet X is visible while the desktop pet X remains a hide control");
   await capture(window, "menu-bar.png", "Menu Bar");
 
@@ -862,14 +862,15 @@ async function verifyMenuBarTinyPet() {
       },
     });
   });
-  await waitFor(window, () => !document.querySelector("[data-testid=menubar-tiny-pet]"), [], "MenuBar tiny companion to hide");
-  record("MenuBar tiny companion toggle", "keepTinyMenuForm=false removes the tiny actor immediately");
+  await delay(180);
+  const visibleAfterLegacyFalse = await evaluate(window, () => Boolean(document.querySelector("[data-testid=menubar-tiny-pet]")));
+  verify("MenuBar legacy hidden setting migration", visibleAfterLegacyFalse, "a legacy keepTinyMenuForm=false value cannot hide the permanent top-bar companion");
 
   await window.reload();
   await waitForSelector(window, ".menubar-panel");
   await delay(180);
-  const hiddenAfterReload = await evaluate(window, () => !document.querySelector("[data-testid=menubar-tiny-pet]"));
-  verify("MenuBar tiny companion persistence", hiddenAfterReload, "the hidden state survives a renderer reload through persisted settings");
+  const visibleAfterReload = await evaluate(window, () => Boolean(document.querySelector("[data-testid=menubar-tiny-pet]")));
+  verify("MenuBar tiny companion persistence", visibleAfterReload, "the top-bar companion stays visible after a renderer reload");
 }
 
 async function openPetConsole(window) {

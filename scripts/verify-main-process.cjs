@@ -334,13 +334,14 @@ async function run() {
   await doubleClickPet(pet);
   let popover = await waitForWindow(qa, "popover");
   await waitForDom(popover, "[data-testid=quick-play-panel]");
+  await waitFor(() => popover.isVisible(), "captured-pixel-positioned Quick Play visibility");
   verify("double-click opens independent clean Quick Play", popover.getParentWindow() === null && popover.hasShadow() === false, `created independent shadowless BrowserWindow ${popover.id}`);
   let visiblePetBounds = qa.getPetPopoverAnchorBounds();
   verify(
     "Quick Play initially avoids pet",
     visiblePetBounds
       && !rectanglesOverlap(visiblePetBounds, popover.getBounds())
-      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 14,
+      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 6,
     `independent panel opens with ${rectangleClearance(visiblePetBounds, popover.getBounds())}px clearance from visible pet bounds`,
   );
   const initialPopoverBounds = popover.getBounds();
@@ -362,7 +363,7 @@ async function run() {
     "Quick Play dynamically avoids centered pet",
     boundsFitWorkArea(popover.getBounds(), petDisplayWorkArea)
       && !rectanglesOverlap(visiblePetBounds, popover.getBounds())
-      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 14,
+      && rectangleClearance(visiblePetBounds, popover.getBounds()) >= 6,
     `pet window ${JSON.stringify(pet.getBounds())}; visible pet ${JSON.stringify(visiblePetBounds)}; panel ${JSON.stringify(popover.getBounds())}`,
   );
 

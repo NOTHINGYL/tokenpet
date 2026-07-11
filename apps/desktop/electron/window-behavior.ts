@@ -39,7 +39,7 @@ export function popoverPositionForBounds(
   popoverBounds: Pick<WindowRectangle, "width" | "height">,
   workArea: WindowRectangle,
   margin = 12,
-  gap = 14,
+  gap = 6,
 ) {
   const minX = workArea.x + margin;
   const maxX = workArea.x + workArea.width - popoverBounds.width - margin;
@@ -131,6 +131,41 @@ export function petVisibleBoundsForPopover(petBounds: WindowRectangle, petSize =
   const farX = Math.ceil(petBounds.x + (right + padding) * scaleX);
   const farY = Math.ceil(petBounds.y + (bottom + padding) * scaleY);
 
+  return { x, y, width: farX - x, height: farY - y };
+}
+
+export function alphaBoundsForBitmap(
+  bitmap: Uint8Array,
+  pixelWidth: number,
+  pixelHeight: number,
+  logicalWidth: number,
+  logicalHeight: number,
+  alphaThreshold = 24,
+): WindowRectangle | null {
+  if (pixelWidth <= 0 || pixelHeight <= 0 || bitmap.length < pixelWidth * pixelHeight * 4) return null;
+
+  let left = pixelWidth;
+  let top = pixelHeight;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < pixelHeight; y += 1) {
+    for (let x = 0; x < pixelWidth; x += 1) {
+      if (bitmap[(y * pixelWidth + x) * 4 + 3] <= alphaThreshold) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < left || bottom < top) return null;
+
+  const scaleX = logicalWidth / pixelWidth;
+  const scaleY = logicalHeight / pixelHeight;
+  const padding = 2;
+  const x = Math.max(0, Math.floor(left * scaleX) - padding);
+  const y = Math.max(0, Math.floor(top * scaleY) - padding);
+  const farX = Math.min(logicalWidth, Math.ceil((right + 1) * scaleX) + padding);
+  const farY = Math.min(logicalHeight, Math.ceil((bottom + 1) * scaleY) + padding);
   return { x, y, width: farX - x, height: farY - y };
 }
 
