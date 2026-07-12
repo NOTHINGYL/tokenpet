@@ -304,7 +304,7 @@ async function run() {
   const trayIcon = qa.getTrayIconInfo();
   verify(
     "Menu bar pet icon is launch-ready",
-    !trayIcon.empty && trayIcon.size.width > 0 && trayIcon.size.height > 0 && (process.platform !== "darwin" || trayIcon.template),
+    !trayIcon.empty && trayIcon.size.width > 0 && trayIcon.size.height > 0 && !trayIcon.template,
     `icon ${trayIcon.size.width}×${trayIcon.size.height}; template=${trayIcon.template}`,
   );
 

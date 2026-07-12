@@ -354,7 +354,9 @@ function createTrayIcon() {
     const image = nativeImage.createFromPath(assetPath);
     if (!image.isEmpty()) {
       const menuBarImage = image.resize({ height: process.platform === "darwin" ? 18 : 22, quality: "best" });
-      if (process.platform === "darwin") menuBarImage.setTemplateImage(true);
+      // Keep the authored Golden British colors. A macOS template image would
+      // intentionally flatten this artwork to a black/white silhouette.
+      menuBarImage.setTemplateImage(false);
       return menuBarImage;
     }
   }
