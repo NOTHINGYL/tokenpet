@@ -353,7 +353,9 @@ function createTrayIcon() {
   for (const assetPath of assetCandidates) {
     const image = nativeImage.createFromPath(assetPath);
     if (!image.isEmpty()) {
-      return image.resize({ width: 22, quality: "best" });
+      const menuBarImage = image.resize({ height: process.platform === "darwin" ? 18 : 22, quality: "best" });
+      if (process.platform === "darwin") menuBarImage.setTemplateImage(true);
+      return menuBarImage;
     }
   }
 
@@ -411,6 +413,7 @@ async function loadAndPublishUsage(options: { force?: boolean } = {}) {
 }
 
 function createTray() {
+  tray?.destroy();
   tray = new Tray(createTrayIcon());
   updateTray();
 
@@ -1110,11 +1113,19 @@ function startCursorTracking() {
   cursorTrackingTimer.unref();
 }
 
-const hasSingleInstanceLock = isMainProcessQa || app.requestSingleInstanceLock();
+const launchReplacementRequested = process.argv.includes("--tokenpet-replace-running");
+const hasSingleInstanceLock = isMainProcessQa || app.requestSingleInstanceLock({
+  replaceForLaunch: launchReplacementRequested,
+});
 if (!hasSingleInstanceLock) {
-  app.quit();
+  if (launchReplacementRequested) app.exit(75);
+  else app.quit();
 } else if (!isMainProcessQa) {
-  app.on("second-instance", () => {
+  app.on("second-instance", (_event, _argv, _workingDirectory, additionalData) => {
+    if ((additionalData as { replaceForLaunch?: boolean })?.replaceForLaunch === true) {
+      quitTokenPet();
+      return;
+    }
     if (app.isReady()) revealPetForLaunch();
   });
 }
@@ -1150,6 +1161,10 @@ export const mainProcessQa = {
   },
   getWorkspaceRehomeCount() {
     return workspaceRehomeCount;
+  },
+  getTrayIconInfo() {
+    const image = createTrayIcon();
+    return { empty: image.isEmpty(), size: image.getSize(), template: image.isTemplateImage() };
   },
   getQuickPlaySession() {
     return currentQuickPlaySession();

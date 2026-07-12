@@ -1094,19 +1094,23 @@ async function verifyActions(window, desktopPet) {
   await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => ["click_purr", "drag_dangle", "token_snack", "play_cursor"].every((id) => state.qaState.actions.includes(id))), [], "Actions shared Quick Play dispatches");
 
   await delay(1_800);
+  const expectedAmbientReturn = await evaluate(desktopPet, () => {
+    const hour = new Date().getHours();
+    return hour >= 22 || hour < 7 ? "sleep_loop" : "focus_loop";
+  });
   await click(window, "[data-actor-state=focus_loop]", "Actions focus_loop return baseline");
   await waitForDesktopActorState(desktopPet, "focus_loop");
   await click(window, "[data-actor-state=click_purr]", "Actions click_purr one-shot lifecycle");
   await waitForDesktopActorState(desktopPet, "click_purr");
   await delay(1_300);
-  const clickReturn = await waitForDesktopActorState(desktopPet, "sleep_loop");
-  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === "sleep_loop", "click_purr visibly plays in the desktop PetApp and then returns to the director-selected nighttime loop");
+  const clickReturn = await waitForDesktopActorState(desktopPet, expectedAmbientReturn);
+  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === expectedAmbientReturn, `click_purr visibly plays in the desktop PetApp and then returns to the director-selected ${expectedAmbientReturn}`);
 
   await click(window, "[data-actor-state=overdrive_loop]", "Actions overdrive bounded lifecycle");
   await waitForDesktopActorState(desktopPet, "overdrive_loop");
   await delay(3_000);
-  const overdriveReturn = await waitForDesktopActorState(desktopPet, "sleep_loop");
-  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === "sleep_loop", "the intense overdrive state exits back to the director-selected nighttime loop instead of becoming permanent");
+  const overdriveReturn = await waitForDesktopActorState(desktopPet, expectedAmbientReturn);
+  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === expectedAmbientReturn, `the intense overdrive state exits back to the director-selected ${expectedAmbientReturn} instead of becoming permanent`);
 
   const beforeToggle = await qaStateFor(window);
   expectedReduceMotion = !beforeToggle.settings.petStory.reduceMotion;

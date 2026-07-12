@@ -301,6 +301,12 @@ async function run() {
   await main.tokenPetReady;
   const qa = main.mainProcessQa;
   verify("main-process QA guard", qa.enabled === true, "production main is running through the explicit QA environment guard");
+  const trayIcon = qa.getTrayIconInfo();
+  verify(
+    "Menu bar pet icon is launch-ready",
+    !trayIcon.empty && trayIcon.size.width > 0 && trayIcon.size.height > 0 && (process.platform !== "darwin" || trayIcon.template),
+    `icon ${trayIcon.size.width}×${trayIcon.size.height}; template=${trayIcon.template}`,
+  );
 
   let pet = await waitForWindow(qa, "pet");
   await waitForDom(pet, ".pet-stage");

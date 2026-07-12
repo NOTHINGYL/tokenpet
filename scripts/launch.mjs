@@ -28,14 +28,61 @@ function runBuild() {
 
 await runBuild();
 
-const child = spawn(electronCommand, ["."], {
-  cwd: root,
-  detached: true,
-  shell: false,
-  stdio: "ignore",
-});
+const replacementExitCode = 75;
+const startupProbeMs = 900;
+const replacementRetryMs = 250;
+const replacementAttempts = 24;
 
-child.unref();
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
 
-console.log(`TokenPet launched in the background. PID: ${child.pid}`);
+function launchAttempt() {
+  return new Promise((resolve, reject) => {
+    const child = spawn(electronCommand, [".", "--tokenpet-replace-running"], {
+      cwd: root,
+      detached: true,
+      shell: false,
+      stdio: "ignore",
+    });
+
+    let settled = false;
+    const startupTimer = setTimeout(() => {
+      settled = true;
+      child.unref();
+      resolve(child.pid);
+    }, startupProbeMs);
+
+    child.once("error", (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(startupTimer);
+      reject(error);
+    });
+
+    child.once("exit", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(startupTimer);
+      if (code === replacementExitCode) {
+        resolve(null);
+        return;
+      }
+      reject(new Error(`TokenPet exited during startup with code ${code ?? "unknown"}`));
+    });
+  });
+}
+
+let launchedPid = null;
+for (let attempt = 0; attempt < replacementAttempts; attempt += 1) {
+  launchedPid = await launchAttempt();
+  if (launchedPid) break;
+  await delay(replacementRetryMs);
+}
+
+if (!launchedPid) {
+  throw new Error("Timed out waiting for the previous TokenPet instance to exit");
+}
+
+console.log(`TokenPet launched in the background. PID: ${launchedPid}`);
 console.log("The pet close button hides the companion; use Quit TokenPet from its right-click menu to exit the app.");
