@@ -11,6 +11,7 @@ type PetCompositorProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  previewTimeMs?: number;
   surface: "preview" | "desktop";
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

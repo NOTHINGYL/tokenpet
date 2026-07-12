@@ -242,6 +242,11 @@ export type PetJourneyState = {
   activeDays: number;
   lastDigestDate: string | null;
 };
+export type PetActionTuningValue = string | number | boolean;
+export type PetActionSettingsStore = {
+  schemaVersion: 1;
+  byAction: Partial<Record<Exclude<QuickPlayActionId, "capture_moment">, Record<string, PetActionTuningValue>>>;
+};
 export type PetStorySettings = {
   behaviorMode: PetBehaviorMode;
   moodThresholds: { focused: number; hot: number; overdrive: number };
@@ -266,6 +271,7 @@ export type PetStorySettings = {
   };
   reactionRules: { oneShotOnThreshold: boolean; coolDownAfterOverdrive: boolean };
   companionSettings: { keepTinyMenuForm: boolean; showMemoryCards: boolean; celebrateMilestones: boolean };
+  actionSettings: PetActionSettingsStore;
   pinnedStage: PetLifeStage | null;
   lastAction: { id: PetActionId; nonce: number } | null;
   journey: PetJourneyState;

@@ -34,6 +34,7 @@ const qaState = {
   dragEnds: 0,
 };
 let expectedReduceMotion = initialSettings.petStory.reduceMotion;
+let expectedActionSnackSize = 100;
 
 const quickPlayIds = [
   "walk_round_trip",
@@ -1030,93 +1031,102 @@ async function verifyAppearanceAndSubpages(window) {
 
 async function verifyActions(window, desktopPet) {
   await selectPetSection(window, "actions");
-  await waitForActor(window);
+  await waitForSelector(window, "[data-action-preview] .pet-generated-actor-canvas-root.is-ready");
+  const expectedActions = ["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer"];
+  const expectedSettings = {
+    walk_round_trip: ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect"],
+    token_snack: ["snackStyle", "walkPace", "snackSize", "startMeow", "returnPace"],
+    play_cursor: ["attentionRadius", "followSmoothing", "maxHeadTurnAngle", "earFollow"],
+    drag_dangle: ["fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect"],
+    toss_yarn: ["yarnColor", "rollDistance", "rollSpeed", "returnPace"],
+    nap_here: ["settlePose", "breathingIntensity", "zEffect", "sleepShadow"],
+    wake_up: ["meowVoice", "meowCue", "stretchHold", "wakeSparkle"],
+    summon_to_pointer: ["walkPace", "arrivalOffset", "routeCurve", "settleDelay"],
+  };
   const state = await evaluate(window, () => ({
-    ids: [...document.querySelectorAll("[data-actor-state]")].map((button) => button.dataset.actorState),
-    disabled: [...document.querySelectorAll("[data-actor-state]")].filter((button) => button.disabled).map((button) => button.dataset.actorState),
-    brokenImages: [...document.querySelectorAll(".actor-state-grid img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
-    runAcrossControls: [...document.querySelectorAll("[data-desktop-action=run_across], [data-desktop-choreography=run_across]")].map((button) => ({
-      disabled: button.disabled,
-      width: button.getBoundingClientRect().width,
-      height: button.getBoundingClientRect().height,
-    })),
-    safety: (() => {
-      const card = document.querySelector(".actions-safety-card");
-      const content = document.querySelector(".console-content");
-      if (!card || !content) return null;
-      const rect = card.getBoundingClientRect();
-      const contentRect = content.getBoundingClientRect();
-      return {
-        rect: { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom, width: rect.width, height: rect.height },
-        viewport: {
-          left: Math.max(0, contentRect.left),
-          top: Math.max(0, contentRect.top),
-          right: Math.min(window.innerWidth, contentRect.right),
-          bottom: Math.min(window.innerHeight, contentRect.bottom),
-        },
-        switches: card.querySelectorAll("[role=switch]").length,
-        visible: getComputedStyle(card).display !== "none" && getComputedStyle(card).visibility !== "hidden",
-      };
+    ids: [...document.querySelectorAll("[data-action-selector] [data-action-id]")].map((button) => button.dataset.actionId),
+    labels: [...document.querySelectorAll("[data-action-selector] [data-action-id] strong")].map((label) => label.textContent.trim()),
+    disabled: [...document.querySelectorAll("[data-action-selector] [data-action-id]")].filter((button) => button.disabled).map((button) => button.dataset.actionId),
+    brokenImages: [...document.querySelectorAll("[data-action-selector] img, [data-action-filmstrip] img")].filter((image) => !image.complete || image.naturalWidth === 0).length,
+    selected: document.querySelector(".actions-workbench-page")?.dataset.selectedAction,
+    captureCount: document.querySelectorAll("[data-action-id=capture_moment]").length,
+    previewOnly: document.querySelector("[data-preview-only]")?.textContent.trim(),
+    footer: document.querySelector("[data-actions-footer]")?.textContent.trim(),
+    sharedActorId: document.querySelector("[data-action-preview] [data-actor-id]")?.dataset.actorId,
+    generatedActors: document.querySelectorAll("[data-action-preview] .pet-generated-actor-canvas-root.is-ready").length,
+    filmstripFrames: document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]").length,
+    settingsFor: document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor,
+    layout: (() => {
+      const preview = document.querySelector("[data-action-preview]")?.getBoundingClientRect();
+      const settings = document.querySelector("[data-action-settings]")?.getBoundingClientRect();
+      const stage = document.querySelector("[data-action-preview-stage]")?.getBoundingClientRect();
+      return preview && settings && stage ? { previewWidth: preview.width, settingsWidth: settings.width, stageHeight: stage.height } : null;
     })(),
+    retiredModules: [...document.querySelectorAll("[data-pet-page=actions] h2, [data-pet-page=actions] h3")].map((heading) => heading.textContent.trim()).filter((text) => ["Behavior Mode", "Actor States", "Interaction Rules", "Director Priority", "Safety", "Live Actor Preview"].includes(text)),
   }));
-  verify("Actions implementation ids", state.ids.length === 12 && state.ids.includes("click_purr") && state.ids.includes("milestone_celebrate"), `Actions exposes 12 stable actor-state ids`);
-  verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all displayed Golden British actor states are enabled and have loaded thumbnails");
-  verify(
-    "Actions run_across controls are ready",
-    state.runAcrossControls.length >= 2
-      && state.runAcrossControls.every((control) => !control.disabled && control.width > 0 && control.height > 0),
-    `found ${state.runAcrossControls.length} enabled visible run_across controls: ${JSON.stringify(state.runAcrossControls)}`,
-  );
-  verify(
-    "Actions Safety is visible at 1280×900",
-    state.safety
-      && state.safety.visible
-      && state.safety.switches >= 4
-      && rectContained(state.safety.rect, state.safety.viewport),
-    `Safety ${JSON.stringify(state.safety)}`,
-  );
-  report.actionsViewportContract = { runAcrossControls: state.runAcrossControls, safety: state.safety };
+  verify("Actions v19 selector", JSON.stringify(state.ids) === JSON.stringify(expectedActions) && state.captureCount === 0, `exact ordered eight-action selector, Capture excluded: ${JSON.stringify(state.ids)}`);
+  verify("Actions v19 selector labels", JSON.stringify(state.labels) === JSON.stringify(["Pet", "Feed snack", "Play cursor", "Dangle toy", "Toss yarn", "Nap here", "Wake up", "Summon"]), `friendly labels: ${JSON.stringify(state.labels)}`);
+  verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all Golden British action previews are enabled and all selector/filmstrip art loaded");
+  verify("Actions default selection", state.selected === "token_snack" && state.settingsFor === "token_snack", "Feed snack is selected and its dedicated settings are visible by default");
+  verify("Actions isolated preview renderer", state.previewOnly === "Preview only" && state.sharedActorId === "golden-british" && state.generatedActors === 1 && state.filmstripFrames >= 5, `preview uses the shared generated Golden actor and complete semantic filmstrip: ${JSON.stringify(state)}`);
+  verify("Actions v19 composition", state.layout && state.layout.previewWidth / state.layout.settingsWidth >= 1.55 && state.layout.stageHeight >= 285, `dominant preview / secondary settings composition: ${JSON.stringify(state.layout)}`);
+  verify("Actions retired modules removed", state.retiredModules.length === 0, `old director modules absent: ${JSON.stringify(state.retiredModules)}`);
+  verify("Actions isolation copy", state.footer === "Preview changes apply instantly. Your desktop pet stays still.", `exact footer copy: ${state.footer}`);
+
+  const settingsMatrix = {};
+  for (const actionId of expectedActions) {
+    await click(window, `[data-action-id=${actionId}]`, `select ${actionId} preview`);
+    await waitFor(window, (id) => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === id, [actionId], `${actionId} settings`);
+    settingsMatrix[actionId] = await evaluate(window, () => [...document.querySelectorAll("[data-action-settings] [data-action-setting]")].map((field) => field.dataset.actionSetting));
+  }
+  verify("Actions dedicated settings matrix", Object.entries(expectedSettings).every(([id, keys]) => JSON.stringify(settingsMatrix[id]) === JSON.stringify(keys)), `every action exposes only its specified controls: ${JSON.stringify(settingsMatrix)}`);
+
+  await click(window, "[data-action-id=token_snack]", "restore Feed snack preview");
+  await waitFor(window, () => document.querySelector(".actions-workbench-page")?.dataset.selectedAction === "token_snack", [], "Feed snack restore");
+  const beforeQa = await qaStateFor(window);
+  const beforeDesktopBounds = desktopPet.getBounds();
+  const beforeIsolation = {
+    actions: beforeQa.qaState.actions,
+    lastAction: beforeQa.settings.petStory.lastAction,
+    desktopBounds: beforeDesktopBounds,
+  };
+  await click(window, "[data-action-play]", "pause isolated preview");
+  await click(window, "[data-action-restart]", "restart isolated preview");
+  await evaluate(window, () => {
+    const scrubber = document.querySelector("[data-action-scrubber]");
+    scrubber.value = String(Number(scrubber.max) * .72);
+    scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+    scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click(window, "[data-action-loop]", "toggle isolated preview loop");
+  await delay(180);
+  const afterQa = await qaStateFor(window);
+  const afterIsolation = {
+    actions: afterQa.qaState.actions,
+    lastAction: afterQa.settings.petStory.lastAction,
+    desktopBounds: desktopPet.getBounds(),
+  };
+  verify("Actions preview never dispatches desktop actions", JSON.stringify(afterIsolation) === JSON.stringify(beforeIsolation), `selectors and transport leave QA actions, PetDirector request, and BrowserWindow bounds unchanged: ${JSON.stringify(afterIsolation)}`);
+
+  const loopEnabled = await evaluate(window, () => document.querySelector("[data-action-loop]")?.getAttribute("aria-checked") === "true");
+  if (!loopEnabled) await click(window, "[data-action-loop]", "restore preview loop for v19 baseline");
+  await click(window, "[data-action-filmstrip] [data-action-keyframe]:nth-child(2)", "show Feed snack action frame");
+  await click(window, "[data-action-play]", "play Feed snack v19 baseline");
+  await delay(120);
+  report.actionsViewportContract = { selector: state.ids, layout: state.layout, settingsMatrix, isolation: afterIsolation };
   await verifyNoHorizontalOverflow(window, "Actions");
   await capture(window, "console-actions.png", "Console / Actions");
-  const desktopStates = [];
-  for (const actionId of coreActorStateIds) {
-    await click(window, `[data-actor-state=${actionId}]`, `Actions ${actionId}`);
-    const classification = await waitForDesktopActorState(desktopPet, actionId);
-    desktopStates.push({ actionId, classification });
-  }
-  report.actionDesktopMatrix = desktopStates;
-  verify(
-    "Actions drive the desktop actor",
-    desktopStates.length === coreActorStateIds.length
-      && desktopStates.every(({ actionId, classification }) => classification?.best?.actionId === actionId),
-    "all 12 Console actor-state controls render their matching approved frame in the separate desktop PetApp window",
-  );
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => ["click_purr", "drag_dangle", "token_snack", "play_cursor"].every((id) => state.qaState.actions.includes(id))), [], "Actions shared Quick Play dispatches");
 
-  await delay(1_800);
-  const expectedAmbientReturn = await evaluate(desktopPet, () => {
-    const hour = new Date().getHours();
-    return hour >= 22 || hour < 7 ? "sleep_loop" : "focus_loop";
-  });
-  await click(window, "[data-actor-state=focus_loop]", "Actions focus_loop return baseline");
-  await waitForDesktopActorState(desktopPet, "focus_loop");
-  await click(window, "[data-actor-state=click_purr]", "Actions click_purr one-shot lifecycle");
-  await waitForDesktopActorState(desktopPet, "click_purr");
-  await delay(1_300);
-  const clickReturn = await waitForDesktopActorState(desktopPet, expectedAmbientReturn);
-  verify("Actions one-shot returns on desktop", clickReturn?.best?.actionId === expectedAmbientReturn, `click_purr visibly plays in the desktop PetApp and then returns to the director-selected ${expectedAmbientReturn}`);
-
-  await click(window, "[data-actor-state=overdrive_loop]", "Actions overdrive bounded lifecycle");
-  await waitForDesktopActorState(desktopPet, "overdrive_loop");
-  await delay(3_000);
-  const overdriveReturn = await waitForDesktopActorState(desktopPet, expectedAmbientReturn);
-  verify("Actions overdrive is time-bounded on desktop", overdriveReturn?.best?.actionId === expectedAmbientReturn, `the intense overdrive state exits back to the director-selected ${expectedAmbientReturn} instead of becoming permanent`);
-
-  const beforeToggle = await qaStateFor(window);
-  expectedReduceMotion = !beforeToggle.settings.petStory.reduceMotion;
-  await clickButtonWithText(window, "Reduce motion", ".actions-safety-card");
-  await waitFor(window, (expected) => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.reduceMotion === expected), [expectedReduceMotion], "Reduce motion persistence");
-  record("Actions reduce motion", "Reduce motion changes persisted story settings");
+  expectedActionSnackSize = 115;
+  await evaluate(window, (value) => {
+    const input = document.querySelector('[data-action-setting="snackSize"] input[type=range]');
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(input, String(value));
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }, expectedActionSnackSize);
+  await waitFor(window, (value) => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petStory.actionSettings.byAction.token_snack?.snackSize === value), [expectedActionSnackSize], "Feed snack setting persistence");
+  record("Actions instant local settings", "Feed snack size applies instantly to the isolated preview and persists without a Save action");
 }
 
 async function verifyMood(window) {
@@ -1211,9 +1221,9 @@ async function verifyConsole(desktopPet) {
 
   await selectPetSection(window, "actions");
   const persisted = await evaluate(window, () => ({
-    reduceMotion: [...document.querySelectorAll(".actions-safety-card [role=switch]")].find((button) => button.textContent.includes("Reduce motion"))?.getAttribute("aria-checked"),
+    snackSize: Number(document.querySelector('[data-action-setting="snackSize"] input[type=range]')?.value),
   }));
-  verify("Console settings survive section remount", persisted.reduceMotion === String(expectedReduceMotion), "Reduce motion remains selected after navigating away and back");
+  verify("Console action settings survive section remount", persisted.snackSize === expectedActionSnackSize, "the v19 Feed snack setting remains selected after navigating away and back");
   return window;
 }
 

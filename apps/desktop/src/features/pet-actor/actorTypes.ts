@@ -14,6 +14,8 @@ export type PetActorProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  /** Controlled sandbox clock. When present, the actor renders exactly this timeline position and does not start its own RAF clock. */
+  previewTimeMs?: number;
   surface: PetSurface;
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

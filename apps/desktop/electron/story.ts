@@ -44,6 +44,7 @@ export const defaultPetStory: PetStorySettings = {
   },
   reactionRules: { oneShotOnThreshold: true, coolDownAfterOverdrive: true },
   companionSettings: { keepTinyMenuForm: true, showMemoryCards: true, celebrateMilestones: true },
+  actionSettings: { schemaVersion: 1, byAction: {} },
   pinnedStage: null,
   lastAction: null,
   journey: defaultJourneyState,
@@ -126,6 +127,15 @@ export function normalizePetStory(value: unknown): PetStorySettings {
   const safetySource = source.safety ?? defaultPetStory.safety;
   const reactionSource = source.reactionRules ?? defaultPetStory.reactionRules;
   const companionSource = source.companionSettings ?? defaultPetStory.companionSettings;
+  const actionSettingsSource = source.actionSettings?.byAction && typeof source.actionSettings.byAction === "object"
+    ? source.actionSettings.byAction
+    : {};
+  const previewActionIds = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer"]);
+  const actionSettingsByAction = Object.fromEntries(Object.entries(actionSettingsSource).flatMap(([actionId, values]) => {
+    if (!previewActionIds.has(actionId) || !values || typeof values !== "object") return [];
+    const safeValues = Object.fromEntries(Object.entries(values).filter(([, settingValue]) => ["string", "number", "boolean"].includes(typeof settingValue)));
+    return [[actionId, safeValues]];
+  })) as PetStorySettings["actionSettings"]["byAction"];
 
   return {
     behaviorMode: ["gentle", "balanced", "playful", "focusFriendly"].includes(source.behaviorMode ?? "")
@@ -177,6 +187,7 @@ export function normalizePetStory(value: unknown): PetStorySettings {
       showMemoryCards: companionSource.showMemoryCards !== false,
       celebrateMilestones: companionSource.celebrateMilestones !== false,
     },
+    actionSettings: { schemaVersion: 1, byAction: actionSettingsByAction },
     pinnedStage,
     lastAction,
     journey: {

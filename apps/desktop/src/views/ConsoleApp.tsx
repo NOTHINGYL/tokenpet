@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { CostStructureBar, DonutChart, ModelUsageTable, SessionBreakdown, SparkBars, TokenActivityGrid } from "../components/charts";
 import { AppearancePanel } from "../features/pet-appearance/AppearancePanel";
+import type { PetConsoleSection } from "../features/pet-appearance/catalog";
 import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
 import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
 import { MetricCard, ProviderStatusRows, SettingToggle } from "../components/ui";
@@ -323,6 +324,7 @@ export function ConsoleApp() {
   const sidebarAppearance = { ...normalizedAppearance, size: 1, moodBadge: { ...normalizedAppearance.moodBadge, showMood: false } };
   const requestedTab = new URLSearchParams(window.location.search).get("section");
   const [activeTab, setActiveTab] = useState<ConsoleTab>(requestedTab === "pet" ? "pet" : "overview");
+  const [petSection, setPetSection] = useState<PetConsoleSection>("appearance");
   useEffect(() => window.tokenpet?.onConsoleNavigation?.(setActiveTab), []);
   const tabs: Array<{ id: ConsoleTab; label: string }> = [
     { id: "overview", label: "Overview" },
@@ -373,7 +375,7 @@ export function ConsoleApp() {
         <header className="console-header">
           <div>
             <strong>{tabs.find((tab) => tab.id === activeTab)?.label ?? "Overview"}</strong>
-            <span>{subtitles[activeTab]}</span>
+            <span>{activeTab === "pet" && petSection === "actions" ? "Preview and tune your companion’s actions." : subtitles[activeTab]}</span>
           </div>
         </header>
 
@@ -382,7 +384,7 @@ export function ConsoleApp() {
           {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
           {activeTab === "cost" ? <CostTab usage={usage} /> : null}
           {activeTab === "pet" ? (
-            <AppearancePanel settings={settings} usage={usage} setSetting={(key, value) => void setSetting(key, value)} />
+            <AppearancePanel settings={settings} usage={usage} setSetting={(key, value) => void setSetting(key, value)} onSectionChange={setPetSection} />
           ) : null}
           {activeTab === "settings" ? (
             <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />

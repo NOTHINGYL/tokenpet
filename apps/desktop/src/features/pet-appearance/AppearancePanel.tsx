@@ -35,6 +35,7 @@ type AppearancePanelProps = {
   settings: AppSettings;
   setSetting: <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => void;
   usage: UsageSnapshot;
+  onSectionChange?: (section: PetConsoleSection) => void;
 };
 
 function HeaderAction(props: { label: string; onClick?: () => void; testId?: string }) {
@@ -452,6 +453,7 @@ export function AppearancePanel(props: AppearancePanelProps) {
 
   const selectConsoleSection = (section: PetConsoleSection) => {
     setActiveSection(section);
+    props.onSectionChange?.(section);
     if (section !== "appearance") setActiveAppearancePage("appearance");
   };
 

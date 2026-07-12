@@ -5,18 +5,18 @@ import type {
   MoodLookId,
   PetActionId,
   PetAppearanceSettings,
-  PetBehaviorMode,
   PetLifeStage,
   PetStorySettings,
   QuickPlayActionId,
   UsageSnapshot,
 } from "../../types";
 import { compactNumber } from "../../utils/format";
-import { getCatTypeOption, moodLooks } from "../pet-appearance/catalog";
+import { moodLooks } from "../pet-appearance/catalog";
 import { PetAppearanceVisual } from "../pet-appearance/PetAppearanceVisual";
 import { PetIcon } from "../pet-appearance/icons";
 import { normalizePetAppearance } from "../pet-appearance/appearanceState";
-import { capabilityFor, defaultPetStory, lifecycleFromUsage, moodFromUsage } from "./PetDirector";
+import { defaultPetStory, lifecycleFromUsage, moodFromUsage } from "./PetDirector";
+import { ActionsWorkbench } from "./ActionsWorkbench";
 import { playPetSoundCue, type PetSoundCueId } from "./soundCueEngine";
 
 type Section = "actions" | "mood" | "sound" | "journey";
@@ -31,21 +31,6 @@ type Props = {
 const quickPlayActionIds = new Set<PetActionId>([
   "click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_screen", "capture_moment",
 ]);
-
-const coreActionIds: PetActionId[] = [
-  "idle_breathe", "blink", "sleep_loop", "focus_loop", "hot_loop", "overdrive_loop",
-  "click_purr", "drag_dangle", "drop_bounce", "token_snack", "play_cursor", "milestone_celebrate",
-];
-
-const labels: Partial<Record<PetActionId, string>> = {
-  idle_breathe: "Living idle", blink: "Blink", sleep_loop: "Sleep loop", focus_loop: "Focus loop",
-  hot_loop: "Hot loop", overdrive_loop: "Overdrive", hatch: "Hatch", click_purr: "Click purr",
-  drag_dangle: "Drag dangle", drop_bounce: "Drop bounce", token_snack: "Token snack",
-  play_cursor: "Play cursor", run_across: "Run across desktop", milestone_celebrate: "Milestone celebrate", level_up: "Level up",
-  daily_digest: "Daily digest", toss_yarn: "Toss yarn", nap_here: "Nap here", wake_up: "Wake up",
-  settle_down: "Settle down", focus_start: "Focus start", cool_down: "Cool down",
-  summon_to_screen: "Summon", capture_moment: "Capture moment",
-};
 
 const actionThumbnails: Partial<Record<PetActionId, string>> = {
   idle_breathe: "pet-actors/golden-british/frames/idle_breathe.png",
@@ -84,103 +69,6 @@ function Toggle(props: { checked: boolean; onChange: (checked: boolean) => void;
       <span><strong>{props.children}</strong>{props.detail ? <small>{props.detail}</small> : null}</span>
       <i className={`pet-switch ${props.checked ? "on" : ""}`} aria-hidden="true" />
     </button>
-  );
-}
-
-function ActionPanel(props: Props & { story: PetStorySettings; appearance: PetAppearanceSettings; patch: (patch: Partial<PetStorySettings>) => void; trigger: (id: PetActionId) => void }) {
-  const [selectedAction, setSelectedAction] = useState<PetActionId>("focus_loop");
-  const selectedCapability = capabilityFor(props.appearance.catTypeId, selectedAction);
-  const actionAvailable = (action: PetActionId) => {
-    const capability = capabilityFor(props.appearance.catTypeId, action);
-    return capability.status === "ready" || capability.status === "fallback";
-  };
-  const actorPreviewAppearance = { ...props.appearance, moodBadge: { ...props.appearance.moodBadge, showMood: false } };
-  const traverseCapability = capabilityFor(props.appearance.catTypeId, "run_across");
-  const traverseDisabled = traverseCapability.status === "planned" || traverseCapability.status === "unavailable" || props.story.lockPosition;
-  return (
-    <div className="story-page actions-director-page" data-pet-page="actions">
-      <div className="actions-layout">
-        <section className="story-card live-actor-card">
-          <div className="story-card-title"><h2>Live Actor Preview</h2><PetIcon name="info" /></div>
-          <div className="live-actor-stage">
-            <span className="actor-loop-badge">{selectedAction}</span>
-            <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={selectedAction} reduceMotion={props.story.reduceMotion} surface="preview" />
-          </div>
-          <div className="live-actor-controls">
-            <button type="button" onClick={() => props.trigger(selectedAction)} disabled={selectedCapability.status === "planned" || selectedCapability.status === "unavailable"}>▶ Play selected state</button>
-            <button type="button" disabled={!actionAvailable("click_purr")} title={actionAvailable("click_purr") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("click_purr")}>Trigger click_purr</button>
-            <button type="button" disabled={!actionAvailable("drag_dangle")} title={actionAvailable("drag_dangle") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("drag_dangle")}>Trigger drag_dangle</button>
-            <button type="button" disabled={!actionAvailable("milestone_celebrate")} title={actionAvailable("milestone_celebrate") ? undefined : "Planned for this static fallback cat."} onClick={() => props.trigger("milestone_celebrate")}>Trigger milestone_celebrate</button>
-            <button className="desktop-run-control" type="button" data-desktop-action="run_across" disabled={traverseDisabled} title={props.story.lockPosition ? "Unlock the pet position to run across the desktop." : traverseCapability.reason ?? "Move the real desktop companion window."} onClick={() => { setSelectedAction("run_across"); props.trigger("run_across"); }}>Run across desktop →</button>
-          </div>
-        </section>
-
-        <div className="actions-center-column">
-          <section className="story-card behavior-card">
-            <div className="story-card-heading"><h2>Behavior Mode</h2><p>Choose how the actor behaves by default.</p></div>
-            <div className="behavior-mode-grid">
-              {(["gentle", "balanced", "playful", "focusFriendly"] as PetBehaviorMode[]).map((id) => (
-                <button key={id} className={props.story.behaviorMode === id ? "active" : ""} type="button" data-behavior-mode={id} onClick={() => props.patch({ behaviorMode: id })}>
-                  <span aria-hidden="true">{id === "gentle" ? "♡" : id === "balanced" ? "⚖" : id === "playful" ? "✦" : "◎"}</span>
-                  <strong>{id === "focusFriendly" ? "Focus-friendly" : `${id[0].toUpperCase()}${id.slice(1)}`}</strong>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="story-card actor-library-card">
-            <div className="story-card-heading"><h2>Actor States</h2><p>Stable implementation ids requested through Pet Director.</p></div>
-            <div className="actor-state-grid">
-              {coreActionIds.map((id) => {
-                const capability = capabilityFor(props.appearance.catTypeId, id);
-                const disabled = capability.status === "planned" || capability.status === "unavailable";
-                return (
-                  <button key={id} className={selectedAction === id ? "selected" : ""} type="button" data-actor-state={id} disabled={disabled} title={capability.reason ?? id} onClick={() => { setSelectedAction(id); props.trigger(id); }}>
-                    <img src={props.appearance.catTypeId === "golden-british" ? (actionThumbnails[id] ?? actionThumbnails.idle_breathe) : getCatTypeOption(props.appearance.catTypeId).image} alt="" draggable={false} aria-hidden="true" />
-                    <code>{id}</code>
-                    <small className={`cap-${capability.status}`}>{capability.status}{capability.fallbackId ? ` → ${capability.fallbackId}` : ""}</small>
-                  </button>
-                );
-              })}
-            </div>
-            <div className="desktop-choreography-card">
-              <div className="story-card-heading"><h2>Desktop Choreography</h2><p>Actor poses and native window motion play together on your real desktop.</p></div>
-              <div className="desktop-choreography-grid">
-                <button type="button" data-desktop-choreography="run_across" disabled={traverseDisabled} onClick={() => { setSelectedAction("run_across"); props.trigger("run_across"); }}>
-                  <span aria-hidden="true">➜</span><strong>Run across desktop</strong><code>run_across</code><small>{props.story.lockPosition ? "Unlock position to play" : "Multi-pose run · safe work-area path"}</small>
-                </button>
-                <article><span aria-hidden="true">↕</span><strong>Pick up & dangle</strong><code>drag_dangle</code><small>Hold and drag the desktop cat</small></article>
-                <article><span aria-hidden="true">⌄</span><strong>Land & settle</strong><code>drop_bounce</code><small>Release after dragging</small></article>
-                <article><span aria-hidden="true">✦</span><strong>Track & pounce</strong><code>play_cursor</code><small>Multi-pose cursor sequence</small></article>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <aside className="actions-side-column">
-          <section className="story-card interaction-rules-card">
-            <div className="story-card-heading"><h2>Interaction Rules</h2><p>Map user actions to actor states.</p></div>
-            {([
-              ["click", "Click → click_purr"], ["drag", "Drag → drag_dangle"], ["drop", "Drop → drop_bounce"], ["feed", "Feed → token_snack"], ["cursor", "Cursor → play_cursor"],
-            ] as const).map(([key, label]) => <Toggle key={key} checked={props.story.interactionRules[key]} onChange={(checked) => props.patch({ interactionRules: { ...props.story.interactionRules, [key]: checked } })}>{label}</Toggle>)}
-          </section>
-          <section className="story-card director-priority-card">
-            <div className="story-card-heading"><h2>Director Priority</h2><p>Order of precedence for selecting states.</p></div>
-            <ol><li>Direct manipulation</li><li>User reaction</li><li>Milestone</li><li>Mood loop</li><li>Lifecycle idle</li></ol>
-          </section>
-        </aside>
-      </div>
-
-      <section className="story-card actions-safety-card">
-        <div className="story-card-heading"><h2>Safety</h2><p>Keep the companion comfortable and unobtrusive.</p></div>
-        <div className="safety-grid">
-          <Toggle checked={props.story.reduceMotion} onChange={(reduceMotion) => props.patch({ reduceMotion })} detail="Limit background movement">Reduce motion</Toggle>
-          <Toggle checked={props.story.safety.muteDuringFocus} onChange={(muteDuringFocus) => props.patch({ safety: { ...props.story.safety, muteDuringFocus } })} detail="Mute non-essential sounds in Focus-friendly mode">Quiet during focus</Toggle>
-          <Toggle checked={props.story.safety.screenSharingStillness} disabled onChange={() => undefined} detail="Planned · screen-sharing detection is not available yet">Still during screen sharing</Toggle>
-          <Toggle checked={props.story.safety.batteryLowPause} onChange={(batteryLowPause) => props.patch({ safety: { ...props.story.safety, batteryLowPause } })} detail="Conserve system resources">Pause when battery low</Toggle>
-        </div>
-      </section>
-    </div>
   );
 }
 
@@ -401,7 +289,7 @@ export function PetStoryPanel(props: Props) {
     patch({ lastAction: { id, nonce: Date.now() } });
   };
   const common = { ...props, story, appearance, patch, trigger };
-  if (props.section === "actions") return <ActionPanel {...common} />;
+  if (props.section === "actions") return <ActionsWorkbench story={story} appearance={appearance} usage={props.usage} patch={patch} />;
   if (props.section === "mood") return <MoodPanel {...common} />;
   if (props.section === "sound") return <SoundPanel {...common} />;
   return <JourneyPanel {...common} />;

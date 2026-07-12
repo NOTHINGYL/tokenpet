@@ -445,6 +445,13 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
   useEffect(() => {
     if (!plan || !images) return;
 
+    if (typeof props.previewTimeMs === "number") {
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d");
+      if (canvas && context) renderGeneratedPetActorCanvas(context, plan, images, props.previewTimeMs, 0, { hover: false });
+      return;
+    }
+
     let animationFrame = 0;
     const animationStartedAt = performance.now();
     const draw = (time: number) => {
@@ -459,7 +466,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     return () => {
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [images, plan]);
+  }, [images, plan, props.previewTimeMs]);
 
   if (failed && props.fallback) return <>{props.fallback}</>;
   if (!plan) return props.fallback ? <>{props.fallback}</> : null;
@@ -469,6 +476,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       className={plan.className}
       style={plan.styleVars as CSSProperties}
       data-pet-size={plan.appearance.size}
+      data-actor-id={plan.manifest.actorId}
       data-mood-badge-y={plan.moodBadgeRect?.y}
       data-mood-badge-height={plan.moodBadgeRect?.height}
     >

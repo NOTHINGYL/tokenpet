@@ -48,6 +48,7 @@ export const defaultPetStory: PetStorySettings = {
   },
   reactionRules: { oneShotOnThreshold: true, coolDownAfterOverdrive: true },
   companionSettings: { keepTinyMenuForm: true, showMemoryCards: true, celebrateMilestones: true },
+  actionSettings: { schemaVersion: 1, byAction: {} },
   pinnedStage: null,
   lastAction: null,
   journey: defaultJourneyState,

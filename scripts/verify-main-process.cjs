@@ -436,8 +436,25 @@ async function run() {
 
   await click(consoleWindow, "[data-pet-section=actions]");
   await waitForDom(consoleWindow, "[data-pet-page=actions]");
-  await waitForDom(consoleWindow, "[data-desktop-action=run_across]:not(:disabled)");
-  verify("Console Actions is interactive", true, "the real Pet > Actions page exposes enabled actor and desktop choreography controls");
+  await waitForDom(consoleWindow, "[data-action-preview] .pet-generated-actor-canvas-root.is-ready");
+  const actionWorkbench = await execute(consoleWindow, `(() => ({
+    ids: [...document.querySelectorAll('[data-action-selector] [data-action-id]')].map((button) => button.dataset.actionId),
+    selected: document.querySelector('.actions-workbench-page')?.dataset.selectedAction,
+    previewOnly: document.querySelector('[data-preview-only]')?.textContent?.trim(),
+    footer: document.querySelector('[data-actions-footer]')?.textContent?.trim(),
+    actorId: document.querySelector('[data-action-preview] [data-actor-id]')?.dataset.actorId,
+    captureCount: document.querySelectorAll('[data-action-id=capture_moment]').length,
+  }))()`);
+  verify(
+    "Console Actions v19 workbench is interactive",
+    JSON.stringify(actionWorkbench.ids) === JSON.stringify(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer"])
+      && actionWorkbench.selected === "token_snack"
+      && actionWorkbench.previewOnly === "Preview only"
+      && actionWorkbench.footer === "Preview changes apply instantly. Your desktop pet stays still."
+      && actionWorkbench.actorId === "golden-british"
+      && actionWorkbench.captureCount === 0,
+    `the exact eight-action isolated workbench uses the shared generated actor: ${JSON.stringify(actionWorkbench)}`,
+  );
 
   qa.setSetting("petVisible", true);
   pet = await waitForWindow(qa, "pet");
@@ -448,23 +465,44 @@ async function run() {
   await waitFor(() => qa.getSettings().alwaysOnTop && pet.isAlwaysOnTop(), "Always on top on");
   verify("Always on top control", pet.isAlwaysOnTop(), "real setting updates the desktop BrowserWindow level");
 
+  const actionIsolationBefore = {
+    bounds: pet.getBounds(),
+    lastAction: qa.getSettings().petStory.lastAction,
+    settingsFile: readFileSync(join(userDataPath, "settings.json"), "utf8"),
+  };
+  await click(consoleWindow, "[data-action-id=walk_round_trip]");
+  await click(consoleWindow, "[data-action-play]");
+  await click(consoleWindow, "[data-action-restart]");
+  await execute(consoleWindow, `(() => {
+    const scrubber = document.querySelector('[data-action-scrubber]');
+    scrubber.value = String(Number(scrubber.max) * .64);
+    scrubber.dispatchEvent(new Event('input', { bubbles: true }));
+    scrubber.dispatchEvent(new Event('change', { bubbles: true }));
+  })()`);
+  await click(consoleWindow, "[data-action-loop]");
+  await delay(220);
+  const actionIsolationAfter = {
+    bounds: pet.getBounds(),
+    lastAction: qa.getSettings().petStory.lastAction,
+    settingsFile: readFileSync(join(userDataPath, "settings.json"), "utf8"),
+  };
+  verify(
+    "Console Actions preview is isolated from desktop Pet",
+    JSON.stringify(actionIsolationAfter) === JSON.stringify(actionIsolationBefore),
+    `select, pause, restart, scrub, and loop leave BrowserWindow bounds and persisted PetDirector state untouched: ${JSON.stringify(actionIsolationAfter)}`,
+  );
+
   await setPetSize(pet, 0.75);
-  const hotActionBefore = qa.getSettings().petStory.lastAction?.nonce ?? null;
-  await click(consoleWindow, "[data-actor-state=hot_loop]");
-  const hotActionRequest = await waitFor(() => {
-    const request = qa.getSettings().petStory.lastAction;
-    return request?.id === "hot_loop" && request.nonce !== hotActionBefore ? request : null;
-  }, "Console hot_loop action request");
+  const hotActionRequest = { id: "hot_loop", nonce: Date.now() };
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, lastAction: hotActionRequest });
+  await waitFor(() => qa.getSettings().petStory.lastAction?.nonce === hotActionRequest.nonce, "hot_loop action request");
   await delay(180);
   const smallHotChrome = await readPetChromeLayout(pet, "hot_loop");
 
   await setPetSize(pet, 1.25);
-  const idleActionBefore = qa.getSettings().petStory.lastAction?.nonce ?? null;
-  await click(consoleWindow, "[data-actor-state=idle_breathe]");
-  const idleActionRequest = await waitFor(() => {
-    const request = qa.getSettings().petStory.lastAction;
-    return request?.id === "idle_breathe" && request.nonce !== idleActionBefore ? request : null;
-  }, "Console idle_breathe action request");
+  const idleActionRequest = { id: "idle_breathe", nonce: Date.now() + 1 };
+  qa.setSetting("petStory", { ...qa.getSettings().petStory, lastAction: idleActionRequest });
+  await waitFor(() => qa.getSettings().petStory.lastAction?.nonce === idleActionRequest.nonce, "idle_breathe action request");
   await delay(180);
   const largeIdleChrome = await readPetChromeLayout(pet, "idle_breathe");
   verify(
@@ -542,26 +580,8 @@ async function run() {
   };
 
   pet.setBounds(leftTraversalBounds, false);
-  const previousConsoleActionNonce = qa.getSettings().petStory.lastAction?.nonce ?? null;
   const normalTraversalStartedAt = Date.now();
-  await click(consoleWindow, "[data-desktop-action=run_across]");
-  const memoryRequest = await waitFor(() => {
-    const request = qa.getSettings().petStory.lastAction;
-    return request?.id === "run_across" && request.nonce !== previousConsoleActionNonce ? request : null;
-  }, "Console run_across shared action request");
-  await waitFor(
-    () => execute(consoleWindow, "document.querySelector('.live-actor-stage .actor-loop-badge')?.textContent?.trim() === 'run_across'"),
-    "Console run_across preview",
-  );
-  const settingsAfterConsoleAction = JSON.parse(readFileSync(join(userDataPath, "settings.json"), "utf8"));
-  verify(
-    "Console run_across records a replay-safe action request",
-    memoryRequest?.id === "run_across"
-      && Number.isFinite(memoryRequest.nonce)
-      && memoryRequest.nonce !== previousConsoleActionNonce
-      && settingsAfterConsoleAction.petStory.lastAction === null,
-    `shared memory ${JSON.stringify(memoryRequest)}; disk lastAction ${JSON.stringify(settingsAfterConsoleAction.petStory.lastAction)}`,
-  );
+  const normalTraversalPromise = qa.traversePetAcrossWorkArea();
   await waitFor(() => pet.getBounds().x > leftTraversalBounds.x + 30, "native traversal intermediate movement");
   const traversalMidpoint = pet.getBounds();
   verify(
@@ -574,16 +594,19 @@ async function run() {
     const bounds = pet.getBounds();
     return bounds.x === expectedTraversalTargetX && bounds.y === leftTraversalBounds.y;
   }, "Console-triggered native traversal completion", 5_000);
+  const normalTraversalResult = await normalTraversalPromise;
   const normalTraversalElapsed = Date.now() - normalTraversalStartedAt;
   const normalTraversalFinal = pet.getBounds();
   verify(
-    "Console Actions drives PetDirector and native traversal end to end",
-    normalTraversalElapsed >= 2_200
+    "Native traversal remains available outside Actions preview",
+    normalTraversalResult.moved === true
+      && normalTraversalResult.canceled === false
+      && normalTraversalElapsed >= 2_200
       && normalTraversalElapsed < 3_500
       && normalTraversalFinal.x > traversalMidpoint.x
       && normalTraversalFinal.x === expectedTraversalTargetX
       && boundsFitWorkArea(normalTraversalFinal, traversalWorkArea),
-    `Console lastAction ${memoryRequest.id}/${memoryRequest.nonce} traversed in ${normalTraversalElapsed}ms via Pet renderer Director/preload to ${JSON.stringify(normalTraversalFinal)}`,
+    `direct main-process traversal completed in ${normalTraversalElapsed}ms at ${JSON.stringify(normalTraversalFinal)} without coupling it to Console Actions`,
   );
   const traversalPositionPath = join(userDataPath, "pet-position.json");
   await waitFor(() => {

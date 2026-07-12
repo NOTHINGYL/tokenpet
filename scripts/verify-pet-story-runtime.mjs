@@ -214,7 +214,7 @@ verify("overdrive is a bounded burst that cools to hot", () => {
   assert.equal(director.completePetDirectorAction(directed.state, 14_200).currentAction, "hot_loop");
 });
 
-verify("all Console Actions use explicit desktop lifecycles", () => {
+verify("desktop action requests retain explicit lifecycles outside the isolated Console preview", () => {
   const actions = [
     ["idle_breathe", "actor.actionRequested", 2_400],
     ["blink", "actor.actionRequested", 1_600],
