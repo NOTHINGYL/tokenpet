@@ -1060,7 +1060,20 @@ async function verifyActions(window, desktopPet) {
       const preview = document.querySelector("[data-action-preview]")?.getBoundingClientRect();
       const settings = document.querySelector("[data-action-settings]")?.getBoundingClientRect();
       const stage = document.querySelector("[data-action-preview-stage]")?.getBoundingClientRect();
-      return preview && settings && stage ? { previewWidth: preview.width, settingsWidth: settings.width, stageHeight: stage.height } : null;
+      const page = document.querySelector(".actions-workbench-page")?.getBoundingClientRect();
+      const footer = document.querySelector("[data-actions-footer]")?.getBoundingClientRect();
+      const content = document.querySelector(".console-content");
+      const contentRect = content?.getBoundingClientRect();
+      return preview && settings && stage && page && footer && content && contentRect ? {
+        previewWidth: preview.width,
+        settingsWidth: settings.width,
+        stageHeight: stage.height,
+        pageHeight: page.height,
+        contentClientHeight: content.clientHeight,
+        contentScrollHeight: content.scrollHeight,
+        footerBottom: footer.bottom,
+        contentBottom: contentRect.bottom,
+      } : null;
     })(),
     retiredModules: [...document.querySelectorAll("[data-pet-page=actions] h2, [data-pet-page=actions] h3")].map((heading) => heading.textContent.trim()).filter((text) => ["Behavior Mode", "Actor States", "Interaction Rules", "Director Priority", "Safety", "Live Actor Preview"].includes(text)),
   }));
@@ -1070,6 +1083,7 @@ async function verifyActions(window, desktopPet) {
   verify("Actions default selection", state.selected === "token_snack" && state.settingsFor === "token_snack", "Feed snack is selected and its dedicated settings are visible by default");
   verify("Actions isolated preview renderer", state.previewOnly === "Preview only" && state.sharedActorId === "golden-british" && state.generatedActors === 1 && state.filmstripFrames >= 5, `preview uses the shared generated Golden actor and complete semantic filmstrip: ${JSON.stringify(state)}`);
   verify("Actions v19 composition", state.layout && state.layout.previewWidth / state.layout.settingsWidth >= 1.55 && state.layout.stageHeight >= 285, `dominant preview / secondary settings composition: ${JSON.stringify(state.layout)}`);
+  verify("Actions fits 1280×900 without vertical scrolling", state.layout && state.layout.contentScrollHeight <= state.layout.contentClientHeight + 1 && state.layout.footerBottom <= state.layout.contentBottom + 1, `entire selector, workbench, and footer fit the production Console viewport: ${JSON.stringify(state.layout)}`);
   verify("Actions retired modules removed", state.retiredModules.length === 0, `old director modules absent: ${JSON.stringify(state.retiredModules)}`);
   verify("Actions isolation copy", state.footer === "Preview changes apply instantly. Your desktop pet stays still.", `exact footer copy: ${state.footer}`);
 
