@@ -7,12 +7,15 @@ import { build } from "esbuild";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const storyBuildPath = join(root, "dist-electron/story.js");
 const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
+const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
+const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
   entryPoints: [join(root, "apps/desktop/src/features/pet-story/PetDirector.ts")],
   bundle: true,
@@ -86,6 +89,13 @@ function usage(overrides = {}) {
       nextThirtyDayForecast: 0,
     },
   };
+}
+
+function boundsFitWorkAreaForTest(bounds, area) {
+  return bounds.x >= area.x
+    && bounds.y >= area.y
+    && bounds.x + bounds.width <= area.x + area.width
+    && bounds.y + bounds.height <= area.y + area.height;
 }
 
 function connectedProvider(id = "codex") {
@@ -223,10 +233,10 @@ verify("desktop action requests retain explicit lifecycles outside the isolated 
     ["hot_loop", "actor.actionRequested", 2_400],
     ["overdrive_loop", "actor.actionRequested", 3_200],
     ["click_purr", "quickPlay.action", 1_450],
-    ["drag_dangle", "quickPlay.action", 1_800],
+    ["drag_dangle", "quickPlay.action", 8_000],
     ["drop_bounce", "actor.actionRequested", 1_600],
-    ["token_snack", "quickPlay.action", 1_450],
-    ["play_cursor", "quickPlay.action", 1_450],
+    ["token_snack", "quickPlay.action", 7_000],
+    ["play_cursor", "quickPlay.action", 30_000],
     ["run_across", "actor.actionRequested", 2_400],
     ["milestone_celebrate", "actor.actionRequested", 1_600],
   ];
@@ -401,8 +411,7 @@ verify("all Quick Play ids resolve and keep stable names", () => {
       { actorId: "golden-british", now: 20_000 + index * 2_000 },
     );
     assert.equal(directed.decision.requested, action);
-    const expectedResolved = action === "walk_round_trip" ? "run_across" : action === "summon_to_pointer" ? "summon_to_screen" : action;
-    assert.equal(directed.decision.resolved, expectedResolved);
+    assert.equal(directed.decision.resolved, action);
   }
 });
 
@@ -514,6 +523,56 @@ verify("desktop mood badge stays anchored to the scaled actor", () => {
   const manifest = { artboard: { width: 1024, height: 1024 }, footLineY: 832 };
   assert.deepEqual(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "preview"), declared);
   assert.equal(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "desktop").y, 383);
+});
+
+verify("Quick Play choreography keeps Pet exact-return and Summon safe", () => {
+  const workArea = { x: -1440, y: 24, width: 1440, height: 876 };
+  const start = { x: -420, y: 180, width: 260, height: 260 };
+  const target = quickPlay.sampleSafeRandomTarget(start, workArea, { random: () => .12, roamDistance: "far" });
+  assert.notDeepEqual(target, start);
+  assert.equal(boundsFitWorkAreaForTest(target, workArea), true);
+  const plan = quickPlay.createRoundTripPath(start, target, workArea, { durationMs: 1_200, pauseMs: 700, routeCurve: "gentle" });
+  assert.equal(quickPlay.boundsAtRoundTripTime(plan, 1_250).phase, "pause");
+  assert.deepEqual(quickPlay.boundsAtRoundTripTime(plan, plan.durationMs).bounds, start);
+  assert.equal(quickPlay.boundsAtRoundTripTime(plan, plan.durationMs).complete, true);
+});
+
+verify("Quick Play semantic timelines preserve strict action contracts", () => {
+  const feed = quickPlay.createQuickPlayActionTimeline("token_snack", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.token_snack, 280);
+  const feedIds = feed.phases.map((phase) => phase.id);
+  assert.deepEqual(feedIds.filter((id) => id.startsWith("snack_lick_")), ["snack_lick_1", "snack_lick_2", "snack_lick_3"]);
+  const cursor = quickPlay.createQuickPlayActionTimeline("play_cursor", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor);
+  assert.equal(cursor.durationMs, 30_000);
+  const wake = quickPlay.createQuickPlayActionTimeline("wake_up", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.wake_up);
+  assert.equal(wake.durationMs, 5_000);
+  assert.ok(wake.phases.some((phase) => phase.id === "long_full_body_stretch"));
+});
+
+verify("Quick Play dangle gate rejects jitter and requires over two seconds", () => {
+  let state = quickPlay.createDangleMovementState();
+  for (let time = 0; time <= 2_200; time += 100) {
+    state = quickPlay.accumulateDangleMovement(state, { x: time / 10, y: 40 }, time);
+  }
+  assert.equal(state.armed, true);
+  let jitter = quickPlay.createDangleMovementState();
+  for (let time = 0; time <= 3_000; time += 100) {
+    jitter = quickPlay.accumulateDangleMovement(jitter, { x: (time / 100) % 2 * .2, y: 40 }, time);
+  }
+  assert.equal(jitter.armed, false);
+});
+
+verify("Quick Play cursor smoothing anchors body and yarn roll terminates safely", () => {
+  const cursorConfig = quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor;
+  let tracking = quickPlay.createCursorTrackingState();
+  tracking = quickPlay.updateCursorTracking(tracking, { x: 140, y: 20 }, { x: 0, y: 0 }, 1_000, cursorConfig);
+  const second = quickPlay.updateCursorTracking(tracking, { x: -140, y: 20 }, { x: 0, y: 0 }, 1_016, cursorConfig);
+  assert.equal(second.withinAttention, true);
+  assert.ok(Math.abs(second.headAngleDegrees - tracking.headAngleDegrees) <= 2, "angular velocity must be capped at 120°/s");
+  const workArea = { x: 0, y: 0, width: 1280, height: 800 };
+  const yarn = quickPlay.createYarnRollPlan({ x: 1240, y: 760 }, { x: 900, y: 300 }, workArea, quickPlay.QUICK_PLAY_ACTION_DEFAULTS.toss_yarn);
+  const final = quickPlay.yarnRollAtTime(yarn, yarn.durationMs);
+  assert.equal(final.complete, true);
+  assert.ok(final.point.x <= workArea.width - yarn.ballRadius && final.point.y <= workArea.height - yarn.ballRadius);
 });
 
 verify("reduced motion and capability policy", () => {

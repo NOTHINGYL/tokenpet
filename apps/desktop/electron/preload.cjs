@@ -25,6 +25,13 @@ contextBridge.exposeInMainWorld("tokenpet", {
     ipcRenderer.on("quick-play:session-changed", listener);
     return () => ipcRenderer.removeListener("quick-play:session-changed", listener);
   },
+  reportPetDirectorState: (state) => ipcRenderer.send("pet:director-state", state),
+  quickPlayOverlayInput: (input) => ipcRenderer.send("quick-play:overlay-input", input),
+  onQuickPlayOverlayState: (callback) => {
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on("quick-play:overlay-state", listener);
+    return () => ipcRenderer.removeListener("quick-play:overlay-state", listener);
+  },
   onPetDirectorEvent: (callback) => {
     const listener = (_event, directorEvent) => callback(directorEvent);
     ipcRenderer.on("pet:director-event", listener);

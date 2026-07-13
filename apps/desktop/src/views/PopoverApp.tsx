@@ -26,9 +26,14 @@ const actions: QuickPlayAction[] = [
 const emptySession: QuickPlaySession = {
   activeAction: null,
   startedAt: null,
+  phase: "idle",
+  phaseStartedAt: null,
   startBounds: null,
   startDirectorState: null,
+  targetPoint: null,
   pointerMode: "none",
+  resting: false,
+  failure: null,
 };
 
 function ActionIcon({ id }: { id: QuickPlayActionId }) {
@@ -98,13 +103,16 @@ export function PopoverApp() {
           const capabilityDisabled = capability.status === "planned" || capability.status === "unavailable" || capability.uiBehavior === "disable";
           const activeDisabled = session.activeAction !== null && action.id !== "capture_moment";
           const positionDisabled = story.lockPosition && Boolean(action.movesPet);
-          const disabled = capabilityDisabled || activeDisabled || positionDisabled;
-          const locked = positionDisabled || activeDisabled;
+          const restingDisabled = action.id === "nap_here" && session.resting;
+          const disabled = capabilityDisabled || activeDisabled || positionDisabled || restingDisabled;
+          const locked = positionDisabled;
           const reason = activeDisabled
             ? `${actions.find((item) => item.id === session.activeAction)?.label ?? "Another action"} is still playing.`
-            : positionDisabled
-              ? "Unlock the pet position to use this action."
-              : capability.reason;
+              : positionDisabled
+                ? "Unlock the pet position to use this action."
+                : restingDisabled
+                  ? "Your pet is already asleep."
+                : capability.reason;
           return (
             <button
               className="quick-action"

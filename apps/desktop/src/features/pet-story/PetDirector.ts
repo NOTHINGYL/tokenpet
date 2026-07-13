@@ -467,7 +467,10 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
   if (action === "summon_to_pointer") return { action, priority: directorPriority.userReaction, durationMs: 4_500, sideEffect: "summon" };
   if (action === "walk_round_trip") return { action, priority: directorPriority.userReaction, durationMs: 5_500, sideEffect: "traverse" };
   if (action === "capture_moment") return { action, priority: directorPriority.userReaction, durationMs: 1_250, sideEffect: "capture" };
-  if (action === "drag_dangle") return { action, priority: directorPriority.userReaction, durationMs: 1_800 };
+  if (action === "token_snack") return { action, priority: directorPriority.userReaction, durationMs: 7_000 };
+  if (action === "play_cursor") return { action, priority: directorPriority.userReaction, durationMs: 30_000 };
+  if (action === "drag_dangle") return { action, priority: directorPriority.userReaction, durationMs: 8_000 };
+  if (action === "toss_yarn") return { action, priority: directorPriority.userReaction, durationMs: 5_500 };
   return { action, priority: directorPriority.userReaction, durationMs: 1_450 };
 }
 

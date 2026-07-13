@@ -7,7 +7,7 @@
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "05e9b8dfca6273b991857efd8551ee6e3c790505588bb2d6f6184805a757dd9e",
+  "contentHash": "256549b3a233706b246f86f560289cd33a44987de3976e1e995d220b3f4d3016",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -583,6 +583,32 @@
         {
           "id": "drag_dangle-1",
           "mood": "focused",
+          "src": "frames/focus_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 360,
+          "sha256": "ba1a2529dd18c3814e51a2c5e2ca77360465228901243bf2206d9ec4a71181a9",
+          "sourceAssetId": "drag_dangle:1",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 650
+            },
+            "translateX": 10,
+            "translateY": 10,
+            "scaleX": -0.006,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        },
+        {
+          "id": "drag_dangle-2",
+          "mood": "focused",
           "src": "frames/drag_dangle.png",
           "kind": "png",
           "rect": {
@@ -591,9 +617,61 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 996,
+          "durationMs": 520,
           "sha256": "f199d760b9d773670223a4e2cdc9d9ea5968331ae389e7c23b57a8c177b81bfa",
-          "sourceAssetId": "drag_dangle:1",
+          "sourceAssetId": "drag_dangle:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 650
+            },
+            "translateX": 10,
+            "translateY": 10,
+            "scaleX": -0.006,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        },
+        {
+          "id": "drag_dangle-3",
+          "mood": "focused",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "drag_dangle:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 650
+            },
+            "translateX": 10,
+            "translateY": 10,
+            "scaleX": -0.006,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        },
+        {
+          "id": "drag_dangle-4",
+          "mood": "focused",
+          "src": "frames/drag_dangle.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 420,
+          "sha256": "f199d760b9d773670223a4e2cdc9d9ea5968331ae389e7c23b57a8c177b81bfa",
+          "sourceAssetId": "drag_dangle:4",
           "bodyTransform": {
             "origin": {
               "x": 512,
@@ -1302,6 +1380,79 @@
         }
       ]
     },
+    "action.walk_round_trip": {
+      "id": "action.walk_round_trip",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "walk_round_trip",
+      "fps": 12,
+      "loop": true,
+      "priority": 80,
+      "cooldownMs": 1200,
+      "reducedMotionFallback": "idle_breathe",
+      "frames": [
+        {
+          "id": "walk_round_trip-1",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "walk_round_trip:1"
+        },
+        {
+          "id": "walk_round_trip-2",
+          "mood": "focused",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "walk_round_trip:2"
+        },
+        {
+          "id": "walk_round_trip-3",
+          "mood": "focused",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "walk_round_trip:3"
+        },
+        {
+          "id": "walk_round_trip-4",
+          "mood": "focused",
+          "src": "frames/drop_bounce.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "sourceAssetId": "walk_round_trip:4"
+        }
+      ]
+    },
     "action.toss_yarn": {
       "id": "action.toss_yarn",
       "kind": "oneShot",
@@ -1316,6 +1467,21 @@
         {
           "id": "toss_yarn-1",
           "mood": "focused",
+          "src": "frames/play_cursor.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "sourceAssetId": "toss_yarn:1"
+        },
+        {
+          "id": "toss_yarn-2",
+          "mood": "focused",
           "src": "frames/toss_yarn.png",
           "kind": "png",
           "rect": {
@@ -1324,9 +1490,39 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 480,
           "sha256": "87ee6e9db0200f3ea9377ffbea72f842118ef472cf7c5a93b17300aeab15e0bf",
-          "sourceAssetId": "toss_yarn:1"
+          "sourceAssetId": "toss_yarn:2"
+        },
+        {
+          "id": "toss_yarn-3",
+          "mood": "focused",
+          "src": "frames/token_snack.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 360,
+          "sha256": "7214abab4d30ed502abe131969ff66972787c418b234c2399c349ab9812d4925",
+          "sourceAssetId": "toss_yarn:3"
+        },
+        {
+          "id": "toss_yarn-4",
+          "mood": "focused",
+          "src": "frames/toss_yarn.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 420,
+          "sha256": "87ee6e9db0200f3ea9377ffbea72f842118ef472cf7c5a93b17300aeab15e0bf",
+          "sourceAssetId": "toss_yarn:4"
         }
       ]
     },
@@ -1344,6 +1540,21 @@
         {
           "id": "nap_here-1",
           "mood": "sleepy",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "nap_here:1"
+        },
+        {
+          "id": "nap_here-2",
+          "mood": "sleepy",
           "src": "frames/nap_here.png",
           "kind": "png",
           "rect": {
@@ -1352,9 +1563,24 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
+          "durationMs": 620,
           "sha256": "a6d58a6da097dff250b1859f2701fbed8c18c3393e939c765284c3960658c4f5",
-          "sourceAssetId": "nap_here:1"
+          "sourceAssetId": "nap_here:2"
+        },
+        {
+          "id": "nap_here-3",
+          "mood": "sleepy",
+          "src": "frames/sleep_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 520,
+          "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
+          "sourceAssetId": "nap_here:3"
         }
       ]
     },
@@ -1372,6 +1598,21 @@
         {
           "id": "wake_up-1",
           "mood": "focused",
+          "src": "frames/sleep_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 700,
+          "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
+          "sourceAssetId": "wake_up:1"
+        },
+        {
+          "id": "wake_up-2",
+          "mood": "focused",
           "src": "frames/wake_up.png",
           "kind": "png",
           "rect": {
@@ -1380,9 +1621,39 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 900,
+          "durationMs": 2600,
           "sha256": "26d2bc4fb3e9c8d839888d1e64af5a1e8f7003612e829f42daa83c6c27f90e7e",
-          "sourceAssetId": "wake_up:1"
+          "sourceAssetId": "wake_up:2"
+        },
+        {
+          "id": "wake_up-3",
+          "mood": "focused",
+          "src": "frames/drag_dangle.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 900,
+          "sha256": "f199d760b9d773670223a4e2cdc9d9ea5968331ae389e7c23b57a8c177b81bfa",
+          "sourceAssetId": "wake_up:3"
+        },
+        {
+          "id": "wake_up-4",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 800,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "wake_up:4"
         }
       ]
     },
@@ -1400,7 +1671,7 @@
         {
           "id": "summon_to_screen-1",
           "mood": "focused",
-          "src": "frames/summon_to_screen.png",
+          "src": "frames/idle_breathe.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -1408,8 +1679,8 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 1200,
-          "sha256": "119538282f0f6659be02871c01c21f9e250cdb6ff0b5ef04f17d04eaa1821f54",
+          "durationMs": 280,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
           "sourceAssetId": "summon_to_screen:1",
           "bodyTransform": {
             "origin": {
@@ -1422,6 +1693,157 @@
             "scaleY": 0.012,
             "rotation": 1.6
           }
+        },
+        {
+          "id": "summon_to_screen-2",
+          "mood": "focused",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "summon_to_screen:2",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 36,
+            "translateY": -20,
+            "scaleX": 0.012,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        },
+        {
+          "id": "summon_to_screen-3",
+          "mood": "focused",
+          "src": "frames/summon_to_screen.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 520,
+          "sha256": "119538282f0f6659be02871c01c21f9e250cdb6ff0b5ef04f17d04eaa1821f54",
+          "sourceAssetId": "summon_to_screen:3",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 36,
+            "translateY": -20,
+            "scaleX": 0.012,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        },
+        {
+          "id": "summon_to_screen-4",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 360,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "summon_to_screen:4",
+          "bodyTransform": {
+            "origin": {
+              "x": 512,
+              "y": 790
+            },
+            "translateX": 36,
+            "translateY": -20,
+            "scaleX": 0.012,
+            "scaleY": 0.012,
+            "rotation": 1.6
+          }
+        }
+      ]
+    },
+    "action.summon_to_pointer": {
+      "id": "action.summon_to_pointer",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "summon_to_pointer",
+      "fps": 12,
+      "loop": true,
+      "priority": 90,
+      "cooldownMs": 1000,
+      "reducedMotionFallback": "idle_breathe",
+      "frames": [
+        {
+          "id": "summon_to_pointer-1",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "summon_to_pointer:1"
+        },
+        {
+          "id": "summon_to_pointer-2",
+          "mood": "focused",
+          "src": "frames/hot_loop.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "sourceAssetId": "summon_to_pointer:2"
+        },
+        {
+          "id": "summon_to_pointer-3",
+          "mood": "focused",
+          "src": "frames/summon_to_screen.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 520,
+          "sha256": "119538282f0f6659be02871c01c21f9e250cdb6ff0b5ef04f17d04eaa1821f54",
+          "sourceAssetId": "summon_to_pointer:3"
+        },
+        {
+          "id": "summon_to_pointer-4",
+          "mood": "focused",
+          "src": "frames/idle_breathe.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 360,
+          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sourceAssetId": "summon_to_pointer:4"
         }
       ]
     },
@@ -1926,11 +2348,10 @@
     },
     {
       "id": "walk_round_trip",
-      "status": "fallback",
-      "fallbackId": "run_across",
+      "status": "ready",
       "uiBehavior": "show",
       "runtimeBehavior": "choreography",
-      "reason": "Uses the approved walk sequence with native round-trip choreography."
+      "reason": "Uses its approved walk sequence with native round-trip choreography."
     },
     {
       "id": "toss_yarn",
@@ -1958,11 +2379,10 @@
     },
     {
       "id": "summon_to_pointer",
-      "status": "fallback",
-      "fallbackId": "summon_to_screen",
+      "status": "ready",
       "uiBehavior": "show",
       "runtimeBehavior": "reposition",
-      "reason": "Uses the approved summon pose while native choreography targets the pointer."
+      "reason": "Uses its approved summon sequence while native choreography targets the pointer."
     },
     {
       "id": "capture_moment",
@@ -2036,7 +2456,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.1.0-actions",
-    "sourceSpecSha256": "a52b0e4d689c0bb722ef1a5c4a20825ed3f99bd635513ccd069e9bee38929a17",
-    "inputSetSha256": "187e90d1f86f2e28fd7ab9dfadf6742617455f97f6c2b4e6bda9d747ab25a86f"
+    "sourceSpecSha256": "f2c410bf18f4d06cc328b79bf0da426a1c2ff31004b3dde695a951087dd87628",
+    "inputSetSha256": "4aadc1debffe7512d3dea18a9450c52a689d94e3e670b4d6982d95017b92239a"
   }
 }

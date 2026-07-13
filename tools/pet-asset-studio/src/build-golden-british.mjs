@@ -185,6 +185,7 @@ function createContactSheet(manifest) {
     .map(([key, animation]) => {
       const actionId = key.slice("action.".length);
       const frame = animation.frames[0];
+      const sequence = animation.frames.map((item, index) => `<figure><img src="../${escapeHtml(item.src)}" alt="${escapeHtml(actionId)} phase ${index + 1}"><figcaption>${index + 1} · ${item.durationMs}ms</figcaption></figure>`).join("");
       const capability = capabilityById.get(actionId);
       return `<article class="card">
         <div class="frame">
@@ -192,6 +193,7 @@ function createContactSheet(manifest) {
           <span class="token-slot" aria-label="token slot"></span>
           <span class="mood-slot" aria-label="mood badge slot"></span>
         </div>
+        <div class="sequence" aria-label="${escapeHtml(actionId)} authored frame sequence">${sequence}</div>
         <div class="meta"><strong>${escapeHtml(actionId)}</strong><span class="${escapeHtml(capability?.status ?? "unavailable")}">${escapeHtml(capability?.status ?? "unavailable")}</span></div>
         <small>${escapeHtml(animation.kind)} · ${escapeHtml(animation.mood)} · ${animation.fps} fps</small>
       </article>`;
@@ -215,6 +217,10 @@ function createContactSheet(manifest) {
     .card { background: white; border: 1px solid #dbe1ea; border-radius: 18px; padding: 14px; box-shadow: 0 8px 24px rgba(31, 41, 55, .08); }
     .frame { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 12px; background: linear-gradient(135deg, #f8fafc, #eef2f7); }
     img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .sequence { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; margin-top: 8px; }
+    .sequence figure { margin: 0; min-width: 0; border: 1px solid #e4e8ef; border-radius: 8px; overflow: hidden; background: #f8fafc; }
+    .sequence img { aspect-ratio: 1; }
+    .sequence figcaption { padding: 3px; color: #64748b; font-size: 9px; text-align: center; }
     .token-slot, .mood-slot { position: absolute; box-sizing: border-box; pointer-events: none; border: 2px dashed rgba(15, 118, 110, .78); }
     .token-slot { left: ${(token.x / manifest.artboard.width) * 100}%; top: ${(token.y / manifest.artboard.height) * 100}%; width: ${(token.width / manifest.artboard.width) * 100}%; height: ${(token.height / manifest.artboard.height) * 100}%; }
     .mood-slot { left: ${(badge.x / manifest.artboard.width) * 100}%; top: ${(badge.y / manifest.artboard.height) * 100}%; width: ${(badge.width / manifest.artboard.width) * 100}%; height: ${(badge.height / manifest.artboard.height) * 100}%; border-color: rgba(37, 99, 235, .72); border-radius: 999px; }

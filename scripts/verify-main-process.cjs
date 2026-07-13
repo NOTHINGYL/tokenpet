@@ -30,6 +30,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   environment: "isolated temporary userData seeded with petVisible=false to verify launch migration; local usage loading disabled",
   checks: [],
+  quickPlayActions: [],
   failure: null,
 };
 
@@ -394,6 +395,238 @@ async function run() {
   await doubleClickPet(pet);
   await waitForClosed(qa, "popover");
   verify("double-click closes Quick Play", pet.isVisible(), "second double-click closes only the independent panel");
+
+  qa.setQuickPlayTimeScale(20);
+  const quickPlaySummaries = report.quickPlayActions;
+  const openQuickPlay = async () => {
+    const existing = safeWindow(qa, "popover");
+    if (existing) return existing;
+    await doubleClickPet(pet);
+    const opened = await waitForWindow(qa, "popover");
+    await waitForDom(opened, "[data-testid=quick-play-panel]");
+    return opened;
+  };
+  const waitForQuickPlayEnd = (action) => waitFor(
+    () => qa.getQuickPlaySession().activeAction === null,
+    `${action} Quick Play completion`,
+    12_000,
+  );
+  const runClosedQuickPlayAction = async (action, placement = null) => {
+    qa.resetQuickPlayTrace();
+    const startBounds = pet.getBounds();
+    const startAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
+    const panel = await openQuickPlay();
+    await click(panel, `[data-action-id=${action}]`);
+    await waitForClosed(qa, "popover");
+    await waitFor(() => qa.getQuickPlaySession().activeAction === action, `${action} session acceptance`);
+    let overlayBounds = null;
+    let overlayScreenshot = null;
+    if (placement) {
+      const overlay = await waitForWindow(qa, "quickplayOverlay");
+      await waitForDom(overlay, `[data-overlay-mode=${placement.mode}]`);
+      await waitFor(() => execute(overlay, "[...document.images].every((image) => image.complete && image.naturalWidth > 0)"), `${placement.mode} overlay prop assets`);
+      overlayBounds = overlay.getBounds();
+      overlayScreenshot = join(root, "docs", "screenshots", "pet-story", `quick-play-${placement.mode}-overlay.png`);
+      writeFileSync(overlayScreenshot, (await overlay.webContents.capturePage()).toPNG());
+      verify(
+        `${action} uses a full-screen pointer overlay`,
+        JSON.stringify(overlayBounds) === JSON.stringify(screen.getDisplayNearestPoint(placement.point).workArea),
+        `${placement.mode} overlay covers the active display work area ${JSON.stringify(overlayBounds)}`,
+      );
+      verify(`${action} accepts exactly one placement`, qa.submitQuickPlayOverlayInput(placement.point) === true && qa.submitQuickPlayOverlayInput(placement.point) === false, "the first placement resolves the native pointer promise and a second placement cannot queue");
+    }
+    await waitForQuickPlayEnd(action);
+    await delay(120);
+    const endBounds = pet.getBounds();
+    const endAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
+    const trace = qa.getQuickPlayTrace();
+    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, overlayBounds, overlayScreenshot, trace });
+    return { startBounds, endBounds, startAnimation, endAnimation, trace };
+  };
+
+  const petRoundTrip = await runClosedQuickPlayAction("walk_round_trip");
+  const petDestination = petRoundTrip.trace.find((entry) => entry.phase === "pause")?.bounds;
+  verify(
+    "Pet performs a random safe exact round trip",
+    petDestination
+      && JSON.stringify(petDestination) !== JSON.stringify(petRoundTrip.startBounds)
+      && boundsFitWorkArea(petDestination, screen.getDisplayMatching(petRoundTrip.startBounds).workArea)
+      && JSON.stringify(petRoundTrip.endBounds) === JSON.stringify(petRoundTrip.startBounds)
+      && new Set(petRoundTrip.trace.filter((entry) => entry.phase === "outbound").map((entry) => `${entry.bounds?.x}:${entry.bounds?.y}`)).size >= 3
+      && petRoundTrip.endAnimation === petRoundTrip.startAnimation,
+    `destination ${JSON.stringify(petDestination)}; exact home and actor state ${petRoundTrip.endAnimation}`,
+  );
+
+  const placementWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
+  const snackPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .36), y: placementWorkArea.y + Math.round(placementWorkArea.height * .66) };
+  const feed = await runClosedQuickPlayAction("token_snack", { mode: "snack", point: snackPoint });
+  verify(
+    "Feed snack performs three lick cycles, eats, and returns exactly",
+    feed.trace.filter((entry) => entry.phase === "interact").length === 4
+      && JSON.stringify(feed.endBounds) === JSON.stringify(feed.startBounds)
+      && feed.endAnimation === feed.startAnimation,
+    `trace contains three lick restarts plus eat: ${feed.trace.map((entry) => entry.phase).join(" → ")}`,
+  );
+
+  qa.resetQuickPlayTrace();
+  const failureStart = pet.getBounds();
+  const failureAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
+  let panel = await openQuickPlay();
+  await click(panel, "[data-action-id=token_snack]");
+  await waitForClosed(qa, "popover");
+  const failureOverlay = await waitForWindow(qa, "quickplayOverlay");
+  await waitForDom(failureOverlay, "[data-overlay-mode=snack]");
+  await execute(failureOverlay, `window.tokenpet.quickPlayOverlayInput({ type: 'reopen', screenX: 240, screenY: 240, timestamp: Date.now() })`);
+  panel = await waitForWindow(qa, "popover");
+  await waitForDom(panel, "[data-testid=quick-play-panel]");
+  verify("Pointer mode can reopen Quick Play", qa.getQuickPlaySession().activeAction === "token_snack" && safeWindow(qa, "quickplayOverlay") !== null, "overlay-routed double-click command opens the panel without canceling placement ownership");
+  await click(panel, "button[aria-label='Close Quick Play']");
+  await waitForClosed(qa, "popover");
+  verify("Quick Play cancel injects failure recovery", qa.submitQuickPlayOverlayInput(null) === true, "QA cancels the owned placement promise through its guarded injection hook");
+  await waitForQuickPlayEnd("token_snack failure");
+  const failureTrace = qa.getQuickPlayTrace();
+  await delay(80);
+  verify(
+    "Quick Play failure restores state and clears overlay/mutex",
+    failureTrace.some((entry) => entry.phase === "failed")
+      && JSON.stringify(pet.getBounds()) === JSON.stringify(failureStart)
+      && await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null") === failureAnimation
+      && safeWindow(qa, "quickplayOverlay") === null
+      && qa.getQuickPlaySession().activeAction === null,
+    `failed trace ${failureTrace.map((entry) => entry.phase).join(" → ")} restored ${JSON.stringify(failureStart)} and ${failureAnimation}`,
+  );
+
+  qa.resetQuickPlayTrace();
+  const cursorStart = pet.getBounds();
+  panel = await openQuickPlay();
+  await click(panel, "[data-action-id=play_cursor]");
+  await waitForClosed(qa, "popover");
+  await waitFor(() => qa.getQuickPlaySession().phase === "tracking", "cursor tracking phase");
+  const quickPlayDragAttempt = await execute(pet, "window.tokenpet.startDrag()");
+  verify("Active Quick Play owns pet movement", quickPlayDragAttempt.started === false, "native drag is rejected while Cursor tracking holds the action mutex");
+  panel = await openQuickPlay();
+  const activeButtons = await waitFor(async () => {
+    const state = await execute(panel, `(() => ({
+      disabled: [...document.querySelectorAll('[data-action-id]:not([data-action-id=capture_moment])')].every((button) => button.disabled),
+      captureEnabled: !document.querySelector('[data-action-id=capture_moment]')?.disabled,
+    }))()`);
+    return state.disabled && state.captureEnabled ? state : null;
+  }, "reopened Quick Play exclusive button state");
+  const activeBeforeCapture = qa.getQuickPlaySession();
+  const captureCountBefore = qa.getCaptureCount();
+  await click(panel, "[data-action-id=capture_moment]");
+  await click(panel, "[data-action-id=capture_moment]");
+  await waitFor(() => qa.getCaptureCount() === captureCountBefore + 2 && existsSync(capturePath) && readFileSync(capturePath).length > 8, "two serialized concurrent Quick Play captures");
+  const activeAfterCapture = qa.getQuickPlaySession();
+  verify(
+    "Quick Play exclusivity keeps Capture repeatable",
+    activeButtons.disabled && activeButtons.captureEnabled
+      && activeBeforeCapture.activeAction === "play_cursor"
+      && activeAfterCapture.activeAction === "play_cursor"
+      && activeAfterCapture.startedAt === activeBeforeCapture.startedAt
+      && qa.getCaptureCount() === captureCountBefore + 2,
+    `reopened panel state ${JSON.stringify({ activeButtons, activeBeforeCapture, activeAfterCapture, capturesCompleted: qa.getCaptureCount() - captureCountBefore })}`,
+  );
+  await waitForQuickPlayEnd("play_cursor");
+  const cursorTrace = qa.getQuickPlayTrace();
+  verify(
+    "Play cursor stays body-anchored for its 30-second contract",
+    cursorTrace.some((entry) => entry.phase === "tracking")
+      && cursorTrace.every((entry) => !entry.bounds || JSON.stringify(entry.bounds) === JSON.stringify(cursorStart))
+      && JSON.stringify(pet.getBounds()) === JSON.stringify(cursorStart),
+    "the accelerated QA clock preserves the production 30,000ms semantic deadline while every native bound remains fixed",
+  );
+  quickPlaySummaries.push({ action: "play_cursor", startBounds: cursorStart, endBounds: pet.getBounds(), trace: cursorTrace, captureConcurrent: true });
+  await click(panel, "button[aria-label='Close Quick Play']");
+  await waitForClosed(qa, "popover");
+
+  qa.resetQuickPlayTrace();
+  const dangleStart = pet.getBounds();
+  panel = await openQuickPlay();
+  await click(panel, "[data-action-id=drag_dangle]");
+  await waitForClosed(qa, "popover");
+  const dangleOverlay = await waitForWindow(qa, "quickplayOverlay");
+  await waitForDom(dangleOverlay, "[data-overlay-mode=dangle]");
+  await waitFor(() => execute(dangleOverlay, "[...document.images].every((image) => image.complete && image.naturalWidth > 0)"), "dangle overlay prop assets");
+  const dangleOrigin = { x: placementWorkArea.x + 180, y: placementWorkArea.y + 180 };
+  await execute(dangleOverlay, `window.tokenpet.quickPlayOverlayInput({ type: 'click', screenX: ${dangleOrigin.x}, screenY: ${dangleOrigin.y}, timestamp: Date.now() })`);
+  await delay(260);
+  verify("Dangle ignores release before meaningful movement", qa.getQuickPlaySession().activeAction === "drag_dangle" && qa.getQuickPlaySession().phase !== "return", "an early click keeps pointer mode active and requests more movement");
+  for (let index = 0; index < 150; index += 1) {
+    qa.setCursorPoint({ x: dangleOrigin.x + index * 3, y: dangleOrigin.y + (index % 3) * 14 });
+    await delay(20);
+  }
+  await waitFor(() => qa.getQuickPlaySession().phase === "interact", "dangle meaningful movement gate");
+  const pursuedBounds = pet.getBounds();
+  const dangleOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-dangle-overlay.png");
+  writeFileSync(dangleOverlayScreenshot, (await dangleOverlay.webContents.capturePage()).toPNG());
+  verify("Dangle requires more than two seconds of meaningful movement", JSON.stringify(pursuedBounds) !== JSON.stringify(dangleStart), `continuous pointer motion armed pursuit at ${JSON.stringify(pursuedBounds)}`);
+  verify("Dangle click releases its one pointer mode", qa.submitQuickPlayOverlayInput(qa.getSettings().petVisible ? dangleOrigin : null) === true, "one click resolves and removes the wand/fish overlay");
+  qa.setCursorPoint(null);
+  await waitForQuickPlayEnd("drag_dangle");
+  const dangleTrace = qa.getQuickPlayTrace();
+  verify("Dangle returns to exact starting bounds", JSON.stringify(pet.getBounds()) === JSON.stringify(dangleStart) && dangleTrace.some((entry) => entry.phase === "interact"), "pursuit ends with an exact home restoration");
+  quickPlaySummaries.push({ action: "drag_dangle", startBounds: dangleStart, pursuedBounds, endBounds: pet.getBounds(), overlayScreenshot: dangleOverlayScreenshot, trace: dangleTrace });
+
+  const yarnPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .61), y: placementWorkArea.y + Math.round(placementWorkArea.height * .62) };
+  const yarn = await runClosedQuickPlayAction("toss_yarn", { mode: "yarn", point: yarnPoint });
+  verify(
+    "Toss yarn retrieves, carries, drops, and returns exactly",
+    ["stand", "outbound", "interact", "return", "settle"].every((phase) => yarn.trace.some((entry) => entry.phase === phase))
+      && JSON.stringify(yarn.endBounds) === JSON.stringify(yarn.startBounds),
+    `native phases ${yarn.trace.map((entry) => entry.phase).join(" → ")}`,
+  );
+
+  qa.resetQuickPlayTrace();
+  const napBounds = pet.getBounds();
+  panel = await openQuickPlay();
+  await click(panel, "[data-action-id=nap_here]");
+  verify("Nap here keeps Quick Play open", safeWindow(qa, "popover")?.id === panel.id, "the panel remains visible during settle");
+  await waitForQuickPlayEnd("nap_here");
+  await waitFor(() => qa.getQuickPlaySession().resting === true, "persistent sleep state");
+  const napDisabled = await execute(panel, "document.querySelector('[data-action-id=nap_here]')?.disabled === true");
+  verify("Nap settles once into persistent sleep", napDisabled && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds), "already-asleep Nap is disabled without acquiring another action lock");
+  quickPlaySummaries.push({ action: "nap_here", startBounds: napBounds, endBounds: pet.getBounds(), trace: qa.getQuickPlayTrace(), resting: true });
+
+  qa.resetQuickPlayTrace();
+  await click(panel, "[data-action-id=wake_up]");
+  verify("Wake up keeps Quick Play open", safeWindow(qa, "popover")?.id === panel.id, "the panel remains visible during the five-second authored sequence");
+  await waitForQuickPlayEnd("wake_up");
+  await waitFor(() => qa.getQuickPlaySession().resting === false, "wake restored director state");
+  const wakeTrace = qa.getQuickPlayTrace();
+  verify(
+    "Wake up follows the five-second phase contract",
+    ["stand", "outbound", "interact", "settle"].every((phase) => wakeTrace.some((entry) => entry.phase === phase))
+      && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds),
+    "production timeline remains exactly five seconds while the configured stretch hold redistributes the authored blink/roll/stretch/gather phases; QA uses an accelerated clock",
+  );
+  quickPlaySummaries.push({ action: "wake_up", startBounds: napBounds, endBounds: pet.getBounds(), trace: wakeTrace, resting: false });
+  await click(panel, "button[aria-label='Close Quick Play']");
+  await waitForClosed(qa, "popover");
+
+  qa.resetQuickPlayTrace();
+  const summonStart = pet.getBounds();
+  const summonPoint = { x: placementWorkArea.x + placementWorkArea.width - 150, y: placementWorkArea.y + placementWorkArea.height - 190 };
+  qa.setCursorPoint(summonPoint);
+  panel = await openQuickPlay();
+  await click(panel, "[data-action-id=summon_to_pointer]");
+  await waitForClosed(qa, "popover");
+  qa.setCursorPoint({ x: placementWorkArea.x + 40, y: placementWorkArea.y + 40 });
+  await waitForQuickPlayEnd("summon_to_pointer");
+  qa.setCursorPoint(null);
+  const summonEnd = pet.getBounds();
+  const summonStored = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
+  const summonTrace = qa.getQuickPlayTrace();
+  verify(
+    "Summon captures acceptance pointer, walks, then persists its new home",
+    JSON.stringify(summonEnd) !== JSON.stringify(summonStart)
+      && boundsFitWorkArea(summonEnd, screen.getDisplayNearestPoint(summonPoint).workArea)
+      && JSON.stringify(summonStored) === JSON.stringify(summonEnd)
+      && new Set(summonTrace.filter((entry) => entry.phase === "outbound").map((entry) => `${entry.bounds?.x}:${entry.bounds?.y}`)).size >= 3,
+    `accepted ${JSON.stringify(summonPoint)}, ignored later cursor movement, arrived and persisted ${JSON.stringify(summonEnd)}`,
+  );
+  quickPlaySummaries.push({ action: "summon_to_pointer", startBounds: summonStart, endBounds: summonEnd, targetPoint: summonPoint, trace: summonTrace });
+  qa.setQuickPlayTimeScale(1);
 
   const settingsBeforeClose = JSON.stringify(qa.getSettings());
   await doubleClickPet(pet);

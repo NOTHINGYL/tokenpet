@@ -3,7 +3,7 @@ import type { Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlaySession, UsageSnapshot } from "./types.js";
+import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayPhase, QuickPlaySession, UsageSnapshot } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
@@ -18,6 +18,20 @@ import {
   popoverPositionForBounds,
   summonBoundsForCursor,
 } from "./window-behavior.js";
+import {
+  accumulateDangleMovement,
+  boundsAtPointToPointTime,
+  createCursorTrackingState,
+  createDangleMovementState,
+  createQuickPlayActionTimeline,
+  createPointToPointPath,
+  createYarnRollPlan,
+  interpolateQuickPlayBounds,
+  normalizeQuickPlayActionConfig,
+  sampleSafeRandomTarget,
+  updateCursorTracking,
+} from "./quick-play-choreography.js";
+import type { CursorTrackingState, DangleMovementState } from "./quick-play-choreography.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -29,6 +43,7 @@ let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
 let menuBarWindow: BrowserWindow | null = null;
 let consoleWindow: BrowserWindow | null = null;
+let quickPlayOverlayWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let cursorTrackingTimer: NodeJS.Timeout | null = null;
 let lastStoryReconcileAt = 0;
@@ -39,12 +54,38 @@ let workspaceRehomeCount = 0;
 let quickPlaySession: QuickPlaySession = {
   activeAction: null,
   startedAt: null,
+  phase: "idle",
+  phaseStartedAt: null,
   startBounds: null,
   startDirectorState: null,
+  targetPoint: null,
   pointerMode: "none",
+  resting: false,
+  failure: null,
 };
 let quickPlaySessionTimer: NodeJS.Timeout | null = null;
+let reportedPetDirectorState: { action: PetActionId; resting: boolean } = { action: "idle_breathe", resting: false };
+type QuickPlayRuntime = {
+  id: number;
+  action: Exclude<QuickPlayActionId, "capture_moment">;
+  startBounds: Rectangle;
+  targetBounds: Rectangle | null;
+  timers: Set<NodeJS.Timeout>;
+  cancelers: Set<() => void>;
+  overlayTimer: NodeJS.Timeout | null;
+  resolveOverlay: ((point: { x: number; y: number; velocityX: number; velocityY: number } | null) => void) | null;
+  dangleState: DangleMovementState;
+  overlayClosing: boolean;
+  failing: boolean;
+};
+let quickPlayRuntime: QuickPlayRuntime | null = null;
+let nextQuickPlayRuntimeId = 1;
+let quickPlayTimeScale = 1;
+let quickPlayCursorTrackingState: CursorTrackingState = createCursorTrackingState();
+const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null }> = [];
 let petVisibleCaptureBounds: Rectangle | null = null;
+let captureQueue: Promise<unknown> = Promise.resolve();
+let mainProcessQaCaptureCount = 0;
 type PetTraversalResult = { moved: boolean; canceled?: boolean };
 type PetTraversalState = {
   window: BrowserWindow;
@@ -125,7 +166,7 @@ function currentCursorScreenPoint() {
   return isMainProcessQa && mainProcessQaCursor ? mainProcessQaCursor : screen.getCursorScreenPoint();
 }
 
-function rendererUrl(view: "pet" | "popover" | "menubar" | "console", params: Record<string, string> = {}) {
+function rendererUrl(view: "pet" | "popover" | "menubar" | "console" | "quick-play-overlay", params: Record<string, string> = {}) {
   const query = new URLSearchParams({ view, ...params }).toString();
   if (isDev && devServerUrl) {
     return `${devServerUrl}/?${query}`;
@@ -136,7 +177,7 @@ function rendererUrl(view: "pet" | "popover" | "menubar" | "console", params: Re
 
 async function loadWindow(
   window: BrowserWindow,
-  view: "pet" | "popover" | "menubar" | "console",
+  view: "pet" | "popover" | "menubar" | "console" | "quick-play-overlay",
   params?: Record<string, string>,
 ) {
   await window.loadURL(rendererUrl(view, params));
@@ -157,8 +198,7 @@ function verifyBridge(window: BrowserWindow, label: string) {
 
 function quitTokenPet() {
   cancelPetTraversal();
-  if (quickPlaySessionTimer) clearTimeout(quickPlaySessionTimer);
-  quickPlaySessionTimer = null;
+  finishQuickPlaySession(undefined, true);
   if (cursorTrackingTimer) {
     clearInterval(cursorTrackingTimer);
     cursorTrackingTimer = null;
@@ -708,6 +748,7 @@ function setPetVisible(enabled: boolean) {
   }
 
   cancelPetTraversal();
+  finishQuickPlaySession(undefined, true);
   closeUsableWindow(popoverWindow);
   if (isUsableWindow(petWindow)) petWindow.hide();
   else {
@@ -746,17 +787,6 @@ const quickPlayPositionActions = new Set<QuickPlayActionId>([
   "summon_to_pointer",
 ]);
 
-const quickPlayActionDurations: Record<Exclude<QuickPlayActionId, "capture_moment">, number> = {
-  walk_round_trip: 5_500,
-  token_snack: 7_000,
-  play_cursor: 30_000,
-  drag_dangle: 8_000,
-  toss_yarn: 5_500,
-  nap_here: 1_800,
-  wake_up: 5_000,
-  summon_to_pointer: 4_500,
-};
-
 function currentQuickPlaySession(): QuickPlaySession {
   return {
     ...quickPlaySession,
@@ -771,18 +801,407 @@ function publishQuickPlaySession() {
   });
 }
 
-function finishQuickPlaySession(action?: Exclude<QuickPlayActionId, "capture_moment">) {
+function emptyQuickPlaySession(): QuickPlaySession {
+  return {
+    activeAction: null,
+    startedAt: null,
+    phase: "idle",
+    phaseStartedAt: null,
+    startBounds: null,
+    startDirectorState: null,
+    targetPoint: null,
+    pointerMode: "none",
+    resting: reportedPetDirectorState.resting,
+    failure: null,
+  };
+}
+
+function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySession.targetPoint) {
+  quickPlaySession = { ...quickPlaySession, phase, phaseStartedAt: Date.now(), targetPoint };
+  quickPlayTrace.push({ at: Date.now(), action: quickPlaySession.activeAction, phase, bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint });
+  publishQuickPlaySession();
+}
+
+function clearQuickPlayRuntimeTimers(runtime: QuickPlayRuntime | null) {
+  if (!runtime) return;
+  [...runtime.cancelers].forEach((cancel) => cancel());
+  runtime.cancelers.clear();
+  runtime.timers.forEach((timer) => clearTimeout(timer));
+  runtime.timers.clear();
+  if (runtime.overlayTimer) clearInterval(runtime.overlayTimer);
+  runtime.overlayTimer = null;
+}
+
+function closeQuickPlayOverlay() {
+  if (quickPlayRuntime) quickPlayRuntime.overlayClosing = true;
+  closeUsableWindow(quickPlayOverlayWindow);
+  quickPlayOverlayWindow = null;
+}
+
+function publishQuickPlayOverlayState(state: { phase?: "placing" | "playing" | "rolling" | "finishing"; enabled?: boolean; hint?: string; targetScreenX?: number; targetScreenY?: number; pointerScreenX?: number; pointerScreenY?: number; durationMs?: number }) {
+  if (isUsableWindow(quickPlayOverlayWindow)) quickPlayOverlayWindow.webContents.send("quick-play:overlay-state", state);
+}
+
+function finishQuickPlaySession(action?: Exclude<QuickPlayActionId, "capture_moment">, restoreStart = false) {
   if (action && quickPlaySession.activeAction !== action) return;
   if (quickPlaySessionTimer) clearTimeout(quickPlaySessionTimer);
   quickPlaySessionTimer = null;
-  quickPlaySession = {
-    activeAction: null,
-    startedAt: null,
-    startBounds: null,
-    startDirectorState: null,
-    pointerMode: "none",
-  };
+  const runtime = quickPlayRuntime;
+  if (restoreStart && runtime && isUsableWindow(petWindow)) {
+    petWindow.setBounds(runtime.startBounds, false);
+    positionAccessoryWindows();
+  }
+  runtime?.resolveOverlay?.(null);
+  clearQuickPlayRuntimeTimers(runtime);
+  quickPlayRuntime = null;
+  quickPlayCursorTrackingState = createCursorTrackingState();
+  closeQuickPlayOverlay();
+  quickPlaySession = emptyQuickPlaySession();
   publishQuickPlaySession();
+}
+
+function quickPlayDelay(runtime: QuickPlayRuntime, durationMs: number) {
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      runtime.cancelers.delete(cancel);
+      resolve(value);
+    };
+    const cancel = () => {
+      clearTimeout(timer);
+      runtime.timers.delete(timer);
+      finish(false);
+    };
+    const timer = setTimeout(() => {
+      runtime.timers.delete(timer);
+      finish(quickPlayRuntime === runtime);
+    }, Math.max(0, durationMs / quickPlayTimeScale));
+    timer.unref();
+    runtime.timers.add(timer);
+    runtime.cancelers.add(cancel);
+  });
+}
+
+function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, durationMs: number, persist = false, routeCurve: "straight" | "gentle" | "curved" = "straight") {
+  if (!isUsableWindow(petWindow) || quickPlayRuntime !== runtime) return Promise.resolve(false);
+  const actorWindow = petWindow;
+  const start = actorWindow.getBounds();
+  const startedAt = Date.now();
+  const startDisplay = screen.getDisplayMatching(start);
+  const targetDisplay = screen.getDisplayMatching(target);
+  const curvedPlan = startDisplay.id === targetDisplay.id
+    ? createPointToPointPath(start, target, startDisplay.workArea, { durationMs: Math.max(1, durationMs / quickPlayTimeScale), routeCurve })
+    : null;
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      runtime.cancelers.delete(cancel);
+      resolve(value);
+    };
+    const cancel = () => {
+      clearInterval(timer);
+      runtime.timers.delete(timer);
+      finish(false);
+    };
+    const step = () => {
+      if (quickPlayRuntime !== runtime || !isUsableWindow(actorWindow) || petWindow !== actorWindow || !settings.petVisible || dragState) {
+        clearInterval(timer);
+        runtime.timers.delete(timer);
+        finish(false);
+        return;
+      }
+      const progress = Math.min(1, (Date.now() - startedAt) / Math.max(1, durationMs / quickPlayTimeScale));
+      const eased = progress < .5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
+      const next = curvedPlan
+        ? boundsAtPointToPointTime(curvedPlan, Date.now() - startedAt).bounds
+        : interpolateQuickPlayBounds(start, target, eased);
+      actorWindow.setBounds(next, false);
+      if (isMainProcessQa) {
+        const previousTraceBounds = quickPlayTrace.at(-1)?.bounds;
+        if (!previousTraceBounds || previousTraceBounds.x !== next.x || previousTraceBounds.y !== next.y) {
+          quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: quickPlaySession.phase, bounds: { ...next }, targetPoint: quickPlaySession.targetPoint });
+        }
+      }
+      positionAccessoryWindows();
+      if (progress < 1) return;
+      clearInterval(timer);
+      runtime.timers.delete(timer);
+      actorWindow.setBounds(target, false);
+      if (persist) writeStoredPetPosition(target);
+      positionAccessoryWindows();
+      finish(true);
+    };
+    const timer = setInterval(step, 16);
+    timer.unref();
+    runtime.timers.add(timer);
+    runtime.cancelers.add(cancel);
+    step();
+  });
+}
+
+function createQuickPlayOverlay(runtime: QuickPlayRuntime, mode: Exclude<QuickPlaySession["pointerMode"], "none">) {
+  closeQuickPlayOverlay();
+  const point = currentCursorScreenPoint();
+  const workArea = screen.getDisplayNearestPoint(point).workArea;
+  const createdWindow = new BrowserWindow({
+    ...workArea,
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    resizable: false,
+    hasShadow: false,
+    alwaysOnTop: true,
+    focusable: true,
+    skipTaskbar: true,
+    show: false,
+    webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false },
+  });
+  quickPlayOverlayWindow = createdWindow;
+  trackWindowHealth(createdWindow);
+  createdWindow.setAlwaysOnTop(true, "screen-saver");
+  const params: Record<string, string> = { mode };
+  if (mode === "snack") {
+    const config = actionConfig("token_snack");
+    params.snackStyle = config.snackStyle;
+    params.snackSize = String(config.snackSize);
+  } else if (mode === "dangle") {
+    const config = actionConfig("drag_dangle");
+    params.fishToyStyle = config.fishToyStyle;
+    params.swingResponse = String(config.swingResponse);
+    params.toyTrailEffect = String(config.toyTrailEffect);
+  } else {
+    params.yarnColor = actionConfig("toss_yarn").yarnColor;
+  }
+  void loadWindow(createdWindow, "quick-play-overlay", params).then(() => {
+    if (quickPlayOverlayWindow === createdWindow && isUsableWindow(createdWindow)) {
+      createdWindow.show();
+      createdWindow.focus();
+    }
+  });
+  createdWindow.on("closed", () => {
+    if (quickPlayOverlayWindow === createdWindow) quickPlayOverlayWindow = null;
+    if (quickPlayRuntime === runtime && !runtime.overlayClosing && !runtime.failing) {
+      void failQuickPlayRuntime(runtime, new Error("Quick Play overlay closed unexpectedly"));
+    }
+  });
+  createdWindow.webContents.on("render-process-gone", () => {
+    if (quickPlayRuntime === runtime && !runtime.overlayClosing && !runtime.failing) {
+      void failQuickPlayRuntime(runtime, new Error("Quick Play overlay renderer stopped"));
+    }
+  });
+
+  runtime.overlayTimer = setInterval(() => {
+    if (quickPlayRuntime !== runtime || !isUsableWindow(createdWindow)) return;
+    const cursor = currentCursorScreenPoint();
+    const cursorDisplay = screen.getDisplayNearestPoint(cursor);
+    if (JSON.stringify(createdWindow.getBounds()) !== JSON.stringify(cursorDisplay.workArea)) {
+      createdWindow.setBounds(cursorDisplay.workArea, false);
+    }
+    publishQuickPlayOverlayState({ pointerScreenX: cursor.x, pointerScreenY: cursor.y });
+    if (mode !== "dangle") return;
+    const now = Date.now();
+    runtime.dangleState = accumulateDangleMovement(runtime.dangleState, cursor, now);
+    if (runtime.dangleState.armed && quickPlaySession.phase !== "interact") updateQuickPlayPhase("interact", cursor);
+    if (!runtime.dangleState.armed || !isUsableWindow(petWindow)) return;
+    const workArea = screen.getDisplayNearestPoint(cursor).workArea;
+    const current = petWindow.getBounds();
+    const desired = clampBoundsToWorkArea({ ...current, x: Math.round(cursor.x - current.width / 2), y: Math.round(cursor.y + 18 - current.height / 2) }, workArea);
+    const pursuitFactor = clampValue(.05 + actionConfig("drag_dangle").pursuitPace / 1_000, .1, .2);
+    petWindow.setPosition(Math.round(current.x + (desired.x - current.x) * pursuitFactor), Math.round(current.y + (desired.y - current.y) * pursuitFactor), false);
+    positionAccessoryWindows();
+  }, 32);
+  runtime.overlayTimer.unref();
+}
+
+function waitForQuickPlayOverlay(runtime: QuickPlayRuntime) {
+  return new Promise<{ x: number; y: number; velocityX: number; velocityY: number } | null>((resolve) => {
+    runtime.resolveOverlay = resolve;
+  });
+}
+
+async function completeQuickPlayRuntime(runtime: QuickPlayRuntime) {
+  if (quickPlayRuntime !== runtime) return;
+  updateQuickPlayPhase("complete");
+  await quickPlayDelay(runtime, 120);
+  finishQuickPlaySession(runtime.action);
+}
+
+async function failQuickPlayRuntime(runtime: QuickPlayRuntime, reason: unknown) {
+  if (quickPlayRuntime !== runtime || runtime.failing) return;
+  runtime.failing = true;
+  quickPlaySession = { ...quickPlaySession, phase: "failed", phaseStartedAt: Date.now(), failure: reason instanceof Error ? reason.message : String(reason) };
+  quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: "failed", bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint: quickPlaySession.targetPoint });
+  publishQuickPlaySession();
+  if (isUsableWindow(petWindow)) {
+    petWindow.setBounds(runtime.startBounds, false);
+    positionAccessoryWindows();
+  }
+  await quickPlayDelay(runtime, 180);
+  finishQuickPlaySession(runtime.action);
+}
+
+function actionConfig<A extends Exclude<QuickPlayActionId, "capture_moment">>(action: A) {
+  return normalizeQuickPlayActionConfig(action, settings.petStory.actionSettings.byAction[action]);
+}
+
+async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
+  const action = runtime.action;
+  if (!isUsableWindow(petWindow)) throw new Error("Pet window is unavailable");
+
+  if (action === "walk_round_trip") {
+    const config = actionConfig(action);
+    const workArea = screen.getDisplayMatching(runtime.startBounds).workArea;
+    const target = sampleSafeRandomTarget(runtime.startBounds, workArea, { roamDistance: config.roamDistance });
+    runtime.targetBounds = target;
+    quickPlaySession = { ...quickPlaySession, targetPoint: { x: target.x + target.width / 2, y: target.y + target.height / 2 } };
+    updateQuickPlayPhase("stand");
+    if (!await quickPlayDelay(runtime, 320)) return;
+    updateQuickPlayPhase("outbound");
+    if (!await animateQuickPlayBounds(runtime, target, Math.round(1_650 * 90 / config.walkPace))) throw new Error("Pet walk was interrupted");
+    updateQuickPlayPhase("pause");
+    if (!await quickPlayDelay(runtime, config.destinationPause * 1_000)) return;
+    updateQuickPlayPhase("return");
+    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, Math.round(1_650 * 90 / config.walkPace))) throw new Error("Pet return was interrupted");
+    updateQuickPlayPhase("settle");
+    if (!await quickPlayDelay(runtime, 260)) return;
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "token_snack" || action === "toss_yarn") {
+    const mode = action === "token_snack" ? "snack" : "yarn";
+    createQuickPlayOverlay(runtime, mode);
+    updateQuickPlayPhase("awaiting-placement");
+    const point = await waitForQuickPlayOverlay(runtime);
+    runtime.resolveOverlay = null;
+    if (!point) throw new Error(`${mode} placement canceled`);
+    const workArea = screen.getDisplayNearestPoint(point).workArea;
+    const config = actionConfig(action);
+    let interactionPoint: { x: number; y: number } = point;
+    if (action === "toss_yarn") {
+      const roll = createYarnRollPlan(point, { x: point.velocityX, y: point.velocityY }, workArea, actionConfig("toss_yarn"));
+      interactionPoint = roll.target;
+      publishQuickPlayOverlayState({
+        enabled: false,
+        phase: "rolling",
+        hint: "The yarn is rolling…",
+        targetScreenX: roll.target.x,
+        targetScreenY: roll.target.y,
+        durationMs: roll.durationMs / quickPlayTimeScale,
+      });
+      if (!await quickPlayDelay(runtime, roll.durationMs)) return;
+      publishQuickPlayOverlayState({ enabled: false, phase: "finishing", hint: "Your cat is retrieving the yarn…" });
+    } else {
+      publishQuickPlayOverlayState({ enabled: false, phase: "finishing", hint: "Snack placed — here comes your cat…" });
+    }
+    const target = clampBoundsToWorkArea({ ...runtime.startBounds, x: Math.round(interactionPoint.x - runtime.startBounds.width / 2), y: Math.round(interactionPoint.y - runtime.startBounds.height * .68) }, workArea);
+    runtime.targetBounds = target;
+    quickPlaySession = { ...quickPlaySession, targetPoint: interactionPoint };
+    updateQuickPlayPhase("stand", interactionPoint);
+    if (!await quickPlayDelay(runtime, action === "token_snack" ? 620 : 350)) return;
+    updateQuickPlayPhase("outbound", interactionPoint);
+    const pace = "walkPace" in config ? config.walkPace : config.rollSpeed;
+    if (!await animateQuickPlayBounds(runtime, target, Math.round((action === "token_snack" ? 1_650 : 1_250) * 100 / pace))) throw new Error("Toy approach was interrupted");
+    if (action === "token_snack") {
+      // Three distinct authored lick cycles are observable in the native trace;
+      // repeated phase timestamps also restart the visible snack loop at each cycle.
+      for (let lick = 0; lick < 3; lick += 1) {
+        updateQuickPlayPhase("interact", interactionPoint);
+        if (!await quickPlayDelay(runtime, 520)) return;
+      }
+      updateQuickPlayPhase("interact", interactionPoint);
+      if (!await quickPlayDelay(runtime, 420)) return;
+    } else {
+      updateQuickPlayPhase("interact", interactionPoint);
+      if (!await quickPlayDelay(runtime, 850)) return;
+    }
+    closeQuickPlayOverlay();
+    updateQuickPlayPhase("return", interactionPoint);
+    const returnMs = config.returnPace === "run" ? 820 : 1_150;
+    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, returnMs)) throw new Error("Toy return was interrupted");
+    updateQuickPlayPhase("settle", interactionPoint);
+    if (!await quickPlayDelay(runtime, 260)) return;
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "drag_dangle") {
+    createQuickPlayOverlay(runtime, "dangle");
+    const releasePromise = waitForQuickPlayOverlay(runtime);
+    updateQuickPlayPhase("stand");
+    if (!await quickPlayDelay(runtime, 650)) return;
+    if (quickPlaySession.phase !== "interact") updateQuickPlayPhase("stalk");
+    const releasedAt = await releasePromise;
+    runtime.resolveOverlay = null;
+    if (!releasedAt) throw new Error("Dangle toy canceled");
+    closeQuickPlayOverlay();
+    updateQuickPlayPhase("return", releasedAt);
+    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, 1_250)) throw new Error("Dangle return was interrupted");
+    updateQuickPlayPhase("settle", releasedAt);
+    if (!await quickPlayDelay(runtime, 260)) return;
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "play_cursor") {
+    updateQuickPlayPhase("tracking", currentCursorScreenPoint());
+    if (!await quickPlayDelay(runtime, 30_000)) return;
+    updateQuickPlayPhase("settle");
+    if (!await quickPlayDelay(runtime, 120)) return;
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "nap_here") {
+    updateQuickPlayPhase("settle");
+    if (!await quickPlayDelay(runtime, 1_800)) return;
+    reportedPetDirectorState = { action: "sleep_loop", resting: true };
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "wake_up") {
+    const config = actionConfig("wake_up");
+    const timeline = createQuickPlayActionTimeline("wake_up", config);
+    const [blink, roll, stretch, gather] = timeline.phases;
+    updateQuickPlayPhase("stand");
+    if (!await quickPlayDelay(runtime, blink.durationMs)) return;
+    updateQuickPlayPhase("outbound");
+    if (!await quickPlayDelay(runtime, roll.durationMs)) return;
+    updateQuickPlayPhase("interact");
+    if (!await quickPlayDelay(runtime, stretch.durationMs)) return;
+    updateQuickPlayPhase("settle");
+    if (!await quickPlayDelay(runtime, gather.durationMs)) return;
+    reportedPetDirectorState = { ...reportedPetDirectorState, resting: false };
+    await completeQuickPlayRuntime(runtime);
+    return;
+  }
+
+  if (action === "summon_to_pointer") {
+    const point = quickPlaySession.targetPoint ?? currentCursorScreenPoint();
+    const workArea = screen.getDisplayNearestPoint(point).workArea;
+    const config = actionConfig(action);
+    const baseTarget = summonBoundsForCursor(runtime.startBounds, point, workArea);
+    const offsetX = config.arrivalOffset === "beside" ? (baseTarget.x + baseTarget.width / 2 < point.x ? -38 : 38) : 0;
+    const offsetY = config.arrivalOffset === "below" ? 44 : config.arrivalOffset === "near" ? -16 : 0;
+    const target = clampBoundsToWorkArea({ ...baseTarget, x: baseTarget.x + offsetX, y: baseTarget.y + offsetY }, workArea);
+    runtime.targetBounds = target;
+    updateQuickPlayPhase("stand", point);
+    if (!await quickPlayDelay(runtime, 380)) return;
+    updateQuickPlayPhase("outbound", point);
+    if (!await animateQuickPlayBounds(runtime, target, Math.round(3_250 * 92 / config.walkPace), false, config.routeCurve)) throw new Error("Summon walk was interrupted");
+    updateQuickPlayPhase("settle", point);
+    if (!await quickPlayDelay(runtime, config.settleDelay * 1_000)) return;
+    if (isUsableWindow(petWindow)) {
+      petWindow.setBounds(target, false);
+      writeStoredPetPosition(target);
+    }
+    await completeQuickPlayRuntime(runtime);
+  }
 }
 
 function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_moment">) {
@@ -793,16 +1212,35 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
       : action === "toss_yarn"
         ? "yarn"
         : "none";
+  const startBounds = isUsableWindow(petWindow) ? petWindow.getBounds() : { x: 0, y: 0, ...PET_WINDOW_SIZE };
+  const runtime: QuickPlayRuntime = {
+    id: nextQuickPlayRuntimeId++, action, startBounds: { ...startBounds }, targetBounds: null,
+    timers: new Set(), cancelers: new Set(), overlayTimer: null, resolveOverlay: null,
+    dangleState: createDangleMovementState(), overlayClosing: false, failing: false,
+  };
+  quickPlayRuntime = runtime;
+  if (action === "play_cursor") quickPlayCursorTrackingState = createCursorTrackingState();
+  const targetPoint = action === "summon_to_pointer" ? currentCursorScreenPoint() : null;
   quickPlaySession = {
     activeAction: action,
     startedAt: Date.now(),
-    startBounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null,
-    startDirectorState: null,
+    phase: pointerMode === "none" ? "stand" : "awaiting-placement",
+    phaseStartedAt: Date.now(),
+    startBounds: runtime.startBounds,
+    startDirectorState: reportedPetDirectorState.action,
+    targetPoint,
     pointerMode,
+    resting: reportedPetDirectorState.resting,
+    failure: null,
   };
   publishQuickPlaySession();
-  quickPlaySessionTimer = setTimeout(() => finishQuickPlaySession(action), quickPlayActionDurations[action]);
+  quickPlayTrace.push({ at: Date.now(), action, phase: quickPlaySession.phase, bounds: runtime.startBounds, targetPoint });
+  // QA may accelerate authored animation time, but must never compress the
+  // human placement window so far that the overlay expires before it loads.
+  const watchdogMs = Math.max(15_000, (action === "play_cursor" ? 33_000 : 65_000) / quickPlayTimeScale);
+  quickPlaySessionTimer = setTimeout(() => void failQuickPlayRuntime(runtime, new Error("Quick Play watchdog timed out")), watchdogMs);
   quickPlaySessionTimer.unref();
+  void runQuickPlayRuntime(runtime).catch((error) => void failQuickPlayRuntime(runtime, error));
 }
 
 function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
@@ -961,6 +1399,7 @@ function createPetWindow() {
   createdWindow.on("closed", () => {
     if (traversalState?.window === createdWindow) cancelPetTraversal();
     if (petWindow === createdWindow) {
+      finishQuickPlaySession(undefined, false);
       petWindow = null;
       petVisibleCaptureBounds = null;
       closeUsableWindow(popoverWindow);
@@ -1062,7 +1501,7 @@ function summonPetToCurrentScreen() {
   return { moved: true };
 }
 
-async function capturePetMoment() {
+async function capturePetMomentNow() {
   if (!isUsableWindow(petWindow) || petWindow.webContents.isLoading()) return { saved: false };
   const targetWindow = petWindow;
 
@@ -1096,20 +1535,44 @@ async function capturePetMoment() {
   if (result.canceled || !result.filePath) return { saved: false };
 
   writeFileSync(result.filePath, png);
+  if (isMainProcessQa) mainProcessQaCaptureCount += 1;
   return { saved: true, filePath: result.filePath };
+}
+
+function capturePetMoment() {
+  const task = captureQueue.then(() => capturePetMomentNow(), () => capturePetMomentNow());
+  captureQueue = task.then(() => undefined, () => undefined);
+  return task;
 }
 
 function startCursorTracking() {
   if (cursorTrackingTimer) return;
   cursorTrackingTimer = setInterval(() => {
-    if (!isUsableWindow(petWindow) || !settings.petStory.followCursor || dragState) return;
+    const quickPlayCursor = quickPlaySession.activeAction === "play_cursor" && quickPlaySession.phase === "tracking";
+    if (!isUsableWindow(petWindow) || (!settings.petStory.followCursor && !quickPlayCursor) || dragState) return;
     const cursor = currentCursorScreenPoint();
     const bounds = petWindow.getBounds();
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
+    if (quickPlayCursor) {
+      quickPlayCursorTrackingState = updateCursorTracking(
+        quickPlayCursorTrackingState,
+        cursor,
+        { x: centerX, y: centerY },
+        Date.now(),
+        actionConfig("play_cursor"),
+      );
+      petWindow.webContents.send("pet:cursor-position", {
+        x: quickPlayCursorTrackingState.headOffset.x,
+        y: quickPlayCursorTrackingState.headOffset.y,
+        quickPlay: true,
+      });
+      return;
+    }
     petWindow.webContents.send("pet:cursor-position", {
       x: clampValue((cursor.x - centerX) / Math.max(bounds.width * 1.5, 1), -1, 1),
       y: clampValue((cursor.y - centerY) / Math.max(bounds.height * 1.5, 1), -1, 1),
+      quickPlay: quickPlayCursor,
     });
   }, 120);
   cursorTrackingTimer.unref();
@@ -1155,8 +1618,8 @@ export const tokenPetReady = hasSingleInstanceLock ? app.whenReady().then(() => 
 
 export const mainProcessQa = {
   enabled: isMainProcessQa,
-  getWindow(kind: "pet" | "popover" | "menubar" | "console") {
-    return { pet: petWindow, popover: popoverWindow, menubar: menuBarWindow, console: consoleWindow }[kind];
+  getWindow(kind: "pet" | "popover" | "menubar" | "console" | "quickplayOverlay") {
+    return { pet: petWindow, popover: popoverWindow, menubar: menuBarWindow, console: consoleWindow, quickplayOverlay: quickPlayOverlayWindow }[kind];
   },
   getSettings() {
     return currentSettings();
@@ -1170,6 +1633,33 @@ export const mainProcessQa = {
   },
   getQuickPlaySession() {
     return currentQuickPlaySession();
+  },
+  getCaptureCount() {
+    return mainProcessQaCaptureCount;
+  },
+  setQuickPlayTimeScale(scale: number) {
+    if (!isMainProcessQa) throw new Error("Quick Play time scaling is unavailable outside main-process QA");
+    quickPlayTimeScale = clampValue(Number(scale), 1, 100);
+  },
+  resetQuickPlayTrace() {
+    if (!isMainProcessQa) throw new Error("Quick Play trace reset is unavailable outside main-process QA");
+    quickPlayTrace.length = 0;
+  },
+  getQuickPlayTrace() {
+    return quickPlayTrace.map((entry) => ({
+      ...entry,
+      bounds: entry.bounds ? { ...entry.bounds } : null,
+      targetPoint: entry.targetPoint ? { ...entry.targetPoint } : null,
+    }));
+  },
+  submitQuickPlayOverlayInput(point: { x: number; y: number } | null) {
+    if (!isMainProcessQa) throw new Error("Quick Play overlay injection is unavailable outside main-process QA");
+    const runtime = quickPlayRuntime;
+    const resolver = runtime?.resolveOverlay;
+    if (!runtime || !resolver) return false;
+    runtime.resolveOverlay = null;
+    resolver(point ? { ...point, velocityX: 0, velocityY: 0 } : null);
+    return true;
   },
   getPetPopoverAnchorBounds() {
     if (!isUsableWindow(petWindow)) return null;
@@ -1251,6 +1741,45 @@ const consolePetActionIds = new Set<PetActionId>([
 
 ipcMain.handle("quick-play:get-session", () => currentQuickPlaySession());
 
+ipcMain.on("pet:director-state", (_event, state: { action?: PetActionId; resting?: boolean }) => {
+  if (state && typeof state.action === "string" && typeof state.resting === "boolean") {
+    reportedPetDirectorState = { action: state.action, resting: state.resting };
+    if (quickPlaySession.activeAction === null) {
+      quickPlaySession = { ...quickPlaySession, resting: state.resting, startDirectorState: state.action };
+      publishQuickPlaySession();
+    }
+  }
+});
+
+ipcMain.on("quick-play:overlay-input", (event, input: { type?: string; screenX?: number; screenY?: number; velocityX?: number; velocityY?: number }) => {
+  const runtime = quickPlayRuntime;
+  if (!runtime || !isUsableWindow(quickPlayOverlayWindow) || event.sender !== quickPlayOverlayWindow.webContents) return;
+  if (input.type === "reopen") {
+    togglePopover();
+    return;
+  }
+  if (!runtime.resolveOverlay) return;
+  if (input.type === "cancel") {
+    const resolve = runtime.resolveOverlay;
+    runtime.resolveOverlay = null;
+    resolve(null);
+    return;
+  }
+  if (input.type !== "click" || !Number.isFinite(input.screenX) || !Number.isFinite(input.screenY)) return;
+  if (runtime.action === "drag_dangle" && !runtime.dangleState.armed) {
+    publishQuickPlayOverlayState({ enabled: true, hint: "Keep the toy moving for two seconds, then click to release." });
+    return;
+  }
+  const resolve = runtime.resolveOverlay;
+  runtime.resolveOverlay = null;
+  resolve({
+    x: Number(input.screenX),
+    y: Number(input.screenY),
+    velocityX: Number.isFinite(input.velocityX) ? Number(input.velocityX) : 0,
+    velocityY: Number.isFinite(input.velocityY) ? Number(input.velocityY) : 0,
+  });
+});
+
 ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetActionId) => {
   const fromQuickPlay = new URL(event.sender.getURL()).searchParams.get("view") === "popover";
   if (!fromQuickPlay && consolePetActionIds.has(action as PetActionId)) {
@@ -1269,8 +1798,8 @@ ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetAct
   }
   if (quickPlaySession.activeAction) return { accepted: false, reason: "active" as const };
   if (settings.petStory.lockPosition && quickPlayPositionActions.has(quickAction)) return { accepted: false, reason: "locked" as const };
+  if (quickAction === "nap_here" && reportedPetDirectorState.resting) return { accepted: true, reason: "already-resting" as const };
   beginQuickPlaySession(quickAction as Exclude<QuickPlayActionId, "capture_moment">);
-  emitPetDirectorEvent({ type: "quickPlay.action", action: quickAction });
   return { accepted: true };
 });
 
@@ -1296,7 +1825,7 @@ function stopDrag() {
 
 ipcMain.handle("pet:start-drag", () => {
   cancelPetTraversal();
-  if (!isUsableWindow(petWindow) || settings.petStory.lockPosition) return { started: false };
+  if (!isUsableWindow(petWindow) || settings.petStory.lockPosition || quickPlaySession.activeAction !== null) return { started: false };
 
   stopDrag();
 

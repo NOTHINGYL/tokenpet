@@ -1,0 +1,183 @@
+html:has(.quick-play-overlay),
+body:has(.quick-play-overlay),
+#root:has(.quick-play-overlay) {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+}
+
+.quick-play-overlay {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  cursor: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.quick-overlay-focus-ring {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(48, 153, 96, .34);
+  border-radius: 50%;
+  box-shadow: 0 0 0 7px rgba(48, 153, 96, .08);
+  transform: translate(-50%, -50%);
+  animation: quick-overlay-ring 1.35s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.quick-overlay-snack-prop,
+.quick-overlay-yarn-prop,
+.quick-overlay-dangle-prop,
+.quick-overlay-hint {
+  position: absolute;
+  pointer-events: none;
+}
+
+.quick-overlay-snack-prop {
+  width: 104px;
+  height: 84px;
+  transform: translate(-42px, -38px) rotate(-8deg) scale(var(--snack-scale, 1));
+}
+
+.quick-overlay-snack-prop.is-released {
+  width: 74px;
+  height: 62px;
+  transform: translate(-50%, -50%);
+}
+
+.quick-overlay-snack-prop.is-released .quick-overlay-snack-accent {
+  animation: quick-overlay-snack-land .32s cubic-bezier(.2, .9, .25, 1) both;
+}
+
+.quick-overlay-snack-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 6px 5px rgba(34, 42, 54, .14));
+  animation: quick-overlay-snack-bob .8s ease-in-out infinite alternate;
+}
+
+.quick-overlay-prop-fill { fill: #f2f4f7; stroke: #758195; stroke-width: 3; stroke-linejoin: round; }
+.quick-overlay-prop-line { fill: none; stroke: #758195; stroke-width: 3; stroke-linecap: round; }
+.quick-overlay-prop-shadow { fill: none; stroke: rgba(24, 47, 78, .12); stroke-width: 5; stroke-linecap: round; }
+.quick-overlay-snack-accent { fill: #2f9f68; stroke: #1f7d50; stroke-width: 2.5; stroke-linejoin: round; }
+.quick-overlay-snack-prop.snack-fish .quick-overlay-snack-accent { fill: #5ca8d7; stroke: #256a9b; }
+.quick-overlay-snack-prop.snack-token .quick-overlay-snack-accent { fill: #f2bd4f; stroke: #a96a14; }
+.quick-overlay-cutout { fill: #fff; stroke: none; }
+.quick-overlay-token-mark { fill: none; stroke: #fff7dc; stroke-width: 4; stroke-linecap: round; }
+
+.quick-overlay-yarn-prop {
+  width: 82px;
+  height: 58px;
+  transform: translate(-39px, -31px);
+}
+
+.quick-overlay-yarn-image {
+  display: block;
+  width: 82px;
+  height: 68px;
+  overflow: visible;
+  color: #df8a21;
+  filter: drop-shadow(0 6px 5px rgba(32, 49, 76, .17));
+  transform-origin: center;
+}
+
+.quick-overlay-yarn-ball { fill: currentColor; stroke: color-mix(in srgb, currentColor 62%, #173052); stroke-width: 3; }
+.quick-overlay-yarn-thread { fill: none; stroke: color-mix(in srgb, currentColor 50%, #173052); stroke-width: 2.8; stroke-linecap: round; }
+
+.quick-overlay-yarn-prop.is-rolling .quick-overlay-yarn-image {
+  animation: quick-overlay-yarn-roll .48s linear infinite;
+}
+
+.quick-overlay-yarn-prop.is-rolling {
+  animation: quick-overlay-yarn-travel var(--roll-duration, 900ms) cubic-bezier(.16, .78, .22, 1) both;
+}
+
+.quick-overlay-yarn-prop.yarn-orange .quick-overlay-yarn-image { color: #df8a21; }
+.quick-overlay-yarn-prop.yarn-blue .quick-overlay-yarn-image { color: #4f89cf; }
+.quick-overlay-yarn-prop.yarn-violet .quick-overlay-yarn-image { color: #8066c9; }
+.quick-overlay-dangle-prop { z-index: 3; width: 126px; height: 112px; transform: translate(-50%, -50%) rotate(var(--toy-angle)); transform-origin: center; }
+.quick-overlay-dangle-image { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 5px rgba(29, 59, 95, .16)); }
+.quick-overlay-wand, .quick-overlay-cord { fill: none; stroke: #68758a; stroke-width: 4; stroke-linecap: round; }
+.quick-overlay-cord { stroke-width: 2.5; }
+.quick-overlay-fish { fill: #51b88d; stroke: #267859; stroke-width: 3; stroke-linejoin: round; }
+.quick-overlay-dangle-prop.fish-blue .quick-overlay-fish { fill: #5c9bd2; stroke: #2b6497; }
+.quick-overlay-feather { fill: #d7a763; stroke: #8e6130; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.quick-overlay-dangle-prop.has-trail::after {
+  content: "";
+  position: absolute;
+  left: 74px;
+  top: 76px;
+  width: 27px;
+  height: 14px;
+  border-bottom: 3px solid rgba(72, 177, 145, .32);
+  border-radius: 50%;
+  transform: translate(-24px, 12px) rotate(-18deg);
+}
+
+.quick-overlay-hint {
+  z-index: 10;
+  max-width: 270px;
+  padding: 8px 13px;
+  border: 1px solid rgba(255, 255, 255, .8);
+  border-radius: 999px;
+  color: #173052;
+  background: rgba(255, 255, 255, .93);
+  box-shadow: 0 8px 22px rgba(35, 49, 68, .16);
+  font: 750 12px/1.25 Inter, ui-sans-serif, system-ui, sans-serif;
+  white-space: nowrap;
+  transform: translate(-50%, 54px);
+  backdrop-filter: blur(12px);
+}
+
+.quick-play-overlay-dangle .quick-overlay-hint {
+  max-width: none;
+  transform: translate(-50%, 154px);
+}
+
+.quick-play-overlay.is-submitted .quick-overlay-focus-ring,
+.quick-play-overlay.phase-finishing .quick-overlay-focus-ring {
+  animation: none;
+  opacity: .28;
+}
+
+.quick-play-overlay.is-submitted .quick-overlay-hint {
+  color: #276846;
+}
+
+@keyframes quick-overlay-ring {
+  0%, 100% { opacity: .72; transform: translate(-50%, -50%) scale(.9); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+@keyframes quick-overlay-snack-bob {
+  from { transform: translateY(-2px) rotate(-5deg); }
+  to { transform: translateY(2px) rotate(4deg); }
+}
+
+@keyframes quick-overlay-snack-land {
+  from { transform: translateY(-22px) scale(1.18) rotate(-18deg); }
+  to { transform: translateY(0) scale(1) rotate(0); }
+}
+
+@keyframes quick-overlay-yarn-roll {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes quick-overlay-yarn-travel {
+  from { transform: translate(-39px, -31px); }
+  to { transform: translate(calc(-39px + var(--roll-x)), calc(-31px + var(--roll-y))); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-overlay-focus-ring,
+  .quick-overlay-snack-image,
+  .quick-overlay-yarn-prop.is-rolling .quick-overlay-yarn-image {
+    animation: none;
+  }
+}

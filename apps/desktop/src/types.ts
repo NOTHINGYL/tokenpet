@@ -288,12 +288,18 @@ export type QuickPlayActionId =
   | "wake_up"
   | "summon_to_pointer"
   | "capture_moment";
+export type QuickPlayPhase = "idle" | "awaiting-placement" | "stand" | "outbound" | "pause" | "tracking" | "stalk" | "interact" | "return" | "settle" | "complete" | "failed";
 export type QuickPlaySession = {
   activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null;
   startedAt: number | null;
+  phase: QuickPlayPhase;
+  phaseStartedAt: number | null;
   startBounds: { x: number; y: number; width: number; height: number } | null;
   startDirectorState: PetActionId | null;
+  targetPoint: { x: number; y: number } | null;
   pointerMode: "none" | "snack" | "dangle" | "yarn";
+  resting: boolean;
+  failure: string | null;
 };
 export type PetDirectorEvent =
   | { type: "actor.actionRequested"; action: PetActionId }
@@ -322,9 +328,12 @@ export type TokenPetBridge = {
   onConsoleNavigation: (callback: (tab: ConsoleTab) => void) => () => void;
   quit: () => void;
   togglePopover: () => void;
-  dispatchPetAction: (action: QuickPlayActionId | PetActionId) => Promise<{ accepted: boolean; reason?: "active" | "locked" | "invalid" }>;
+  dispatchPetAction: (action: QuickPlayActionId | PetActionId) => Promise<{ accepted: boolean; reason?: "active" | "locked" | "invalid" | "already-resting" }>;
   getQuickPlaySession: () => Promise<QuickPlaySession>;
   onQuickPlaySessionChanged: (callback: (session: QuickPlaySession) => void) => () => void;
+  reportPetDirectorState: (state: { action: PetActionId; resting: boolean }) => void;
+  quickPlayOverlayInput: (input: { type: "click" | "cancel" | "reopen"; screenX: number; screenY: number; timestamp: number; velocityX?: number; velocityY?: number }) => void;
+  onQuickPlayOverlayState: (callback: (state: { mode?: "snack" | "dangle" | "yarn"; phase?: "placing" | "playing" | "rolling" | "finishing"; enabled?: boolean; hint?: string; targetScreenX?: number; targetScreenY?: number; pointerScreenX?: number; pointerScreenY?: number; durationMs?: number }) => void) => () => void;
   onPetDirectorEvent: (callback: (event: PetDirectorEvent) => void) => () => void;
   summonPet: () => Promise<{ moved: boolean }>;
   traversePet: () => Promise<{ moved: boolean; canceled?: boolean }>;

@@ -313,9 +313,13 @@ function applyGeneratedBodyMotion(
   hover: boolean,
 ) {
   const transform = frame.bodyTransform;
+  const motionState = String(plan.animation.motionState);
   if (plan.pointerOffset) {
-    context.translate(plan.pointerOffset.x * 7, plan.pointerOffset.y * 3);
+    context.translate(plan.pointerOffset.x * (motionState === "play_cursor" ? 2 : 7), plan.pointerOffset.y * (motionState === "play_cursor" ? 1 : 3));
   }
+  // Cursor play is an anchored attention action. Directional art changes and
+  // the tiny pointer rig may move, but the cat body/window must never travel.
+  if (motionState === "play_cursor") return;
   if (!transform) return;
 
   const speed = plan.reduceMotion ? 0.35 : plan.appearance.motionSettings.animationSpeed / 80;
@@ -326,10 +330,9 @@ function applyGeneratedBodyMotion(
   const jump = jumpPhase(phase01);
   const travel = travelPhase(phase01);
   const origin = transform.origin;
-  const motionState = String(plan.animation.motionState);
   const jumpBoost = plan.appearance.motionSettings.jumpHeight / 70;
-  const travelsHorizontally = motionState === "run_across" || motionState === "play_cursor";
-  const liftsFromGround = ["drop_bounce", "hot_loop", "overdrive_loop", "milestone_celebrate", "run_across", "play_cursor"].includes(motionState);
+  const travelsHorizontally = motionState === "run_across";
+  const liftsFromGround = ["drop_bounce", "hot_loop", "overdrive_loop", "milestone_celebrate", "run_across"].includes(motionState);
   const stretches = motionState === "drag_dangle" || motionState === "drop_bounce";
   const translateX =
     travelsHorizontally
@@ -411,6 +414,8 @@ export async function exportGeneratedPetActorCanvas(props: PetActorProps) {
 export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hoverRef = useRef(false);
+  const animationIdentityRef = useRef<string | null>(null);
+  const animationStartedAtRef = useRef(0);
   const [manifest, setManifest] = useState<PetActorManifest | null>(() => generatedActorManifests[props.appearance.catTypeId] ?? null);
   const [images, setImages] = useState<GeneratedActorImageMap | null>(null);
   const [failed, setFailed] = useState(false);
@@ -453,7 +458,12 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     }
 
     let animationFrame = 0;
-    const animationStartedAt = performance.now();
+    const animationIdentity = `${plan.animation.id}:${props.animationNonce ?? "stable"}`;
+    if (animationIdentityRef.current !== animationIdentity) {
+      animationIdentityRef.current = animationIdentity;
+      animationStartedAtRef.current = performance.now();
+    }
+    const animationStartedAt = animationStartedAtRef.current;
     const draw = (time: number) => {
       const canvas = canvasRef.current;
       const context = canvas?.getContext("2d");
@@ -466,7 +476,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     return () => {
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [images, plan, props.previewTimeMs]);
+  }, [images, plan, props.animationNonce, props.previewTimeMs]);
 
   if (failed && props.fallback) return <>{props.fallback}</>;
   if (!plan) return props.fallback ? <>{props.fallback}</> : null;
@@ -477,6 +487,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       style={plan.styleVars as CSSProperties}
       data-pet-size={plan.appearance.size}
       data-actor-id={plan.manifest.actorId}
+      data-actor-animation={plan.animation.id}
       data-mood-badge-y={plan.moodBadgeRect?.y}
       data-mood-badge-height={plan.moodBadgeRect?.height}
     >

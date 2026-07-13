@@ -15,7 +15,7 @@ TokenPet is a macOS-first desktop companion for local AI coding workflows. It re
 
 ## Status
 
-The current integrated release is `v0.8.1`.
+The current integrated release is `v0.8.3`.
 
 - **One actor pipeline:** the desktop pet and every Console preview use the same generated Golden British actor bundle.
 - **Dynamic slots:** token and mood text render only inside manifest-declared slots. The actor artwork already contains its cream token frame.

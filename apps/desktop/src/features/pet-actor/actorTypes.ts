@@ -14,6 +14,8 @@ export type PetActorProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  /** Explicitly restart a same-id authored animation, for example each snack lick cycle. */
+  animationNonce?: number;
   /** Controlled sandbox clock. When present, the actor renders exactly this timeline position and does not start its own RAF clock. */
   previewTimeMs?: number;
   surface: PetSurface;

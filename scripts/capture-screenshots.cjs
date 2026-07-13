@@ -50,9 +50,14 @@ const quickPlayIds = [
 const emptyQuickPlaySession = {
   activeAction: null,
   startedAt: null,
+  phase: "idle",
+  phaseStartedAt: null,
   startBounds: null,
   startDirectorState: null,
+  targetPoint: null,
   pointerMode: "none",
+  resting: false,
+  failure: null,
 };
 let quickPlaySession = clone(emptyQuickPlaySession);
 let suppressQuickPlayDirector = false;
