@@ -722,6 +722,10 @@ async function verifyQuickPlay() {
       subtitle: document.querySelector(".quick-play-heading p")?.textContent,
       helper: document.querySelector("[data-action-id=play_cursor] small")?.textContent,
       icons: document.querySelectorAll("[data-action-icon]").length,
+      iconStates: actionButtons.map((button) => {
+        const iconStyle = getComputedStyle(button.querySelector("[data-action-icon]"));
+        return { id: button.dataset.actionId, disabled: button.disabled, filter: iconStyle.filter, opacity: iconStyle.opacity };
+      }),
       closeSize: document.querySelector(".quick-play-close").getBoundingClientRect().width,
       footerWidth: document.querySelector(".open-console").getBoundingClientRect().width,
       panelWidth: panel.getBoundingClientRect().width,
@@ -749,7 +753,8 @@ async function verifyQuickPlay() {
   verify("Quick Play fixed hierarchy", structure.orderedAnchors.every((value, index) => index === 0 || value > structure.orderedAnchors[index - 1]), `header/grid/controls/footer anchors: ${structure.orderedAnchors.join(", ")}`);
   verify("Quick Play true 3×3 geometry", new Set(structure.actionRects.map((rect) => rect.x)).size === 3 && new Set(structure.actionRects.map((rect) => rect.y)).size === 3, "action cards form three exact columns and rows");
   verify("Quick Play consistent cards", Math.max(...structure.actionRects.map((rect) => rect.width)) - Math.min(...structure.actionRects.map((rect) => rect.width)) <= 1 && Math.max(...structure.actionRects.map((rect) => rect.height)) - Math.min(...structure.actionRects.map((rect) => rect.height)) <= 1, "all nine action cards share dimensions within 1px");
-  verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic SVG icons rather than platform emoji");
+  verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic raster icons rather than platform emoji");
+  verify("Quick Play unlocked icons use normal color", structure.iconStates.every((icon) => !icon.disabled && icon.filter !== "none" && !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `all nine unlocked actions use the v19 color treatment: ${JSON.stringify(structure.iconStates)}`);
   verify("Quick Play close target", structure.closeSize >= 24, `scaled close target is ${structure.closeSize}px`);
   verify("Quick Play footer shelf", structure.footerWidth / structure.panelWidth >= .72 && structure.footerWidth / structure.panelWidth <= .9, `footer is ${Math.round(structure.footerWidth / structure.panelWidth * 100)}% of panel width`);
   verify("Quick Play clean single frame", structure.panelLeft === 0 && structure.panelTop === 0 && structure.panelBeforeContent === "none" && structure.panelShadow.endsWith("inset") && !structure.panelShadow.includes("48px"), `panel fills the window at ${structure.panelLeft},${structure.panelTop}; pseudo-frame ${structure.panelBeforeContent}; shadow ${structure.panelShadow}`);
@@ -765,9 +770,14 @@ async function verifyQuickPlay() {
   const lockedState = await evaluate(window, () => ({
     disabled: [...document.querySelectorAll("[data-action-id]:disabled")].map((button) => button.dataset.actionId),
     enabled: [...document.querySelectorAll("[data-action-id]:not(:disabled)")].map((button) => button.dataset.actionId),
+    icons: [...document.querySelectorAll("[data-action-id]")].map((button) => {
+      const style = getComputedStyle(button.querySelector("[data-action-icon]"));
+      return { id: button.dataset.actionId, disabled: button.disabled, filter: style.filter, opacity: style.opacity };
+    }),
     detail: document.body.innerText.includes("Movement actions are locked"),
   }));
   verify("Quick Play lock position matrix", lockedState.disabled.join(",") === "walk_round_trip,token_snack,drag_dangle,toss_yarn,summon_to_pointer" && lockedState.enabled.join(",") === "play_cursor,nap_here,wake_up,capture_moment", `disabled ${lockedState.disabled.join(", ")}; enabled ${lockedState.enabled.join(", ")}`);
+  verify("Quick Play lock-only gray treatment", lockedState.icons.every((icon) => icon.disabled ? icon.filter.includes("grayscale(1)") && Number(icon.opacity) < .7 : !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `only the five Lock position actions are visually gray: ${JSON.stringify(lockedState.icons)}`);
   verify("Quick Play lock position copy", lockedState.detail, "the controls card explains that movement actions are locked");
   await capture(window, "quick-play.png", "Quick Play v18 locked reference state");
 

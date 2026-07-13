@@ -87,7 +87,16 @@
 .quick-action img[data-action-icon] { width: 47px; height: 39px; object-fit: contain; }
 .quick-action[data-action-id="nap_here"] img,
 .quick-action[data-action-id="wake_up"] img { width: 57px; height: 41px; }
-.quick-action:disabled img[data-action-icon] { filter: grayscale(.14); opacity: .76; }
+.quick-action:not(:disabled)[data-action-id="walk_round_trip"] img { filter: brightness(0) saturate(100%) invert(48%) sepia(76%) saturate(539%) hue-rotate(88deg) brightness(88%) contrast(88%); }
+.quick-action:not(:disabled)[data-action-id="token_snack"] img { filter: brightness(0) saturate(100%) invert(66%) sepia(84%) saturate(1532%) hue-rotate(350deg) brightness(94%) contrast(91%); }
+.quick-action:not(:disabled)[data-action-id="play_cursor"] img { filter: saturate(1.12) contrast(1.03); }
+.quick-action:not(:disabled)[data-action-id="drag_dangle"] img { filter: brightness(0) saturate(100%) invert(57%) sepia(52%) saturate(655%) hue-rotate(126deg) brightness(85%) contrast(88%); }
+.quick-action:not(:disabled)[data-action-id="toss_yarn"] img { filter: brightness(0) saturate(100%) invert(56%) sepia(88%) saturate(1570%) hue-rotate(350deg) brightness(102%) contrast(92%); }
+.quick-action:not(:disabled)[data-action-id="nap_here"] img { filter: saturate(1.18) contrast(1.02); }
+.quick-action:not(:disabled)[data-action-id="wake_up"] img { filter: saturate(1.12) contrast(1.02); }
+.quick-action:not(:disabled)[data-action-id="summon_to_pointer"] img { filter: brightness(0) saturate(100%) invert(48%) sepia(92%) saturate(1162%) hue-rotate(183deg) brightness(88%) contrast(92%); }
+.quick-action:not(:disabled)[data-action-id="capture_moment"] img { filter: saturate(1.12) contrast(1.03); }
+.quick-action:disabled img[data-action-icon] { filter: grayscale(1); opacity: .58; }
 .quick-action-label { color: currentColor; font-size: 10px; font-weight: 760; letter-spacing: -.015em; line-height: 1.05; text-align: center; }
 .quick-action small { max-width: 68px; color: #258c58; font-size: 8px; font-weight: 650; line-height: 1; text-align: center; }
 
