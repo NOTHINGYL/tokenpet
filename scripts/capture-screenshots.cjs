@@ -866,6 +866,12 @@ async function verifyMenuBarTinyPet() {
   }));
   verify("MenuBar tiny companion enabled", visible.tiny === 1 && visible.generated === 1 && visible.fallback === 0, "the top bar always renders one real generated actor");
   verify("MenuBar explicit quit", visible.quit, "a settings-adjacent Quit TokenPet X is visible while the desktop pet X remains a hide control");
+  const consoleCallsBefore = (await qaStateFor(window)).qaState.openConsoleCalls.length;
+  await click(window, "button[aria-label='Open settings']", "Menu Bar settings opens Overview");
+  await click(window, ".menubar-footer button", "Menu Bar Open Console opens Overview");
+  await waitFor(window, (minimum) => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.openConsoleCalls.length >= minimum), [consoleCallsBefore + 2], "Menu Bar Overview routes");
+  const menuBarConsoleCalls = (await qaStateFor(window)).qaState.openConsoleCalls.slice(consoleCallsBefore);
+  verify("MenuBar Console entries route to Overview", menuBarConsoleCalls.length === 2 && menuBarConsoleCalls.every((tab) => tab === "overview"), `settings and footer targets: ${JSON.stringify(menuBarConsoleCalls)}`);
   await capture(window, "menu-bar.png", "Menu Bar");
 
   await evaluate(window, async () => {
@@ -1110,6 +1116,96 @@ async function verifyActions(window, desktopPet) {
   }
   verify("Actions dedicated settings matrix", Object.entries(expectedSettings).every(([id, keys]) => JSON.stringify(settingsMatrix[id]) === JSON.stringify(keys)), `every action exposes only its specified controls: ${JSON.stringify(settingsMatrix)}`);
 
+  await click(window, "[data-action-id=walk_round_trip]", "select Pet locomotion preview");
+  await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip", [], "Pet preview walk actor");
+  const samplePetPreviewAt = async (ratio) => {
+    await evaluate(window, (nextRatio) => {
+      const scrubber = document.querySelector("[data-action-scrubber]");
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(scrubber, String(Number(scrubber.max) * nextRatio));
+      scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+      scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+    }, ratio);
+    await delay(100);
+    return evaluate(window, () => {
+      const stage = document.querySelector("[data-action-preview-stage]");
+      const canvas = stage?.querySelector(".pet-generated-actor-canvas");
+      const context = canvas?.getContext("2d", { willReadFrequently: true });
+      const stageRect = stage?.getBoundingClientRect();
+      const canvasRect = canvas?.getBoundingClientRect();
+      let alphaBounds = null;
+      if (canvas && context && stageRect && canvasRect) {
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let minX = canvas.width;
+        let minY = canvas.height;
+        let maxX = -1;
+        let maxY = -1;
+        for (let y = 0; y < canvas.height; y += 2) {
+          for (let x = 0; x < canvas.width; x += 2) {
+            if (pixels[(y * canvas.width + x) * 4 + 3] <= 8) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+        if (maxX >= minX && maxY >= minY) {
+          alphaBounds = {
+            left: canvasRect.left + minX / canvas.width * canvasRect.width,
+            top: canvasRect.top + minY / canvas.height * canvasRect.height,
+            right: canvasRect.left + (maxX + 2) / canvas.width * canvasRect.width,
+            bottom: canvasRect.top + (maxY + 2) / canvas.height * canvasRect.height,
+          };
+        }
+      }
+      const settingsControls = [...document.querySelectorAll("[data-action-settings] button, [data-action-settings] input[type=range]")];
+      return {
+        rootProgress: Number(stage?.dataset.previewWalkRootProgress),
+        cycleMs: Number(stage?.dataset.previewWalkCycleMs),
+        distancePx: Number(stage?.dataset.previewWalkDistancePx),
+        animation: stage?.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+        frame: stage?.querySelector(".pet-generated-actor-canvas")?.dataset.actorFrame,
+        petSize: Number(stage?.querySelector("[data-pet-size]")?.dataset.petSize),
+        stageBounds: stageRect ? { left: stageRect.left, top: stageRect.top, right: stageRect.right, bottom: stageRect.bottom } : null,
+        alphaBounds,
+        settingsControlCount: settingsControls.length,
+        pointerControlCount: settingsControls.filter((control) => getComputedStyle(control).cursor === "pointer").length,
+      };
+    });
+  };
+  const petPreviewLeft = await samplePetPreviewAt(0);
+  const petPreviewRight = await samplePetPreviewAt(1);
+  const fitsStage = (sample) => sample.alphaBounds && sample.stageBounds
+    && sample.alphaBounds.left >= sample.stageBounds.left - 1
+    && sample.alphaBounds.top >= sample.stageBounds.top - 1
+    && sample.alphaBounds.right <= sample.stageBounds.right + 1
+    && sample.alphaBounds.bottom <= sample.stageBounds.bottom + 1;
+  verify(
+    "Actions Pet preview shares Quick Play gait",
+    petPreviewLeft.animation === "action.walk_round_trip"
+      && petPreviewLeft.rootProgress <= .02
+      && petPreviewRight.rootProgress >= .98
+      && petPreviewLeft.distancePx === 288
+      && petPreviewLeft.cycleMs > 0
+      && /^walk_round_trip-[1-8]$/.test(petPreviewRight.frame ?? ""),
+    `left/right root samples use the production actor and root plan: ${JSON.stringify({ petPreviewLeft, petPreviewRight })}`,
+  );
+  verify("Actions Pet preview keeps the whole cat visible", fitsStage(petPreviewLeft) && fitsStage(petPreviewRight) && petPreviewLeft.petSize === .78, `non-transparent cat bounds fit both stage endpoints: ${JSON.stringify({ left: petPreviewLeft, right: petPreviewRight })}`);
+  verify("Actions Pet Settings use pointer cursors", petPreviewLeft.settingsControlCount >= 6 && petPreviewLeft.pointerControlCount === petPreviewLeft.settingsControlCount, `all ${petPreviewLeft.settingsControlCount} interactive Pet Settings controls use the hand cursor`);
+  await evaluate(window, () => {
+    const scrubber = document.querySelector("[data-action-scrubber]");
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(scrubber, "0");
+    scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+    scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await click(window, "[data-action-restart]", "restart Pet root-motion preview");
+  const liveRootStart = await evaluate(window, () => Number(document.querySelector("[data-action-preview-stage]")?.dataset.previewWalkRootProgress));
+  await delay(420);
+  const liveRootEnd = await evaluate(window, () => Number(document.querySelector("[data-action-preview-stage]")?.dataset.previewWalkRootProgress));
+  verify("Actions Pet preview traverses the sandbox", liveRootEnd > liveRootStart, `shared root progress advances from ${liveRootStart} to ${liveRootEnd}`);
+  await capture(window, "console-actions-pet.png", "Console / Actions / Pet preview");
+
   await click(window, "[data-action-id=token_snack]", "restore Feed snack preview");
   await waitFor(window, () => document.querySelector(".actions-workbench-page")?.dataset.selectedAction === "token_snack", [], "Feed snack restore");
   const beforeQa = await qaStateFor(window);
@@ -1241,12 +1337,10 @@ async function verifyConsole(desktopPet) {
   await verifySound(window);
   await verifyJourney(window);
 
-  window.webContents.send("qa:navigate-console", "overview");
-  await waitForSelector(window, "[data-console-tab=overview].active");
   window.webContents.send("qa:navigate-console", "pet");
   await waitForSelector(window, "[data-console-tab=pet].active");
   await waitForSelector(window, "[data-pet-page=appearance]");
-  record("Console IPC navigation", "an existing Console window accepts navigation back to the Pet section");
+  record("Console IPC navigation", "an existing Console already on a Pet subpage resets to Pet Appearance when Quick Play requests Pet");
 
   await selectPetSection(window, "actions");
   const persisted = await evaluate(window, () => ({

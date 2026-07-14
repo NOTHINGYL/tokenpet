@@ -31,6 +31,7 @@ const emptySession: QuickPlaySession = {
   startBounds: null,
   startDirectorState: null,
   targetPoint: null,
+  walkMotion: null,
   pointerMode: "none",
   resting: false,
   failure: null,

@@ -3977,6 +3977,12 @@
   --pet-visual-cat-width: clamp(860px, 62vw, 1040px);
   --pet-visual-cat-y: -152px;
 }
+.action-preview-walk_round_trip .pet-generated-actor-shell {
+  /* The Quick Play walk sheet has generous transparent artboard margins.
+     Keep the complete cat visible at both ends of the preview traversal. */
+  --pet-visual-cat-width: clamp(360px, 28vw, 430px);
+  --pet-visual-cat-y: 0px;
+}
 .action-preview-stage .pet-appearance-visual-preview {
   width: 100%;
   height: 100%;
@@ -4237,6 +4243,9 @@
   font-weight: 690;
 }
 .action-reset-button span { font-size: 17px; }
+.action-settings-card button,
+.action-settings-card input[type="range"],
+.action-settings-card .action-setting-range { cursor: pointer; }
 .action-preview-footer {
   display: flex;
   min-height: 32px;

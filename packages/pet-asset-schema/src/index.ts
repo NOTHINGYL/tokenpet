@@ -25,6 +25,7 @@ export const PET_ACTOR_ACTION_IDS = [
   "play_cursor",
   "run_across",
   "walk_round_trip",
+  "walk_round_trip_look",
   "toss_yarn",
   "nap_here",
   "wake_up",
@@ -57,6 +58,8 @@ export type PetActorAnimationKind = "loop" | "oneShot" | "transition";
 export type PetActorTokenMode = "embedded" | "below" | "floating" | "hidden";
 export type PetActorFrameAssetKind = "png" | "webp" | "atlas";
 export type PetActorCapabilityStatus = "ready" | "fallback" | "planned" | "unavailable";
+export const PET_ACTOR_PAW_IDS = ["near-hind", "near-fore", "far-hind", "far-fore"] as const;
+export type PetActorPawId = (typeof PET_ACTOR_PAW_IDS)[number];
 
 export type PetActorSize = {
   width: number;
@@ -117,6 +120,21 @@ export type PetActorSourceAction = {
   cooldownMs?: number;
   reducedMotionFallback?: PetActorActionId;
   bodyTransform?: PetActorTransform;
+  locomotion?: PetActorLocomotionClip;
+};
+
+export type PetActorLocomotionPhase = {
+  frameIndex: number;
+  id: string;
+  contacts: PetActorPawId[];
+};
+
+export type PetActorLocomotionClip = {
+  kind: "authored-root-motion";
+  nominalStepDistancePx: number;
+  footfallsPerCycle: number;
+  rootStepKeyframes: number[];
+  phases: PetActorLocomotionPhase[];
 };
 
 export type PetActorSourceLayer = {
@@ -191,6 +209,7 @@ export type PetActorAnimation = {
   stageTags?: PetActorLifeStage[];
   cooldownMs?: number;
   reducedMotionFallback?: PetActorActionId;
+  locomotion?: PetActorLocomotionClip;
   frames: PetActorFrameAsset[];
 };
 
@@ -263,6 +282,7 @@ const actionIds = new Set<string>(PET_ACTOR_ACTION_IDS);
 const quickPlayActionIds = new Set<string>(PET_ACTOR_QUICK_PLAY_ACTION_IDS);
 const moods = new Set<string>(PET_ACTOR_MOODS);
 const lifeStages = new Set<string>(PET_ACTOR_LIFE_STAGES);
+const pawIds = new Set<string>(PET_ACTOR_PAW_IDS);
 const sha256Pattern = /^[a-f0-9]{64}$/;
 const relativeAssetPattern = /^(?![a-z]+:)(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$)).+$/i;
 
@@ -483,6 +503,56 @@ function validateCompatibility(value: unknown, issues: PetActorValidationIssue[]
   }
 }
 
+function validateLocomotion(value: unknown, frameCount: number, issues: PetActorValidationIssue[], path: string) {
+  if (!isRecord(value)) {
+    pushIssue(issues, "locomotion.object", path, "must be an authored root-motion object");
+    return;
+  }
+  if (value.kind !== "authored-root-motion") {
+    pushIssue(issues, "locomotion.kind", `${path}.kind`, "must be authored-root-motion");
+  }
+  if (typeof value.nominalStepDistancePx !== "number" || !Number.isFinite(value.nominalStepDistancePx) || value.nominalStepDistancePx <= 0 || value.nominalStepDistancePx > 64) {
+    pushIssue(issues, "locomotion.stepDistance", `${path}.nominalStepDistancePx`, "must be between 0 and 64 CSS pixels");
+  }
+  if (!Number.isInteger(value.footfallsPerCycle) || Number(value.footfallsPerCycle) <= 0 || Number(value.footfallsPerCycle) > 8) {
+    pushIssue(issues, "locomotion.footfalls", `${path}.footfallsPerCycle`, "must be an integer between 1 and 8");
+  }
+  if (!Array.isArray(value.rootStepKeyframes) || value.rootStepKeyframes.length !== frameCount + 1) {
+    pushIssue(issues, "locomotion.rootKeyframes", `${path}.rootStepKeyframes`, `must contain exactly ${frameCount + 1} frame-boundary samples`);
+  } else {
+    const samples = value.rootStepKeyframes;
+    if (samples.some((sample) => typeof sample !== "number" || !Number.isFinite(sample))) {
+      pushIssue(issues, "locomotion.rootSamples", `${path}.rootStepKeyframes`, "must contain only finite numbers");
+    } else {
+      if (samples[0] !== 0) pushIssue(issues, "locomotion.rootStart", `${path}.rootStepKeyframes[0]`, "must start at zero");
+      if (samples.at(-1) !== value.footfallsPerCycle) {
+        pushIssue(issues, "locomotion.rootEnd", `${path}.rootStepKeyframes`, "must end at footfallsPerCycle");
+      }
+      for (let index = 1; index < samples.length; index += 1) {
+        if (samples[index] <= samples[index - 1]) {
+          pushIssue(issues, "locomotion.rootOrder", `${path}.rootStepKeyframes[${index}]`, "must advance strictly at every authored frame");
+        }
+      }
+    }
+  }
+  if (!Array.isArray(value.phases) || value.phases.length !== frameCount) {
+    pushIssue(issues, "locomotion.phases", `${path}.phases`, `must describe all ${frameCount} authored frames`);
+  } else {
+    value.phases.forEach((phase, index) => {
+      const phasePath = `${path}.phases[${index}]`;
+      if (!isRecord(phase)) {
+        pushIssue(issues, "locomotion.phase", phasePath, "must be an object");
+        return;
+      }
+      if (phase.frameIndex !== index) pushIssue(issues, "locomotion.phaseIndex", `${phasePath}.frameIndex`, `must equal ${index}`);
+      validateNonEmptyString(phase.id, issues, `${phasePath}.id`);
+      if (!Array.isArray(phase.contacts) || phase.contacts.length === 0 || phase.contacts.some((paw) => !pawIds.has(String(paw)))) {
+        pushIssue(issues, "locomotion.contacts", `${phasePath}.contacts`, "must contain one or more declared paw ids");
+      }
+    });
+  }
+}
+
 function slotsMatch(left: unknown, right: unknown) {
   if (!isRecord(left) || !isRecord(right)) return false;
   return ["x", "y", "width", "height", "maxFontSize"].every((key) => left[key] === right[key]);
@@ -554,6 +624,12 @@ export function validatePetActorManifest(value: unknown): PetActorValidationResu
       if (!Array.isArray(animation.frames) || animation.frames.length === 0) {
         pushIssue(issues, "animation.frames", `${animationPath}.frames`, "must contain at least one approved raster frame");
         continue;
+      }
+      if (animation.locomotion !== undefined) {
+        if (animation.motionState !== "walk_round_trip") {
+          pushIssue(issues, "locomotion.motionState", `${animationPath}.locomotion`, "is only valid for walk_round_trip");
+        }
+        validateLocomotion(animation.locomotion, animation.frames.length, issues, `${animationPath}.locomotion`);
       }
       animation.frames.forEach((frame, frameIndex) => {
         const framePath = `${animationPath}.frames[${frameIndex}]`;
@@ -689,6 +765,12 @@ export function validatePetActorSourceSpec(value: unknown): PetActorValidationRe
       if (typeof action.loop !== "boolean") pushIssue(issues, "source.loop", `${actionPath}.loop`, "must be boolean");
       if (typeof action.priority !== "number" || !Number.isFinite(action.priority)) {
         pushIssue(issues, "source.priority", `${actionPath}.priority`, "must be a finite number");
+      }
+      if (action.locomotion !== undefined) {
+        if (actionId !== "walk_round_trip") {
+          pushIssue(issues, "source.locomotionAction", `${actionPath}.locomotion`, "is only valid for walk_round_trip");
+        }
+        validateLocomotion(action.locomotion, Array.isArray(action.sourceFrames) ? action.sourceFrames.length : 0, issues, `${actionPath}.locomotion`);
       }
       if (action.bodyTransform !== undefined) validateTransform(action.bodyTransform, issues, `${actionPath}.bodyTransform`);
     }

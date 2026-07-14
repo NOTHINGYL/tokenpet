@@ -87,7 +87,7 @@ export function MenuBarApp() {
           <IconButton label="Refresh now" onClick={() => void refresh()} disabled={loading}>
             <RefreshIcon />
           </IconButton>
-          <IconButton label="Open settings" onClick={() => window.tokenpet.openConsole()}>
+          <IconButton label="Open settings" onClick={() => window.tokenpet.openConsole("overview")}>
             <SettingsIcon />
           </IconButton>
           <IconButton label="Quit TokenPet" className="menubar-quit" onClick={() => window.tokenpet.quit()}>
@@ -142,7 +142,7 @@ export function MenuBarApp() {
           <span className="provider-dot connected" />
           Last updated {lastUpdated(usage.generatedAt)}
         </span>
-        <button type="button" onClick={() => window.tokenpet.openConsole()}>
+        <button type="button" onClick={() => window.tokenpet.openConsole("overview")}>
           Open Console →
         </button>
       </footer>

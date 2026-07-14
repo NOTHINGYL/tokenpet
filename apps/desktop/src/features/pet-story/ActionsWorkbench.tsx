@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { PetActorAnimation, PetActorFrameAsset, PetActorManifest } from "../../../../../packages/pet-asset-schema/src";
+import {
+  createDistanceLockedWalkPlan,
+  DEFAULT_WALK_ROOT_MOTION,
+  distanceLockedWalkProgressAtTime,
+} from "../../../electron/quick-play-choreography";
 import type {
   PetActionId,
   PetActionTuningValue,
@@ -46,6 +51,8 @@ type PreviewFrame = {
 };
 
 const iconRoot = "quick-play-v18";
+const PET_PREVIEW_TRAVEL_DISTANCE_PX = 288;
+const PET_PREVIEW_TRAVEL_PERCENT = 54;
 const percent = (value: number) => `${Math.round(value)}%`;
 const seconds = (value: number) => `${value.toFixed(1)} sec`;
 
@@ -177,11 +184,11 @@ function labelForFrame(labels: string[], index: number, count: number) {
   return labels[Math.min(labels.length - 1, Math.round(index * (labels.length - 1) / (count - 1)))];
 }
 
-function buildPreviewFrames(definition: ActionDefinition, manifest: PetActorManifest | null, fallbackImage: string): PreviewFrame[] {
-  if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: definition.durationMs, sourceStartMs: 0, sourceDurationMs: definition.durationMs }];
+function buildPreviewFrames(definition: ActionDefinition, manifest: PetActorManifest | null, fallbackImage: string, previewDurationMs = definition.durationMs): PreviewFrame[] {
+  if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
   const requestedAnimation = resolveAnimation(manifest, definition.id);
   if (requestedAnimation && requestedAnimation.frames.length > 1) {
-    const phaseDuration = definition.durationMs / requestedAnimation.frames.length;
+    const phaseDuration = previewDurationMs / requestedAnimation.frames.length;
     let sourceCursor = 0;
     return requestedAnimation.frames.map((frame, index) => {
       const next = {
@@ -199,7 +206,7 @@ function buildPreviewFrames(definition: ActionDefinition, manifest: PetActorMani
     });
   }
 
-  const phaseDuration = definition.durationMs / definition.authoredPhaseActions.length;
+  const phaseDuration = previewDurationMs / definition.authoredPhaseActions.length;
   return definition.authoredPhaseActions.map((actorActionId, index) => {
     const animation = resolveAnimation(manifest, actorActionId) ?? requestedAnimation ?? manifest.animations[manifest.defaultAnimation];
     const frame = animation?.frames[0];
@@ -222,11 +229,11 @@ function sampleTimeline(frames: PreviewFrame[], elapsedMs: number) {
   return { frame, phaseProgress, actorTimeMs: frame.sourceStartMs + frame.sourceDurationMs * phaseProgress };
 }
 
-function stageSample(actionId: ActionsPreviewId, progress: number) {
+function stageSample(actionId: ActionsPreviewId, progress: number, walkRootProgress = progress) {
   const roundTrip = Math.sin(Math.PI * progress);
   const cursorX = 50 + Math.sin(progress * Math.PI * 4) * 31;
   const cursorY = 45 + Math.cos(progress * Math.PI * 3) * 18;
-  if (actionId === "walk_round_trip") return { actorX: roundTrip * 31, actorY: -Math.sin(progress * Math.PI * 2) * 2, propX: 82, propY: 68, cursorX: 82, cursorY: 68 };
+  if (actionId === "walk_round_trip") return { actorX: -PET_PREVIEW_TRAVEL_PERCENT / 2 + walkRootProgress * PET_PREVIEW_TRAVEL_PERCENT, actorY: 0, propX: 83, propY: 70, cursorX: 83, cursorY: 70 };
   if (actionId === "token_snack") return { actorX: -roundTrip * 19, actorY: 0, propX: 30, propY: 71, cursorX: 30, cursorY: 71 };
   if (actionId === "play_cursor") return { actorX: 0, actorY: 0, propX: cursorX, propY: cursorY, cursorX, cursorY };
   if (actionId === "drag_dangle") return { actorX: Math.sin(progress * Math.PI * 2) * 8, actorY: -roundTrip * 3, propX: cursorX, propY: 24 + Math.sin(progress * Math.PI * 5) * 10, cursorX, cursorY: 24 };
@@ -287,17 +294,42 @@ export function ActionsWorkbench(props: {
   const definition = actionDefinitions[selectedAction];
   const manifest = actorManifestFor(props.appearance.catTypeId);
   const fallbackImage = getCatTypeOption(props.appearance.catTypeId).image;
-  const frames = useMemo(() => buildPreviewFrames(definition, manifest, fallbackImage), [definition, fallbackImage, manifest]);
   const capability = capabilityFor(props.appearance.catTypeId, selectedAction);
   const previewAvailable = capability.status === "ready" || capability.status === "fallback";
   const savedSettings = props.story.actionSettings?.byAction[selectedAction] ?? {};
   const settings = { ...defaultSettingsFor(definition), ...savedSettings };
-  const progress = Math.min(1, elapsedMs / Math.max(definition.durationMs, 1));
-  const sampled = sampleTimeline(frames, elapsedMs);
-  const stage = stageSample(selectedAction, progress);
+  const walkAnimation = manifest ? resolveAnimation(manifest, "walk_round_trip") : undefined;
+  const walkRootMotion = walkAnimation?.locomotion
+    ? {
+      nominalStepDistancePx: walkAnimation.locomotion.nominalStepDistancePx,
+      footfallsPerCycle: walkAnimation.locomotion.footfallsPerCycle,
+      rootStepKeyframes: walkAnimation.locomotion.rootStepKeyframes,
+    }
+    : DEFAULT_WALK_ROOT_MOTION;
+  const walkPreviewPlan = createDistanceLockedWalkPlan(PET_PREVIEW_TRAVEL_DISTANCE_PX, Number(settings.walkPace ?? 90), 1, walkRootMotion);
+  const previewDurationMs = selectedAction === "walk_round_trip" ? walkPreviewPlan.durationMs : definition.durationMs;
+  const frames = useMemo(
+    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs),
+    [definition, fallbackImage, manifest, previewDurationMs],
+  );
+  const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
+  const timelineSample = sampleTimeline(frames, elapsedMs);
+  const walkSourceCycleDurationMs = walkAnimation?.frames.reduce((total, frame) => total + Math.max(1, frame.durationMs), 0) ?? 1;
+  const walkActorTimeMs = elapsedMs * walkSourceCycleDurationMs / Math.max(1, walkPreviewPlan.cycleDurationMs);
+  const walkCycleTimeMs = ((walkActorTimeMs % walkSourceCycleDurationMs) + walkSourceCycleDurationMs) % walkSourceCycleDurationMs;
+  const walkFrame = frames.find((frame) => walkCycleTimeMs < frame.sourceStartMs + frame.sourceDurationMs) ?? frames[0];
+  const sampled = selectedAction === "walk_round_trip"
+    ? {
+      frame: walkFrame,
+      phaseProgress: Math.min(1, Math.max(0, (walkCycleTimeMs - walkFrame.sourceStartMs) / Math.max(1, walkFrame.sourceDurationMs))),
+      actorTimeMs: walkActorTimeMs,
+    }
+    : timelineSample;
+  const walkRootProgress = selectedAction === "walk_round_trip" ? distanceLockedWalkProgressAtTime(walkPreviewPlan, elapsedMs) : progress;
+  const stage = stageSample(selectedAction, progress, walkRootProgress);
   const actorPreviewAppearance = {
     ...props.appearance,
-    size: Math.min(1.08, Math.max(.9, props.appearance.size)),
+    size: selectedAction === "walk_round_trip" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
     tokenBubbleId: "hidden" as const,
     moodBadge: { ...props.appearance.moodBadge, showMood: false },
     accessorySettings: { ...props.appearance.accessorySettings, tokenFrameId: "hidden" as const },
@@ -317,10 +349,10 @@ export function ActionsWorkbench(props: {
       lastTickRef.current = now;
       setElapsedMs((current) => {
         const next = current + Math.min(80, now - last);
-        if (next < definition.durationMs) return next;
-        if (loopPreview) return next % definition.durationMs;
+        if (next < previewDurationMs) return next;
+        if (loopPreview) return next % previewDurationMs;
         setPlaying(false);
-        return definition.durationMs;
+        return previewDurationMs;
       });
       raf = window.requestAnimationFrame(tick);
     };
@@ -329,7 +361,7 @@ export function ActionsWorkbench(props: {
       window.cancelAnimationFrame(raf);
       lastTickRef.current = null;
     };
-  }, [definition.durationMs, loopPreview, playing, previewAvailable]);
+  }, [loopPreview, playing, previewAvailable, previewDurationMs]);
 
   const updateSetting = (key: string, value: PetActionTuningValue) => {
     props.patch({
@@ -381,14 +413,21 @@ export function ActionsWorkbench(props: {
             <h2>Action Preview</h2>
             <span data-preview-only>Preview only</span>
           </header>
-          <div className={`action-preview-stage action-preview-${selectedAction}`} data-action-preview-stage data-preview-coordinate-system="normalized-100x100">
+          <div
+            className={`action-preview-stage action-preview-${selectedAction}`}
+            data-action-preview-stage
+            data-preview-coordinate-system="normalized-100x100"
+            data-preview-walk-root-progress={selectedAction === "walk_round_trip" ? walkRootProgress.toFixed(4) : undefined}
+            data-preview-walk-cycle-ms={selectedAction === "walk_round_trip" ? walkPreviewPlan.cycleDurationMs : undefined}
+            data-preview-walk-distance-px={selectedAction === "walk_round_trip" ? walkPreviewPlan.distancePx : undefined}
+          >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
-              <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M14 35 C40 45 61 12 86 29" : "M18 38 C35 34 44 44 62 35"} />
+              <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
             </svg>
             <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} previewTimeMs={sampled.actorTimeMs} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : undefined} previewTimeMs={sampled.actorTimeMs} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale } as CSSProperties} aria-label={definition.propLabel}>
@@ -402,20 +441,26 @@ export function ActionsWorkbench(props: {
 
           <div className="action-filmstrip" data-action-filmstrip>
             {frames.map((frame, index) => (
-              <button key={frame.id} className={sampled.frame.id === frame.id ? "active" : ""} type="button" data-action-keyframe data-phase-id={frame.id} onClick={() => { setElapsedMs(frame.startMs); setPlaying(false); }}>
+              <button key={frame.id} className={sampled.frame.id === frame.id ? "active" : ""} type="button" data-action-keyframe data-phase-id={frame.id} onClick={() => {
+                const seekMs = selectedAction === "walk_round_trip"
+                  ? frame.sourceStartMs * walkPreviewPlan.cycleDurationMs / Math.max(1, walkSourceCycleDurationMs)
+                  : frame.startMs;
+                setElapsedMs(seekMs);
+                setPlaying(false);
+              }}>
                 <span>{index + 1}</span><img src={frame.src} alt="" draggable={false} aria-hidden="true" /><strong>{frame.label}</strong>
               </button>
             ))}
           </div>
 
-          <input className="action-scrubber" data-action-scrubber type="range" min="0" max={definition.durationMs} step="10" value={Math.min(elapsedMs, definition.durationMs)} aria-label="Preview timeline" onChange={(event) => { setPlaying(false); setElapsedMs(Number(event.target.value)); }} />
+          <input className="action-scrubber" data-action-scrubber type="range" min="0" max={previewDurationMs} step="10" value={Math.min(elapsedMs, previewDurationMs)} aria-label="Preview timeline" onChange={(event) => { setPlaying(false); setElapsedMs(Number(event.target.value)); }} />
           <div className="action-transport">
             <button className="action-play-button" data-action-play type="button" aria-label={playing ? "Pause preview" : "Play preview"} onClick={() => {
-              if (elapsedMs >= definition.durationMs) setElapsedMs(0);
+              if (elapsedMs >= previewDurationMs) setElapsedMs(0);
               setPlaying((value) => !value);
             }}>{playing ? "Ⅱ" : "▶"}</button>
             <button className="action-restart-button" data-action-restart type="button" aria-label="Restart preview" onClick={() => { setElapsedMs(0); setPlaying(previewAvailable); }}>↻</button>
-            <span>{Math.round(elapsedMs / 100) / 10}s / {definition.durationMs / 1000}s</span>
+            <span>{Math.round(elapsedMs / 100) / 10}s / {Math.round(previewDurationMs / 100) / 10}s</span>
             <button className="action-loop-toggle" data-action-loop type="button" role="switch" aria-checked={loopPreview} onClick={() => setLoopPreview((value) => !value)}><strong>Loop preview</strong><i className={`pet-switch ${loopPreview ? "on" : ""}`} /></button>
           </div>
         </section>

@@ -11,6 +11,8 @@ const toolDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(toolDir, "../..");
 const bundleDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-british");
 const sourceSpecPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
+const walkClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v4");
+const walkRegistrationPath = resolve(walkClipRoot, "locomotion-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -69,6 +71,31 @@ test("high-value actions use approved multi-frame sequences and desktop traversa
   assert.ok(new Set(traversal.frames.map((frame) => frame.src)).size >= 4, "run_across must use multiple approved action poses");
   assert.ok(traversal.frames.reduce((total, frame) => total + frame.durationMs, 0) >= 2_000);
   assert.equal(manifest.capabilities.find((entry) => entry.id === "run_across")?.runtimeBehavior, "choreography");
+
+  const naturalWalk = manifest.animations["action.walk_round_trip"];
+  assert.equal(naturalWalk.loop, true);
+  assert.equal(naturalWalk.frames.length, 8, "walk_round_trip needs a complete eight-phase four-beat feline gait cycle");
+  assert.equal(new Set(naturalWalk.frames.map((frame) => frame.src)).size, 8, "every gait phase must use its own approved walking pose");
+  assert.ok(naturalWalk.frames.every((frame) => /walk_round_trip_v4_\d\d\.png$/.test(frame.src)), "the Pet action must use its dedicated v4 authored-root-motion artwork");
+  assert.deepEqual(naturalWalk.locomotion.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+  assert.equal(naturalWalk.locomotion.phases.length, naturalWalk.frames.length);
+  assert.deepEqual(naturalWalk.locomotion.phases.map((phase) => phase.contacts[0]), ["near-hind", "near-hind", "near-fore", "near-fore", "far-hind", "far-hind", "far-fore", "far-fore"]);
+  assert.equal(manifest.animations["action.walk_round_trip_look"].frames.length, 2, "the destination pause needs authored planted-paw look poses");
+});
+
+test("walk frames share a registered body anchor before native root motion", async () => {
+  const registration = JSON.parse(await readFile(walkRegistrationPath, "utf8"));
+  assert.equal(registration.schemaVersion, "tokenpet-locomotion-report/v2");
+  assert.equal(registration.frames.length, 8);
+  assert.deepEqual(registration.sourceCellOrder, [1, 5, 2, 6, 3, 7, 4, 8], "the two hind-leg rows must be interleaved by fore-leg phase");
+  assert.deepEqual(registration.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+  assert.equal(registration.footfallsPerCycle, 4);
+  assert.ok(registration.frames.some((frame) => Math.abs(frame.shiftX) >= 20), "the source-sheet composition drift must be measured and corrected");
+  assert.ok(registration.maxResidualPx <= 0.5, "registered eye/body anchors may differ by at most half a source pixel");
+  assert.ok(registration.frames.every((frame) => frame.residualPx <= 0.5));
+  for (const artifact of ["walk-cycle-preview.gif", "walk-root-motion-preview.gif", "walk-root-motion-contact-sheet.png"]) {
+    assert.ok((await stat(resolve(walkClipRoot, artifact))).size > 0, `${artifact} must remain available for visual gait review`);
+  }
 });
 
 test("production bundle contains approved 1024px raster frames and no SVG cat", async () => {

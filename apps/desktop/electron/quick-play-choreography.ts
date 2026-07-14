@@ -264,6 +264,95 @@ export function interpolateQuickPlayBounds(
   };
 }
 
+/**
+ * A natural four-beat walk advances one paw contact for every two authored
+ * frames. Keeping the spatial footfall in the same plan as the frame cadence
+ * prevents the actor from looking like an in-place loop sliding across the
+ * desktop.
+ */
+export type DistanceLockedWalkPlan = {
+  distancePx: number;
+  stepCount: number;
+  stepDistancePx: number;
+  stepDurationMs: number;
+  cycleDurationMs: number;
+  durationMs: number;
+  rootMotion: WalkRootMotionProfile;
+};
+
+export type WalkRootMotionProfile = {
+  nominalStepDistancePx: number;
+  footfallsPerCycle: number;
+  rootStepKeyframes: number[];
+};
+
+export const DEFAULT_WALK_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 18,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4],
+};
+
+const NATURAL_WALK_STEP_DURATION_MS = 220;
+
+export function createDistanceLockedWalkPlan(distancePx: number, pacePercent = 100, actorScale = 1, rootMotion: WalkRootMotionProfile = DEFAULT_WALK_ROOT_MOTION): DistanceLockedWalkPlan {
+  const distance = Math.max(0, Number.isFinite(distancePx) ? distancePx : 0);
+  const pace = clamp(Number.isFinite(pacePercent) ? pacePercent : 100, 60, 140);
+  const scaledStepDistance = rootMotion.nominalStepDistancePx * clamp(Number.isFinite(actorScale) ? actorScale : 1, 0.7, 1.4);
+  const stepCount = Math.max(rootMotion.footfallsPerCycle, Math.round(distance / scaledStepDistance));
+  const stepDurationMs = Math.round(NATURAL_WALK_STEP_DURATION_MS * 100 / pace);
+  return {
+    distancePx: distance,
+    stepCount,
+    stepDistancePx: distance / stepCount,
+    stepDurationMs,
+    cycleDurationMs: stepDurationMs * rootMotion.footfallsPerCycle,
+    durationMs: stepDurationMs * stepCount,
+    rootMotion: {
+      nominalStepDistancePx: rootMotion.nominalStepDistancePx,
+      footfallsPerCycle: rootMotion.footfallsPerCycle,
+      rootStepKeyframes: [...rootMotion.rootStepKeyframes],
+    },
+  };
+}
+
+/** Convert authored time to wall-clock time while preserving every stride. */
+export function scaleDistanceLockedWalkPlan(plan: DistanceLockedWalkPlan, timeScale = 1): DistanceLockedWalkPlan {
+  const scale = clamp(Number.isFinite(timeScale) ? timeScale : 1, 0.01, 100);
+  return {
+    ...plan,
+    stepDurationMs: plan.stepDurationMs / scale,
+    cycleDurationMs: plan.cycleDurationMs / scale,
+    durationMs: plan.durationMs / scale,
+  };
+}
+
+function smoothStep(value: number) {
+  return value * value * (3 - 2 * value);
+}
+
+/**
+ * Resolve body travel from root-motion keyframes authored with the asset.
+ * Contact frames carry only a small fraction of a footfall; the matching
+ * support frame carries the body over the paw and lands on the next exact
+ * integer step. The main process no longer guesses a generic movement curve.
+ */
+export function distanceLockedWalkProgressAtTime(plan: DistanceLockedWalkPlan, elapsedMs: number) {
+  if (plan.distancePx <= 0 || plan.durationMs <= 0 || plan.stepDurationMs <= 0) return 1;
+  const elapsed = clamp(elapsedMs, 0, plan.durationMs);
+  if (elapsed >= plan.durationMs) return 1;
+  const profile = plan.rootMotion;
+  const framesPerCycle = profile.rootStepKeyframes.length - 1;
+  const completedCycles = Math.floor(elapsed / plan.cycleDurationMs);
+  const cycleElapsedMs = elapsed - completedCycles * plan.cycleDurationMs;
+  const frameDurationMs = plan.cycleDurationMs / framesPerCycle;
+  const frameIndex = Math.min(framesPerCycle - 1, Math.floor(cycleElapsedMs / frameDurationMs));
+  const frameProgress = (cycleElapsedMs - frameIndex * frameDurationMs) / frameDurationMs;
+  const rootStart = profile.rootStepKeyframes[frameIndex];
+  const rootEnd = profile.rootStepKeyframes[frameIndex + 1];
+  const rootSteps = completedCycles * profile.footfallsPerCycle + rootStart + (rootEnd - rootStart) * smoothStep(frameProgress);
+  return clamp(rootSteps / plan.stepCount, 0, 1);
+}
+
 function distanceBetween(left: QuickPlayPoint, right: QuickPlayPoint) {
   return Math.hypot(right.x - left.x, right.y - left.y);
 }
@@ -272,6 +361,8 @@ export type SafeRandomTargetOptions = {
   random?: () => number;
   edgeMargin?: number;
   minimumDistance?: number;
+  /** Require a visibly different desktop row while still sampling the full safe Y range. */
+  minimumVerticalDistance?: number;
   maximumAttempts?: number;
   roamDistance?: PetQuickPlayConfig["roamDistance"];
 };
@@ -302,6 +393,11 @@ export function sampleSafeRandomTarget(
     Math.max(1, options.minimumDistance ?? availableDiagonal * distanceScale),
     availableDiagonal,
   );
+  const availableVertical = Math.max(Math.abs(safeStart.y - minY), Math.abs(maxY - safeStart.y));
+  const minimumVerticalDistance = Math.min(
+    Math.max(0, options.minimumVerticalDistance ?? 0),
+    availableVertical,
+  );
 
   let best = safeStart;
   let bestDistance = -1;
@@ -312,21 +408,24 @@ export function sampleSafeRandomTarget(
       y: Math.round(minY + finiteNumber(random(), 0.5, 0, 1) * (maxY - minY)),
     };
     const distance = distanceBetween(safeStart, candidate);
+    const verticalDistance = Math.abs(candidate.y - safeStart.y);
     if (distance > bestDistance) {
       best = candidate;
       bestDistance = distance;
     }
-    if (distance >= minimumDistance) return candidate;
+    if (distance >= minimumDistance && verticalDistance >= minimumVerticalDistance) return candidate;
   }
 
-  if (bestDistance > 0) return best;
   const corners = [
     { ...safeStart, x: minX, y: minY },
     { ...safeStart, x: maxX, y: minY },
     { ...safeStart, x: minX, y: maxY },
     { ...safeStart, x: maxX, y: maxY },
   ];
-  return corners.sort((left, right) => distanceBetween(safeStart, right) - distanceBetween(safeStart, left))[0];
+  const fallback = corners
+    .filter((candidate) => Math.abs(candidate.y - safeStart.y) >= minimumVerticalDistance)
+    .sort((left, right) => distanceBetween(safeStart, right) - distanceBetween(safeStart, left))[0];
+  return fallback ?? (bestDistance > 0 ? best : safeStart);
 }
 
 export type QuickPlayRouteCurve = "straight" | "gentle" | "curved";
@@ -539,7 +638,7 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
   switch (action) {
     case "walk_round_trip": {
       const options = config as PetQuickPlayConfig;
-      const walkMs = travelDuration(travelDistancePx, options.walkPace);
+      const walkMs = createDistanceLockedWalkPlan(travelDistancePx, options.walkPace).durationMs;
       return createPhaseTimeline([
         { id: "stand", durationMs: 450 },
         { id: "walk_out", durationMs: walkMs },

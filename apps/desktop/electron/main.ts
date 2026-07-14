@@ -21,17 +21,21 @@ import {
 import {
   accumulateDangleMovement,
   boundsAtPointToPointTime,
+  createDistanceLockedWalkPlan,
   createCursorTrackingState,
   createDangleMovementState,
   createQuickPlayActionTimeline,
   createPointToPointPath,
   createYarnRollPlan,
+  DEFAULT_WALK_ROOT_MOTION,
   interpolateQuickPlayBounds,
   normalizeQuickPlayActionConfig,
   sampleSafeRandomTarget,
+  scaleDistanceLockedWalkPlan,
+  distanceLockedWalkProgressAtTime,
   updateCursorTracking,
 } from "./quick-play-choreography.js";
-import type { CursorTrackingState, DangleMovementState } from "./quick-play-choreography.js";
+import type { CursorTrackingState, DistanceLockedWalkPlan, DangleMovementState, WalkRootMotionProfile } from "./quick-play-choreography.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -59,6 +63,7 @@ let quickPlaySession: QuickPlaySession = {
   startBounds: null,
   startDirectorState: null,
   targetPoint: null,
+  walkMotion: null,
   pointerMode: "none",
   resting: false,
   failure: null,
@@ -84,6 +89,46 @@ let quickPlayTimeScale = 1;
 let quickPlayCursorTrackingState: CursorTrackingState = createCursorTrackingState();
 const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null }> = [];
 let petVisibleCaptureBounds: Rectangle | null = null;
+let cachedWalkRootMotion: WalkRootMotionProfile | null = null;
+
+function loadGoldenWalkRootMotion(): WalkRootMotionProfile {
+  if (cachedWalkRootMotion) return cachedWalkRootMotion;
+  const candidates = [
+    join(__dirname, "../dist-renderer/pet-actors/golden-british/actor.json"),
+    join(app.getAppPath(), "apps/desktop/public/pet-actors/golden-british/actor.json"),
+  ];
+  for (const path of candidates) {
+    if (!existsSync(path)) continue;
+    try {
+      const manifest = JSON.parse(readFileSync(path, "utf8")) as {
+        animations?: Record<string, { locomotion?: WalkRootMotionProfile }>;
+      };
+      const profile = manifest.animations?.["action.walk_round_trip"]?.locomotion;
+      if (
+        profile
+        && profile.footfallsPerCycle > 0
+        && profile.nominalStepDistancePx > 0
+        && profile.rootStepKeyframes.length >= 2
+        && profile.rootStepKeyframes[0] === 0
+        && profile.rootStepKeyframes.at(-1) === profile.footfallsPerCycle
+      ) {
+        cachedWalkRootMotion = {
+          nominalStepDistancePx: profile.nominalStepDistancePx,
+          footfallsPerCycle: profile.footfallsPerCycle,
+          rootStepKeyframes: [...profile.rootStepKeyframes],
+        };
+        return cachedWalkRootMotion;
+      }
+    } catch (error) {
+      console.warn(`[tokenpet] unable to load authored walk root motion from ${path}`, error);
+    }
+  }
+  cachedWalkRootMotion = {
+    ...DEFAULT_WALK_ROOT_MOTION,
+    rootStepKeyframes: [...DEFAULT_WALK_ROOT_MOTION.rootStepKeyframes],
+  };
+  return cachedWalkRootMotion;
+}
 let captureQueue: Promise<unknown> = Promise.resolve();
 let mainProcessQaCaptureCount = 0;
 type PetTraversalResult = { moved: boolean; canceled?: boolean };
@@ -791,6 +836,7 @@ function currentQuickPlaySession(): QuickPlaySession {
   return {
     ...quickPlaySession,
     startBounds: quickPlaySession.startBounds ? { ...quickPlaySession.startBounds } : null,
+    walkMotion: quickPlaySession.walkMotion ? { ...quickPlaySession.walkMotion } : null,
   };
 }
 
@@ -810,6 +856,7 @@ function emptyQuickPlaySession(): QuickPlaySession {
     startBounds: null,
     startDirectorState: null,
     targetPoint: null,
+    walkMotion: null,
     pointerMode: "none",
     resting: reportedPetDirectorState.resting,
     failure: null,
@@ -817,7 +864,8 @@ function emptyQuickPlaySession(): QuickPlaySession {
 }
 
 function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySession.targetPoint) {
-  quickPlaySession = { ...quickPlaySession, phase, phaseStartedAt: Date.now(), targetPoint };
+  const keepsWalkMotion = phase === "outbound" || phase === "return";
+  quickPlaySession = { ...quickPlaySession, phase, phaseStartedAt: Date.now(), targetPoint, walkMotion: keepsWalkMotion ? quickPlaySession.walkMotion : null };
   quickPlayTrace.push({ at: Date.now(), action: quickPlaySession.activeAction, phase, bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint });
   publishQuickPlaySession();
 }
@@ -884,15 +932,19 @@ function quickPlayDelay(runtime: QuickPlayRuntime, durationMs: number) {
   });
 }
 
-function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, durationMs: number, persist = false, routeCurve: "straight" | "gentle" | "curved" = "straight") {
+function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, durationMs: number, persist = false, routeCurve: "straight" | "gentle" | "curved" = "straight", motionProfile: "smooth" | "walk" = "smooth", walkPlan: DistanceLockedWalkPlan | null = null, motionStartedAtMs: number | null = null) {
   if (!isUsableWindow(petWindow) || quickPlayRuntime !== runtime) return Promise.resolve(false);
   const actorWindow = petWindow;
   const start = actorWindow.getBounds();
-  const startedAt = Date.now();
+  // Walking sprites and native-window root motion must sample one epoch. Timer
+  // wake-up jitter otherwise lets the legs get several milliseconds ahead of
+  // the desktop displacement on every outbound/return phase.
+  const startedAt = motionStartedAtMs ?? Date.now();
+  const wallDurationMs = walkPlan?.durationMs ?? Math.max(1, durationMs / quickPlayTimeScale);
   const startDisplay = screen.getDisplayMatching(start);
   const targetDisplay = screen.getDisplayMatching(target);
-  const curvedPlan = startDisplay.id === targetDisplay.id
-    ? createPointToPointPath(start, target, startDisplay.workArea, { durationMs: Math.max(1, durationMs / quickPlayTimeScale), routeCurve })
+  const curvedPlan = startDisplay.id === targetDisplay.id && routeCurve !== "straight"
+    ? createPointToPointPath(start, target, startDisplay.workArea, { durationMs: wallDurationMs, routeCurve })
     : null;
   return new Promise<boolean>((resolve) => {
     let settled = false;
@@ -914,8 +966,13 @@ function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, du
         finish(false);
         return;
       }
-      const progress = Math.min(1, (Date.now() - startedAt) / Math.max(1, durationMs / quickPlayTimeScale));
-      const eased = progress < .5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
+      const elapsedMs = Math.max(0, Date.now() - startedAt);
+      const progress = Math.min(1, elapsedMs / wallDurationMs);
+      const eased = motionProfile === "walk" && walkPlan
+        ? distanceLockedWalkProgressAtTime(walkPlan, elapsedMs)
+        : motionProfile === "walk"
+          ? progress
+          : progress < .5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
       const next = curvedPlan
         ? boundsAtPointToPointTime(curvedPlan, Date.now() - startedAt).bounds
         : interpolateQuickPlayBounds(start, target, eased);
@@ -1055,17 +1112,48 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
   if (action === "walk_round_trip") {
     const config = actionConfig(action);
     const workArea = screen.getDisplayMatching(runtime.startBounds).workArea;
-    const target = sampleSafeRandomTarget(runtime.startBounds, workArea, { roamDistance: config.roamDistance });
+    const target = sampleSafeRandomTarget(runtime.startBounds, workArea, {
+      roamDistance: config.roamDistance,
+      minimumVerticalDistance: config.roamDistance === "near" ? 72 : config.roamDistance === "far" ? 180 : 120,
+    });
+    const rootMotion = loadGoldenWalkRootMotion();
+    const walkDistance = Math.hypot(
+      target.x - runtime.startBounds.x,
+      target.y - runtime.startBounds.y,
+    );
+    const authoredWalkPlan = createDistanceLockedWalkPlan(walkDistance, config.walkPace, settings.petAppearance.size, rootMotion);
+    const wallClockWalkPlan = scaleDistanceLockedWalkPlan(authoredWalkPlan, quickPlayTimeScale);
+    const walkLeadInMs = 90 / quickPlayTimeScale;
+    const beginWalkPhase = (phase: "outbound" | "return") => {
+      const startedAt = Date.now() + walkLeadInMs;
+      quickPlaySession = {
+        ...quickPlaySession,
+        walkMotion: {
+          startedAt,
+          durationMs: wallClockWalkPlan.durationMs,
+          stepDurationMs: wallClockWalkPlan.stepDurationMs,
+          cycleDurationMs: wallClockWalkPlan.cycleDurationMs,
+          stepCount: wallClockWalkPlan.stepCount,
+          stepDistancePx: wallClockWalkPlan.stepDistancePx,
+          footfallsPerCycle: wallClockWalkPlan.rootMotion.footfallsPerCycle,
+          rootStepKeyframes: [...wallClockWalkPlan.rootMotion.rootStepKeyframes],
+        },
+      };
+      updateQuickPlayPhase(phase);
+      return startedAt;
+    };
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: { x: target.x + target.width / 2, y: target.y + target.height / 2 } };
     updateQuickPlayPhase("stand");
     if (!await quickPlayDelay(runtime, 320)) return;
-    updateQuickPlayPhase("outbound");
-    if (!await animateQuickPlayBounds(runtime, target, Math.round(1_650 * 90 / config.walkPace))) throw new Error("Pet walk was interrupted");
+    const outboundStartedAt = beginWalkPhase("outbound");
+    if (!await quickPlayDelay(runtime, 90)) return;
+    if (!await animateQuickPlayBounds(runtime, target, authoredWalkPlan.durationMs, false, "straight", "walk", wallClockWalkPlan, outboundStartedAt)) throw new Error("Pet walk was interrupted");
     updateQuickPlayPhase("pause");
     if (!await quickPlayDelay(runtime, config.destinationPause * 1_000)) return;
-    updateQuickPlayPhase("return");
-    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, Math.round(1_650 * 90 / config.walkPace))) throw new Error("Pet return was interrupted");
+    const returnStartedAt = beginWalkPhase("return");
+    if (!await quickPlayDelay(runtime, 90)) return;
+    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, authoredWalkPlan.durationMs, false, "straight", "walk", wallClockWalkPlan, returnStartedAt)) throw new Error("Pet return was interrupted");
     updateQuickPlayPhase("settle");
     if (!await quickPlayDelay(runtime, 260)) return;
     await completeQuickPlayRuntime(runtime);
@@ -1229,6 +1317,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
     startBounds: runtime.startBounds,
     startDirectorState: reportedPetDirectorState.action,
     targetPoint,
+    walkMotion: null,
     pointerMode,
     resting: reportedPetDirectorState.resting,
     failure: null,
@@ -1676,7 +1765,7 @@ export const mainProcessQa = {
     if (!isMainProcessQa) throw new Error("QA cursor override is unavailable outside main-process QA");
     mainProcessQaCursor = point;
   },
-  openConsole(tab: ConsoleTab = "pet") {
+  openConsole(tab: ConsoleTab = "overview") {
     openConsoleWindow(tab);
   },
   toggleMenuBar: toggleMenuBarWindow,
@@ -1715,8 +1804,8 @@ ipcMain.on("popover:close", () => {
   closeUsableWindow(popoverWindow);
 });
 
-ipcMain.on("app:open-console", (_event, requestedTab: ConsoleTab = "pet") => {
-  const tab: ConsoleTab = ["overview", "breakdown", "cost", "pet", "settings"].includes(requestedTab) ? requestedTab : "pet";
+ipcMain.on("app:open-console", (_event, requestedTab: ConsoleTab = "overview") => {
+  const tab: ConsoleTab = ["overview", "breakdown", "cost", "pet", "settings"].includes(requestedTab) ? requestedTab : "overview";
   openConsoleWindow(tab);
 });
 

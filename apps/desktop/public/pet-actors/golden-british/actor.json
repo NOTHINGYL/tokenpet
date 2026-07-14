@@ -3,11 +3,11 @@
   "actorId": "golden-british",
   "displayName": "Golden British",
   "breedId": "golden-british",
-  "sourceVersion": "1.1.0-actions",
+  "sourceVersion": "1.4.0-authored-root-motion",
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "256549b3a233706b246f86f560289cd33a44987de3976e1e995d220b3f4d3016",
+  "contentHash": "5f46764f7fa3a1eb6c5b42cb7d2ebf8d3300678fbcc8956cee07c7adefc5d7b9",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -1385,16 +1385,90 @@
       "kind": "oneShot",
       "mood": "focused",
       "motionState": "walk_round_trip",
-      "fps": 12,
+      "fps": 9,
       "loop": true,
       "priority": 80,
       "cooldownMs": 1200,
       "reducedMotionFallback": "idle_breathe",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
       "frames": [
         {
           "id": "walk_round_trip-1",
           "mood": "focused",
-          "src": "frames/idle_breathe.png",
+          "src": "frames/walk_round_trip_v4_01.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -1402,14 +1476,14 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 220,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "durationMs": 110,
+          "sha256": "443621a68397e8a4a0f0f0df1efeebbce9fa534c817c2bfe088fb3b3b242e638",
           "sourceAssetId": "walk_round_trip:1"
         },
         {
           "id": "walk_round_trip-2",
           "mood": "focused",
-          "src": "frames/hot_loop.png",
+          "src": "frames/walk_round_trip_v4_02.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -1417,14 +1491,14 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 260,
-          "sha256": "1ed390693b94a15b44455a48af14e4c1218b694bccddcff1f9bab59c3f9acdb9",
+          "durationMs": 110,
+          "sha256": "fc06145fdc9fe5af07b9ea47d7d23edf6efee3fa4045c58b696d8ffdfd3d9aa6",
           "sourceAssetId": "walk_round_trip:2"
         },
         {
           "id": "walk_round_trip-3",
           "mood": "focused",
-          "src": "frames/play_cursor.png",
+          "src": "frames/walk_round_trip_v4_03.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -1432,14 +1506,14 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 260,
-          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
+          "durationMs": 110,
+          "sha256": "b47d6bbcc51fc72dbbed41dcfe820d12bd8d5a5340bca682228579d1cbb73e5a",
           "sourceAssetId": "walk_round_trip:3"
         },
         {
           "id": "walk_round_trip-4",
           "mood": "focused",
-          "src": "frames/drop_bounce.png",
+          "src": "frames/walk_round_trip_v4_04.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -1447,9 +1521,111 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 240,
-          "sha256": "9ca12f7e8b7be8fe2bc28e90a9671b471c584fd0e40f7c65255639c4b5dba2ee",
+          "durationMs": 110,
+          "sha256": "d90b578a19fe7224f5291237de8f83bd3b4f5c8bdca67814ef21bcc48dbfa188",
           "sourceAssetId": "walk_round_trip:4"
+        },
+        {
+          "id": "walk_round_trip-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_v4_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "dc04fec4bbf28deb6c95e80b262e71250c30a64dc861920c10f7fa466db66996",
+          "sourceAssetId": "walk_round_trip:5"
+        },
+        {
+          "id": "walk_round_trip-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_v4_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "65ca88a2dd38bb7c7f009867a7fa04845cf7e8174f14f20a2e5db189ee5ccfec",
+          "sourceAssetId": "walk_round_trip:6"
+        },
+        {
+          "id": "walk_round_trip-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_v4_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "98e1db9a25b430c910830fd9fdf6557cfd753afd07dc1aa8568a75a7f2bb39a3",
+          "sourceAssetId": "walk_round_trip:7"
+        },
+        {
+          "id": "walk_round_trip-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_v4_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "cf8ca2683aeb15bedc1bafad10e75824d692fa791bef1eb05e698ee102a92132",
+          "sourceAssetId": "walk_round_trip:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look": {
+      "id": "action.walk_round_trip_look",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look",
+      "fps": 2,
+      "loop": true,
+      "priority": 80,
+      "reducedMotionFallback": "idle_breathe",
+      "frames": [
+        {
+          "id": "walk_round_trip_look-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 520,
+          "sha256": "99d2f2a2e23d70755b31403990088343f7b1c50942556a7fcfa9f94b6156653d",
+          "sourceAssetId": "walk_round_trip_look:1"
+        },
+        {
+          "id": "walk_round_trip_look-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 520,
+          "sha256": "8b2a34adf84f7bed923b0cb0b6201f6edd6b7bf6e698299098adf4f093fff874",
+          "sourceAssetId": "walk_round_trip_look:2"
         }
       ]
     },
@@ -2439,7 +2615,8 @@
   "visualReferences": [
     "docs/designs/gpt-v15-actor-state-reference.png",
     "docs/designs/gpt-v15-quick-play-action-reference.png",
-    "docs/designs/gpt-v16-actor-capability-flow.png"
+    "docs/designs/gpt-v16-actor-capability-flow.png",
+    "docs/pet-story/preview-assets/gpt-v17-quick-play-walk-round-trip-storyboard.png"
   ],
   "compatibility": {
     "bakedAccessories": [
@@ -2455,8 +2632,8 @@
   },
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
-    "generatorVersion": "1.1.0-actions",
-    "sourceSpecSha256": "f2c410bf18f4d06cc328b79bf0da426a1c2ff31004b3dde695a951087dd87628",
-    "inputSetSha256": "4aadc1debffe7512d3dea18a9450c52a689d94e3e670b4d6982d95017b92239a"
+    "generatorVersion": "1.2.0-authored-root-motion",
+    "sourceSpecSha256": "a67e7d621654fd20e29be67ea65313fbb3a58ec70d84b6b641e01dbfe61d6ec1",
+    "inputSetSha256": "a372d54b8923af58e28fef23dac19c688bbcc7f193bac9adcd6436972e279225"
   }
 }

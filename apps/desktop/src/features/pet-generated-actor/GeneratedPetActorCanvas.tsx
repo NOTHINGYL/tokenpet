@@ -30,6 +30,7 @@ type GeneratedActorRenderPlan = {
   styleVars: Record<string, string>;
   reduceMotion: boolean;
   pointerOffset: { x: number; y: number } | null;
+  facing: "left" | "right";
 };
 
 const GENERATED_ACTOR_IDS = new Set(["golden-british"]);
@@ -163,11 +164,12 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     moodId,
   );
   if (!animation?.frames.length) return null;
-  const tokenMode = resolveTokenMode(props.appearance, manifest);
+  const isRoundTripLocomotion = animation.id === "action.walk_round_trip" || animation.id === "action.walk_round_trip_look";
+  const tokenMode = isRoundTripLocomotion ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
-  const declaredMoodBadgeRect = shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
+  const declaredMoodBadgeRect = !isRoundTripLocomotion && shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
   const moodBadgeRect = declaredMoodBadgeRect ? resolveActorMoodBadgeRect(manifest, declaredMoodBadgeRect, props.surface) : null;
   const tokenCenterX = tokenRect ? tokenRect.x + tokenRect.width / 2 : 0;
   const tokenCenterY = tokenRect ? tokenRect.y + tokenRect.height / 2 : 0;
@@ -197,6 +199,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     },
     reduceMotion: props.reduceMotion ?? props.appearance.motionSettings.safety.reduceMotion,
     pointerOffset: props.pointerOffset ?? null,
+    facing: props.facing ?? "right",
   };
 }
 
@@ -367,6 +370,10 @@ function frameAtTime(animation: PetActorAnimation, elapsedMs: number) {
   return animation.frames.at(-1)!;
 }
 
+function animationDurationMs(animation: PetActorAnimation) {
+  return animation.frames.reduce((sum, frame) => sum + Math.max(frame.durationMs, 1), 0);
+}
+
 function renderGeneratedPetActorCanvas(
   context: CanvasRenderingContext2D,
   plan: GeneratedActorRenderPlan,
@@ -377,7 +384,7 @@ function renderGeneratedPetActorCanvas(
 ) {
   const frame = frameAtTime(plan.animation, Math.max(0, timeMs - animationStartedAt));
   const frameImage = images.get(resolveFrameUrl(plan.manifest.actorId, frame));
-  if (!frameImage) return;
+  if (!frameImage) return null;
 
   const time = Math.max(0, timeMs - animationStartedAt) / 1000;
   context.clearRect(0, 0, plan.manifest.artboard.width, plan.manifest.artboard.height);
@@ -387,6 +394,10 @@ function renderGeneratedPetActorCanvas(
 
   context.save();
   applyGeneratedBodyMotion(context, plan, frame, time, interactiveState.hover);
+  if (plan.facing === "left" && (plan.animation.id === "action.walk_round_trip" || plan.animation.id === "action.walk_round_trip_look")) {
+    context.translate(plan.manifest.artboard.width, 0);
+    context.scale(-1, 1);
+  }
   context.drawImage(frameImage, 0, 0, plan.manifest.artboard.width, plan.manifest.artboard.height);
   if (plan.tokenMode === "embedded") drawTokenText(context, plan);
   context.restore();
@@ -395,6 +406,8 @@ function renderGeneratedPetActorCanvas(
   drawMoodBadge(context, plan, time);
 
   context.restore();
+
+  return frame;
 }
 
 export async function exportGeneratedPetActorCanvas(props: PetActorProps) {
@@ -453,7 +466,11 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     if (typeof props.previewTimeMs === "number") {
       const canvas = canvasRef.current;
       const context = canvas?.getContext("2d");
-      if (canvas && context) renderGeneratedPetActorCanvas(context, plan, images, props.previewTimeMs, 0, { hover: false });
+      if (canvas && context) {
+        const frame = renderGeneratedPetActorCanvas(context, plan, images, props.previewTimeMs, 0, { hover: false });
+        if (frame) canvas.dataset.actorFrame = frame.id;
+        canvas.dataset.actorTimelineMs = String(Math.round(props.previewTimeMs));
+      }
       return;
     }
 
@@ -467,7 +484,15 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     const draw = (time: number) => {
       const canvas = canvasRef.current;
       const context = canvas?.getContext("2d");
-      if (canvas && context) renderGeneratedPetActorCanvas(context, plan, images, time, animationStartedAt, { hover: hoverRef.current });
+      if (canvas && context) {
+        const usesNativeTimeline = typeof props.animationStartedAtMs === "number" && typeof props.animationCycleDurationMs === "number" && props.animationCycleDurationMs > 0;
+        const timelineMs = usesNativeTimeline
+          ? Math.max(0, Date.now() - props.animationStartedAtMs!) * animationDurationMs(plan.animation) / props.animationCycleDurationMs!
+          : Math.max(0, time - animationStartedAt);
+        const frame = renderGeneratedPetActorCanvas(context, plan, images, timelineMs, 0, { hover: hoverRef.current });
+        if (frame) canvas.dataset.actorFrame = frame.id;
+        canvas.dataset.actorTimelineMs = String(Math.round(timelineMs));
+      }
       animationFrame = window.requestAnimationFrame(draw);
     };
 
@@ -476,7 +501,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
     return () => {
       window.cancelAnimationFrame(animationFrame);
     };
-  }, [images, plan, props.animationNonce, props.previewTimeMs]);
+  }, [images, plan, props.animationCycleDurationMs, props.animationNonce, props.animationStartedAtMs, props.previewTimeMs]);
 
   if (failed && props.fallback) return <>{props.fallback}</>;
   if (!plan) return props.fallback ? <>{props.fallback}</> : null;
@@ -488,6 +513,9 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       data-pet-size={plan.appearance.size}
       data-actor-id={plan.manifest.actorId}
       data-actor-animation={plan.animation.id}
+      data-actor-facing={plan.facing}
+      data-actor-cycle-duration-ms={props.animationCycleDurationMs}
+      data-actor-started-at-ms={props.animationStartedAtMs}
       data-mood-badge-y={plan.moodBadgeRect?.y}
       data-mood-badge-height={plan.moodBadgeRect?.height}
     >

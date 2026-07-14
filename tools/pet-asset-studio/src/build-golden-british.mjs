@@ -9,7 +9,7 @@ import {
 } from "../../../packages/pet-asset-schema/dist/index.js";
 
 const GENERATOR_NAME = "@tokenpet/pet-asset-studio";
-const GENERATOR_VERSION = "1.1.0-actions";
+const GENERATOR_VERSION = "1.2.0-authored-root-motion";
 const GENERATED_AT = "2026-07-09T00:00:00.000Z";
 
 const toolDir = dirname(fileURLToPath(import.meta.url));
@@ -77,6 +77,7 @@ function createAnimation(actionId, action, frameInputs, artboard) {
     priority: action.priority,
     ...(action.cooldownMs ? { cooldownMs: action.cooldownMs } : {}),
     ...(action.reducedMotionFallback ? { reducedMotionFallback: action.reducedMotionFallback } : {}),
+    ...(action.locomotion ? { locomotion: action.locomotion } : {}),
     frames,
   };
 }

@@ -1132,3 +1132,11 @@
     transform: scale(calc(var(--pet-token-render-scale) * 0.98));
   }
 }
+
+/* Round-trip locomotion is a real cat presentation, not a moving UI card.
+   The actor hides its embedded counter and mood slots during these phases;
+   keep the detached close chrome out of the walk as well. */
+.pet-stage[data-quick-play-action="walk_round_trip"] .pet-close {
+  opacity: 0;
+  pointer-events: none;
+}

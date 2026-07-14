@@ -52,6 +52,23 @@ function verifyManifest() {
   verify("embedded token frame", manifest.compatibility?.tokenFramePolicy === "embedded-only", "Golden British declares embedded-only token-frame policy");
   verify("static fallback", fileIsNonEmpty(resolve(actorDir, manifest.fallbackStaticImage)), "fallbackStaticImage resolves to a non-empty file");
 
+  const walk = manifest.animations["action.walk_round_trip"];
+  verify(
+    "walk uses authored root motion",
+    walk?.locomotion?.kind === "authored-root-motion"
+      && walk.locomotion.nominalStepDistancePx === 18
+      && walk.locomotion.footfallsPerCycle === 4
+      && JSON.stringify(walk.locomotion.rootStepKeyframes) === JSON.stringify([0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]),
+    "the actor manifest owns the four-footfall root curve instead of deriving body speed from fps",
+  );
+  verify(
+    "walk uses coherent quadruped phase order",
+    walk?.frames?.map((frame) => frame.src).every((src, index) => src.endsWith(`walk_round_trip_v4_${String(index + 1).padStart(2, "0")}.png`))
+      && walk?.locomotion?.phases?.map((phase) => phase.id).join(",") === "near-hind-contact,near-hind-support,near-fore-contact,near-fore-support,far-hind-contact,far-hind-support,far-fore-contact,far-fore-support"
+      && walk?.locomotion?.phases?.map((phase) => phase.contacts[0]).join(",") === "near-hind,near-hind,near-fore,near-fore,far-hind,far-hind,far-fore,far-fore",
+    "v4 interleaves the source rows so every planted paw owns one contact/support pair",
+  );
+
   for (const reference of manifest.visualReferences ?? []) {
     verify(`visual reference ${reference}`, fileIsNonEmpty(join(root, reference)), "approved visual reference resolves to a non-empty file");
   }
@@ -141,6 +158,8 @@ function verifyReachableUi() {
   if (consoleDiagnostics.length) warnings.push(`Console-wide enabled buttons without handlers: ${consoleDiagnostics.join(", ")}`);
 
   const popoverSource = read("apps/desktop/src/views/PopoverApp.tsx");
+  const menuBarSource = read("apps/desktop/src/views/MenuBarApp.tsx");
+  const consoleSource = read("apps/desktop/src/views/ConsoleApp.tsx");
   for (const actionId of quickPlayIds) {
     verify(`Quick Play stable id ${actionId}`, popoverSource.includes(`id: "${actionId}"`), "friendly action maps to its stable implementation id");
   }
@@ -149,6 +168,9 @@ function verifyReachableUi() {
   verify("Quick Play v18 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v18 controller modules");
   verify("Quick Play cursor helper copy", popoverSource.includes("Tracks your cursor for 30 seconds."), "the required 30-second helper is visible in source");
   verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
+  verify("Menu Bar Console entries target Overview", menuBarSource.match(/openConsole\("overview"\)/gu)?.length === 2, "both the settings icon and Open Console footer explicitly request Overview");
+  verify("Quick Play Console entry targets Pet", popoverSource.includes('openConsole("pet")'), "the double-click panel explicitly requests the Pet console");
+  verify("Pet navigation resets to Appearance", consoleSource.includes('if (tab === "pet")') && consoleSource.includes('setPetSection("appearance")') && consoleSource.includes("setPetNavigationEpoch"), "an external Pet request remounts the Pet surface at Appearance even when Console is already on another Pet subpage");
   const v18Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "summon-to-pointer", "capture-moment", "control-pin", "control-lock", "control-mute"];
   verify("Quick Play v18 normative artwork", v18Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local crops from the normative v18 design");
 
@@ -161,13 +183,16 @@ function verifyReachableUi() {
   const desktop = read("apps/desktop/src/views/PetApp.tsx");
   const story = read("apps/desktop/src/features/pet-story/PetStoryPanel.tsx");
   const actions = read("apps/desktop/src/features/pet-story/ActionsWorkbench.tsx");
+  const consoleStyles = read("apps/desktop/src/styles/console.css");
   const fallbackState = read("apps/desktop/src/state/fallbacks.ts");
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
   verify("desktop shared renderer", desktop.includes("<PetAppearanceVisual"), "desktop pet uses the shared appearance/actor renderer");
+  verify("Pet walk starts and stops on the locomotion clip", desktop.includes('return phase === "pause" ? "walk_round_trip_look" : "walk_round_trip"') && desktop.includes('quickPlaySession.phase === "stand"') && desktop.includes('quickPlaySession.phase === "settle"'), "stand and settle freeze the planted first pose of the same side-profile clip; only pause switches to the look-around asset");
   verify("console shared renderer", story.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
   verify("Actions v19 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v19 preview actions and excludes Capture from its selector");
   verify("Actions v19 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes("previewTimeMs={sampled.actorTimeMs}") && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
+  verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses one sandbox edge to the other with the shared root curve, a contained actor artboard, and pointer cursors on Settings controls");
   verify("Actions v19 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
   verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "attentionRadius", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePose", "breathingIntensity", "zEffect", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)), "all action-specific v19 setting keys are modeled without a generic Save form");
   verify("Actions v19 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop/u.test(actions), "the Actions implementation contains none of the retired director-dashboard modules");

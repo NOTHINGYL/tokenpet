@@ -325,7 +325,14 @@ export function ConsoleApp() {
   const requestedTab = new URLSearchParams(window.location.search).get("section");
   const [activeTab, setActiveTab] = useState<ConsoleTab>(requestedTab === "pet" ? "pet" : "overview");
   const [petSection, setPetSection] = useState<PetConsoleSection>("appearance");
-  useEffect(() => window.tokenpet?.onConsoleNavigation?.(setActiveTab), []);
+  const [petNavigationEpoch, setPetNavigationEpoch] = useState(0);
+  useEffect(() => window.tokenpet?.onConsoleNavigation?.((tab) => {
+    if (tab === "pet") {
+      setPetSection("appearance");
+      setPetNavigationEpoch((epoch) => epoch + 1);
+    }
+    setActiveTab(tab);
+  }), []);
   const tabs: Array<{ id: ConsoleTab; label: string }> = [
     { id: "overview", label: "Overview" },
     { id: "breakdown", label: "Breakdown" },
@@ -384,7 +391,7 @@ export function ConsoleApp() {
           {activeTab === "breakdown" ? <BreakdownTab usage={usage} /> : null}
           {activeTab === "cost" ? <CostTab usage={usage} /> : null}
           {activeTab === "pet" ? (
-            <AppearancePanel settings={settings} usage={usage} setSetting={(key, value) => void setSetting(key, value)} onSectionChange={setPetSection} />
+            <AppearancePanel key={`pet-navigation-${petNavigationEpoch}`} settings={settings} usage={usage} setSetting={(key, value) => void setSetting(key, value)} onSectionChange={setPetSection} />
           ) : null}
           {activeTab === "settings" ? (
             <SettingsTab settings={settings} setSetting={(key, value) => void setSetting(key, value)} />

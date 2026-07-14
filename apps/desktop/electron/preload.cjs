@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld("tokenpet", {
     ipcRenderer.on("app:settings-updated", listener);
     return () => ipcRenderer.removeListener("app:settings-updated", listener);
   },
-  openConsole: (tab = "pet") => ipcRenderer.send("app:open-console", tab),
+  openConsole: (tab = "overview") => ipcRenderer.send("app:open-console", tab),
   onConsoleNavigation: (callback) => {
     const listener = (_event, tab) => callback(tab);
     ipcRenderer.on("app:navigate-console", listener);

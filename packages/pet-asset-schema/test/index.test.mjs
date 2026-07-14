@@ -72,6 +72,15 @@ test("source frames reject invalid choreography timing", async () => {
   assert.ok(sourceIssueCodes(fixture).includes("source.frameDuration"));
 });
 
+test("locomotion clips reject unordered root motion and incomplete paw phases", async () => {
+  const fixture = await readSourceFixture();
+  fixture.actions.walk_round_trip.locomotion.rootStepKeyframes[2] = .1;
+  fixture.actions.walk_round_trip.locomotion.phases.pop();
+  const codes = sourceIssueCodes(fixture);
+  assert.ok(codes.includes("locomotion.rootOrder"));
+  assert.ok(codes.includes("locomotion.phases"));
+});
+
 test("every Quick Play action must be represented", async () => {
   const fixture = await readFixture();
   fixture.capabilities = fixture.capabilities.filter((capability) => capability.id !== "capture_moment");

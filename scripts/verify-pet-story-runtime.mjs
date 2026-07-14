@@ -535,6 +535,71 @@ verify("Quick Play choreography keeps Pet exact-return and Summon safe", () => {
   assert.equal(quickPlay.boundsAtRoundTripTime(plan, 1_250).phase, "pause");
   assert.deepEqual(quickPlay.boundsAtRoundTripTime(plan, plan.durationMs).bounds, start);
   assert.equal(quickPlay.boundsAtRoundTripTime(plan, plan.durationMs).complete, true);
+
+  const lowerRandom = [.5, .9];
+  const lowerTarget = quickPlay.sampleSafeRandomTarget(start, workArea, {
+    random: () => lowerRandom.shift() ?? .9,
+    roamDistance: "medium",
+    minimumVerticalDistance: 120,
+  });
+  const upperRandom = [.5, 0];
+  const upperTarget = quickPlay.sampleSafeRandomTarget(start, workArea, {
+    random: () => upperRandom.shift() ?? 0,
+    roamDistance: "medium",
+    minimumVerticalDistance: 120,
+  });
+  assert.ok(lowerTarget.y > start.y + 200, "Pet target sampling must include the lower part of the display");
+  assert.ok(upperTarget.y <= start.y - 120, "Pet target sampling must include the upper part of the display");
+  assert.equal(boundsFitWorkAreaForTest(lowerTarget, workArea), true);
+  assert.equal(boundsFitWorkAreaForTest(upperTarget, workArea), true);
+  const diagonalDistance = Math.hypot(lowerTarget.x - start.x, lowerTarget.y - start.y);
+  const diagonalWalk = quickPlay.createDistanceLockedWalkPlan(diagonalDistance, 100);
+  assert.equal(diagonalWalk.durationMs, diagonalWalk.stepDurationMs * diagonalWalk.stepCount, "two-dimensional travel still contains only complete authored footfalls");
+  assert.ok(diagonalWalk.stepDistancePx > 17 && diagonalWalk.stepDistancePx <= 19, "two-dimensional root distance remains matched to the authored stride");
+
+  for (const [randomX, randomY] of [[.1, .15], [.5, .85], [.9, .25]]) {
+    const values = [randomX, randomY];
+    const sampled = quickPlay.sampleSafeRandomTarget(start, workArea, {
+      random: () => values.shift() ?? randomY,
+      roamDistance: "medium",
+      minimumVerticalDistance: 120,
+      maximumAttempts: 1,
+    });
+    assert.ok(Math.abs(sampled.y - start.y) >= 120, "every Pet invocation must leave the current desktop row visibly");
+    assert.equal(boundsFitWorkAreaForTest(sampled, workArea), true);
+  }
+});
+
+verify("Pet gait locks each authored paw contact to one real desktop footfall", () => {
+  const walk = quickPlay.createDistanceLockedWalkPlan(245, 90);
+  assert.equal(walk.stepCount, 14, "245 px should resolve to fourteen artwork-matched paw contacts");
+  assert.ok(walk.stepDistancePx > 17 && walk.stepDistancePx <= 18, "every completed footfall must advance one artwork-matched non-sliding distance");
+  assert.equal(walk.cycleDurationMs, walk.stepDurationMs * 4, "the eight-frame gait is exactly four alternating paw contacts");
+  assert.equal(walk.durationMs, walk.stepDurationMs * walk.stepCount, "travel duration is derived from complete steps instead of an unrelated window speed");
+  const frameDurationMs = walk.stepDurationMs / 2;
+  assert.deepEqual(walk.rootMotion.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+  assert.ok(quickPlay.distanceLockedWalkProgressAtTime(walk, frameDurationMs * .5) > 0, "authored contact root motion begins without a detached leg-only hold");
+  assert.ok(
+    Math.abs(quickPlay.distanceLockedWalkProgressAtTime(walk, frameDurationMs) - .18 / walk.stepCount) < 1e-9,
+    "the contact pose may carry only its authored 18 percent of one physical footfall",
+  );
+  assert.ok(
+    Math.abs(quickPlay.distanceLockedWalkProgressAtTime(walk, frameDurationMs * 2) - 1 / walk.stepCount) < 1e-9,
+    "the matching support pose must complete the physical footfall",
+  );
+  for (let step = 1; step <= walk.stepCount; step += 1) {
+    assert.ok(
+      Math.abs(quickPlay.distanceLockedWalkProgressAtTime(walk, walk.stepDurationMs * step) - step / walk.stepCount) < 1e-9,
+      `step ${step} must land at exactly ${step} stride(s)`,
+    );
+  }
+  const accelerated = quickPlay.scaleDistanceLockedWalkPlan(walk, 8);
+  assert.equal(accelerated.stepDistancePx, walk.stepDistancePx, "QA/time scaling may change cadence but never stride length");
+  assert.equal(accelerated.stepDurationMs, walk.stepDurationMs / 8);
+  assert.deepEqual(accelerated.rootMotion, walk.rootMotion, "time scaling must retain the authored asset curve");
+  assert.equal(quickPlay.distanceLockedWalkProgressAtTime(accelerated, accelerated.durationMs), 1);
+  const largerActorWalk = quickPlay.createDistanceLockedWalkPlan(245, 90, 1.25);
+  assert.ok(largerActorWalk.stepDistancePx > walk.stepDistancePx, "a larger visible cat advances a proportionally larger physical footfall");
 });
 
 verify("Quick Play semantic timelines preserve strict action contracts", () => {

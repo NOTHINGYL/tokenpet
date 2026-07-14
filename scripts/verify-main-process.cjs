@@ -409,7 +409,7 @@ async function run() {
   const waitForQuickPlayEnd = (action) => waitFor(
     () => qa.getQuickPlaySession().activeAction === null,
     `${action} Quick Play completion`,
-    12_000,
+    action === "walk_round_trip" ? 30_000 : 12_000,
   );
   const runClosedQuickPlayAction = async (action, placement = null) => {
     qa.resetQuickPlayTrace();
@@ -419,6 +419,37 @@ async function run() {
     await click(panel, `[data-action-id=${action}]`);
     await waitForClosed(qa, "popover");
     await waitFor(() => qa.getQuickPlaySession().activeAction === action, `${action} session acceptance`);
+    let activeVisual = null;
+    let activeVisualScreenshot = null;
+    if (action === "walk_round_trip") {
+      await waitFor(() => qa.getQuickPlaySession().phase === "outbound", "Pet authored walk phase");
+      await waitFor(() => execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === 'action.walk_round_trip'"), "Pet walk actor frames");
+      await waitFor(() => execute(pet, `(() => {
+        const canvas = document.querySelector('.pet-generated-actor-canvas');
+        return canvas?.dataset.actorFrame !== 'walk_round_trip-1'
+          && Number(canvas?.dataset.actorTimelineMs ?? 0) >= 100;
+      })()`), "Pet 1x non-initial authored walk frame");
+      activeVisual = await execute(pet, `(() => {
+        const actor = document.querySelector('[data-actor-animation]');
+        const canvas = document.querySelector('.pet-generated-actor-canvas');
+        const shell = document.querySelector('.pet-generated-actor-shell');
+        const close = document.querySelector('.pet-close');
+        return {
+          animation: actor?.dataset.actorAnimation ?? null,
+          facing: actor?.dataset.actorFacing ?? null,
+          frame: canvas?.dataset.actorFrame ?? null,
+          timelineMs: Number(canvas?.dataset.actorTimelineMs ?? NaN),
+          cycleDurationMs: Number(actor?.dataset.actorCycleDurationMs ?? NaN),
+          startedAtMs: Number(actor?.dataset.actorStartedAtMs ?? NaN),
+          walkMotion: ${JSON.stringify(null)},
+          tokenHidden: shell?.classList.contains('pet-token-hidden') ?? false,
+          closeOpacity: close ? getComputedStyle(close).opacity : null,
+        };
+      })()`);
+      activeVisual.walkMotion = qa.getQuickPlaySession().walkMotion;
+      activeVisualScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-pet-walk.png");
+      writeFileSync(activeVisualScreenshot, (await pet.webContents.capturePage()).toPNG());
+    }
     let overlayBounds = null;
     let overlayScreenshot = null;
     if (placement) {
@@ -440,21 +471,47 @@ async function run() {
     const endBounds = pet.getBounds();
     const endAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
     const trace = qa.getQuickPlayTrace();
-    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, overlayBounds, overlayScreenshot, trace });
-    return { startBounds, endBounds, startAnimation, endAnimation, trace };
+    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, activeVisualScreenshot, overlayBounds, overlayScreenshot, trace });
+    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, activeVisualScreenshot, trace };
   };
 
+  qa.setQuickPlayTimeScale(1);
   const petRoundTrip = await runClosedQuickPlayAction("walk_round_trip");
+  qa.setQuickPlayTimeScale(20);
   const petDestination = petRoundTrip.trace.find((entry) => entry.phase === "pause")?.bounds;
+  const outboundPetBounds = petRoundTrip.trace.filter((entry) => entry.phase === "outbound" && entry.bounds).map((entry) => entry.bounds);
+  const outboundXDirection = Math.sign((petDestination?.x ?? petRoundTrip.startBounds.x) - petRoundTrip.startBounds.x);
+  const outboundYDirection = Math.sign((petDestination?.y ?? petRoundTrip.startBounds.y) - petRoundTrip.startBounds.y);
+  const outboundXIsMonotonic = outboundPetBounds.every((bounds, index) => index === 0 || outboundXDirection === 0 || Math.sign(bounds.x - outboundPetBounds[index - 1].x) === outboundXDirection || bounds.x === outboundPetBounds[index - 1].x);
+  const outboundYIsMonotonic = outboundPetBounds.every((bounds, index) => index === 0 || outboundYDirection === 0 || Math.sign(bounds.y - outboundPetBounds[index - 1].y) === outboundYDirection || bounds.y === outboundPetBounds[index - 1].y);
   verify(
     "Pet performs a random safe exact round trip",
     petDestination
       && JSON.stringify(petDestination) !== JSON.stringify(petRoundTrip.startBounds)
       && boundsFitWorkArea(petDestination, screen.getDisplayMatching(petRoundTrip.startBounds).workArea)
+      && Math.hypot(petDestination.x - petRoundTrip.startBounds.x, petDestination.y - petRoundTrip.startBounds.y) >= 130
+      && Math.abs(petDestination.y - petRoundTrip.startBounds.y) >= 120
       && JSON.stringify(petRoundTrip.endBounds) === JSON.stringify(petRoundTrip.startBounds)
-      && new Set(petRoundTrip.trace.filter((entry) => entry.phase === "outbound").map((entry) => `${entry.bounds?.x}:${entry.bounds?.y}`)).size >= 3
+      && new Set(outboundPetBounds.map((entry) => `${entry.x}:${entry.y}`)).size >= 3
+      && outboundXIsMonotonic
+      && outboundYIsMonotonic
+      && petRoundTrip.activeVisual?.animation === "action.walk_round_trip"
+      && ["left", "right"].includes(petRoundTrip.activeVisual?.facing)
+      && /^walk_round_trip-[2-8]$/.test(petRoundTrip.activeVisual?.frame ?? "")
+      && petRoundTrip.activeVisual?.timelineMs >= 100
+      && petRoundTrip.activeVisual?.walkMotion?.stepDistancePx > 0
+      && petRoundTrip.activeVisual?.walkMotion?.stepDistancePx <= 26
+      && petRoundTrip.activeVisual?.walkMotion?.stepDurationMs >= 180
+      && petRoundTrip.activeVisual?.walkMotion?.cycleDurationMs === petRoundTrip.activeVisual?.walkMotion?.stepDurationMs * 4
+      && petRoundTrip.activeVisual?.walkMotion?.footfallsPerCycle === 4
+      && JSON.stringify(petRoundTrip.activeVisual?.walkMotion?.rootStepKeyframes) === JSON.stringify([0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4])
+      && petRoundTrip.activeVisual?.cycleDurationMs === petRoundTrip.activeVisual?.walkMotion?.cycleDurationMs
+      && Math.abs(petRoundTrip.activeVisual?.startedAtMs - petRoundTrip.activeVisual?.walkMotion?.startedAt) < 1
+      && petRoundTrip.activeVisual?.tokenHidden === true
+      && petRoundTrip.activeVisual?.closeOpacity === "0"
+      && existsSync(petRoundTrip.activeVisualScreenshot)
       && petRoundTrip.endAnimation === petRoundTrip.startAnimation,
-    `destination ${JSON.stringify(petDestination)}; exact home and actor state ${petRoundTrip.endAnimation}`,
+    `destination ${JSON.stringify(petDestination)}; active visual ${JSON.stringify(petRoundTrip.activeVisual)}; full-display two-dimensional safe path with authored root travel; exact home and actor state ${petRoundTrip.endAnimation}`,
   );
 
   const placementWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
@@ -724,6 +781,9 @@ async function run() {
     JSON.stringify(actionIsolationAfter) === JSON.stringify(actionIsolationBefore),
     `select, pause, restart, scrub, and loop leave BrowserWindow bounds and persisted PetDirector state untouched: ${JSON.stringify(actionIsolationAfter)}`,
   );
+  qa.openConsole("pet");
+  await waitForDom(consoleWindow, "[data-pet-page=appearance]");
+  verify("Existing Console Pet route resets to Appearance", safeWindow(qa, "console")?.id === consoleWindow.id, "Quick Play's explicit Pet route reuses the Console window and resets its active Pet subpage to Appearance");
 
   await setPetSize(pet, 0.75);
   const hotActionRequest = { id: "hot_loop", nonce: Date.now() };
@@ -975,7 +1035,20 @@ async function run() {
   menuBar = await waitForWindow(qa, "menubar", crashedMenuId);
   await waitForDom(menuBar, ".menubar-panel");
   verify("Menu Bar crash self-heals", menuBar.id !== crashedMenuId, `crashed window ${crashedMenuId} was replaced by ${menuBar.id}`);
+  await click(menuBar, "button[aria-label='Open settings']");
+  await waitForDom(consoleWindow, "[data-console-tab=overview].active");
+  verify("Menu Bar settings routes to Overview", safeWindow(qa, "console")?.id === consoleWindow.id, "the settings icon reuses the Console window at Overview");
+  if (safeWindow(qa, "menubar")) qa.toggleMenuBar();
+  await waitForClosed(qa, "menubar");
+  qa.openConsole("pet");
+  await waitForDom(consoleWindow, "[data-pet-page=appearance]");
   qa.toggleMenuBar();
+  menuBar = await waitForWindow(qa, "menubar");
+  await waitForDom(menuBar, ".menubar-footer button");
+  await click(menuBar, ".menubar-footer button");
+  await waitForDom(consoleWindow, "[data-console-tab=overview].active");
+  verify("Menu Bar Open Console routes to Overview", safeWindow(qa, "console")?.id === consoleWindow.id, "the footer action reuses the Console window at Overview");
+  if (safeWindow(qa, "menubar")) qa.toggleMenuBar();
   await waitForClosed(qa, "menubar");
 
   const destroyedPetId = pet.id;

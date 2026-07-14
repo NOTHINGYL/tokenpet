@@ -11,8 +11,11 @@ type PetAppearanceVisualProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  facing?: "left" | "right";
   animationNonce?: number;
   previewTimeMs?: number;
+  animationStartedAtMs?: number;
+  animationCycleDurationMs?: number;
   surface: "preview" | "desktop";
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

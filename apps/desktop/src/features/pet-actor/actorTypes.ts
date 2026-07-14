@@ -14,10 +14,16 @@ export type PetActorProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  /** Direction for authored side-profile locomotion frames. */
+  facing?: "left" | "right";
   /** Explicitly restart a same-id authored animation, for example each snack lick cycle. */
   animationNonce?: number;
   /** Controlled sandbox clock. When present, the actor renders exactly this timeline position and does not start its own RAF clock. */
   previewTimeMs?: number;
+  /** Epoch clock shared with native locomotion so authored frames and real window travel start together. */
+  animationStartedAtMs?: number;
+  /** Wall-clock duration of one authored loop; used to keep gait cadence locked to stride distance. */
+  animationCycleDurationMs?: number;
   surface: PetSurface;
   onBubbleClick?: (event: SyntheticEvent) => void;
 };
