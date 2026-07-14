@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { AccessoryId, CatTypeId, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
+import type { AccessoryId, CatTypeId, CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, TokenBubbleId, UsageSnapshot } from "../../types";
 import type { AccessoryCategoryId, CatBodyType } from "../pet-appearance/catalog";
 
 export type PetSurface = "preview" | "desktop";
@@ -14,6 +14,8 @@ export type PetActorProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  /** Approved whole-frame eye/head/ear selection for Play Cursor. */
+  cursorTracking?: CursorTrackingVisual;
   /** Direction for authored side-profile locomotion frames. */
   facing?: "left" | "right";
   /** Explicitly restart a same-id authored animation, for example each snack lick cycle. */

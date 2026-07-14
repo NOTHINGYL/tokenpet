@@ -300,6 +300,15 @@ export type QuickPlayWalkMotion = {
   footfallsPerCycle: number;
   rootStepKeyframes: number[];
 };
+export type CursorTrackingVisual = {
+  eyeOffset: { x: number; y: number };
+  headOffset: { x: number; y: number };
+  earOffset: { x: number; y: number };
+  headAngleDegrees: number;
+  withinAttention: boolean;
+  earFollow: boolean;
+  stage: "tracking" | "settle";
+};
 export type QuickPlaySession = {
   activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null;
   startedAt: number | null;
@@ -350,7 +359,7 @@ export type TokenPetBridge = {
   summonPet: () => Promise<{ moved: boolean }>;
   traversePet: () => Promise<{ moved: boolean; canceled?: boolean }>;
   capturePetMoment: () => Promise<{ saved: boolean; filePath?: string }>;
-  onCursorPosition: (callback: (position: { x: number; y: number }) => void) => () => void;
+  onCursorPosition: (callback: (position: { x: number; y: number; tracking?: Omit<CursorTrackingVisual, "stage"> }) => void) => () => void;
   startDrag: () => Promise<{ started: boolean }>;
   endDrag: () => Promise<{ moved: boolean }>;
   closePopover: () => void;

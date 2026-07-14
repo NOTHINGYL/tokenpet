@@ -4,11 +4,15 @@ export type PlayCursorExecutorPorts = {
   complete: () => Promise<void>;
 };
 
-export async function executePlayCursor(ports: PlayCursorExecutorPorts) {
+export const PLAY_CURSOR_DURATION_MS = 10_000;
+export const PLAY_CURSOR_SETTLE_MS = 350;
+
+export async function executePlayCursor(ports: PlayCursorExecutorPorts, durationMs = PLAY_CURSOR_DURATION_MS) {
+  const settleMs = Math.min(PLAY_CURSOR_SETTLE_MS, Math.max(0, durationMs));
   ports.phase("tracking");
-  if (!await ports.delay(30_000)) return false;
+  if (!await ports.delay(Math.max(0, durationMs - settleMs))) return false;
   ports.phase("settle");
-  if (!await ports.delay(120)) return false;
+  if (!await ports.delay(settleMs)) return false;
   await ports.complete();
   return true;
 }

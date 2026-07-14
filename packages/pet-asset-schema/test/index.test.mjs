@@ -97,6 +97,28 @@ test("Feed Snack owns dedicated outbound and return locomotion clips", async () 
   assert.ok(sourceIssueCodes(fixture).includes("source.locomotionAction"));
 });
 
+test("Play Cursor owns a complete directional whole-frame pose bundle", async () => {
+  const fixture = await readSourceFixture();
+  const action = fixture.actions.play_cursor;
+  const expectedRoles = [
+    "neutral", "notice",
+    "eye_left", "eye_right", "eye_up", "eye_down",
+    "head_left", "head_right", "head_up", "head_down",
+    "ear_left", "ear_right", "ear_up", "ear_down",
+    "blink", "settle",
+  ];
+  assert.equal(action.sourceFrames.length, expectedRoles.length);
+  assert.deepEqual(
+    action.sourceFrames.map((frame) => frame.src.split("/").at(-1)),
+    expectedRoles.map((role) => `play_cursor_${role}.png`),
+  );
+  assert.equal(new Set(action.sourceFrames.map((frame) => frame.src)).size, expectedRoles.length);
+  assert.ok(action.sourceFrames.every((frame) => frame.kind === "approved-raster"));
+  assert.equal(action.bodyTransform, undefined, "runtime image wobble/warping is forbidden for cursor tracking");
+  assert.equal(action.loop, true);
+  assert.equal(sourceIssueCodes(fixture).length, 0);
+});
+
 test("every Quick Play action must be represented", async () => {
   const fixture = await readFixture();
   fixture.capabilities = fixture.capabilities.filter((capability) => capability.id !== "capture_moment");

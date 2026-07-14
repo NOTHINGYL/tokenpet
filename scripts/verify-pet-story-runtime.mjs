@@ -9,16 +9,19 @@ const storyBuildPath = join(root, "dist-electron/story.js");
 const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
 const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
 const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
+const playCursorExecutorBuildPath = join(root, "dist-electron/quick-play/executors/play-cursor.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(playCursorExecutorBuildPath), "Play Cursor executor build is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
 const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
 const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
+const playCursorExecutor = await import(`${pathToFileURL(playCursorExecutorBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
   entryPoints: [join(root, "apps/desktop/src/features/pet-story/PetDirector.ts")],
   bundle: true,
@@ -239,7 +242,7 @@ verify("desktop action requests retain explicit lifecycles outside the isolated 
     ["drag_dangle", "quickPlay.action", 8_000],
     ["drop_bounce", "actor.actionRequested", 1_600],
     ["token_snack", "quickPlay.action", 7_000],
-    ["play_cursor", "quickPlay.action", 30_000],
+    ["play_cursor", "quickPlay.action", 10_000],
     ["run_across", "actor.actionRequested", 2_400],
     ["milestone_celebrate", "actor.actionRequested", 1_600],
   ];
@@ -611,7 +614,7 @@ verify("Quick Play semantic timelines preserve strict action contracts", () => {
   assert.deepEqual(feedIds.filter((id) => id.startsWith("snack_lick_")), ["snack_lick_1", "snack_lick_2", "snack_lick_3"]);
   assert.ok(feedIds.includes("arrive_and_lower"));
   const cursor = quickPlay.createQuickPlayActionTimeline("play_cursor", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor);
-  assert.equal(cursor.durationMs, 30_000);
+  assert.equal(cursor.durationMs, 10_000);
   const wake = quickPlay.createQuickPlayActionTimeline("wake_up", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.wake_up);
   assert.equal(wake.durationMs, 5_000);
   assert.ok(wake.phases.some((phase) => phase.id === "long_full_body_stretch"));
@@ -682,13 +685,30 @@ verify("Quick Play dangle gate rejects jitter and requires over two seconds", ()
   assert.equal(jitter.armed, false);
 });
 
+const cursorExecutorPhases = [];
+const cursorExecutorDelays = [];
+let cursorExecutorCompleted = false;
+const cursorExecutorResult = await playCursorExecutor.executePlayCursor({
+  phase: (phase) => cursorExecutorPhases.push(phase),
+  delay: async (durationMs) => { cursorExecutorDelays.push(durationMs); return true; },
+  complete: async () => { cursorExecutorCompleted = true; },
+});
+
 verify("Quick Play cursor smoothing anchors body and yarn roll terminates safely", () => {
+  assert.equal(cursorExecutorResult, true);
+  assert.deepEqual(cursorExecutorPhases, ["tracking", "settle"]);
+  assert.deepEqual(cursorExecutorDelays, [9_650, 350]);
+  assert.equal(cursorExecutorCompleted, true);
+  assert.equal(cursorExecutorDelays.reduce((sum, value) => sum + value, 0), 10_000, "tracking and settle must fit the accepted ten-second deadline exactly");
   const cursorConfig = quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor;
   let tracking = quickPlay.createCursorTrackingState();
   tracking = quickPlay.updateCursorTracking(tracking, { x: 140, y: 20 }, { x: 0, y: 0 }, 1_000, cursorConfig);
   const second = quickPlay.updateCursorTracking(tracking, { x: -140, y: 20 }, { x: 0, y: 0 }, 1_016, cursorConfig);
   assert.equal(second.withinAttention, true);
   assert.ok(Math.abs(second.headAngleDegrees - tracking.headAngleDegrees) <= 2, "angular velocity must be capped at 120°/s");
+  const remote = quickPlay.updateCursorTracking(second, { x: 1_440, y: -900 }, { x: 0, y: 0 }, 1_032, cursorConfig);
+  assert.equal(remote.withinAttention, true, "the complete desktop coordinate space remains trackable beyond the legacy local radius");
+  assert.ok(Math.hypot(remote.eyeOffset.x, remote.eyeOffset.y) > .95, "a remote desktop point retains a full-strength authored direction");
   const workArea = { x: 0, y: 0, width: 1280, height: 800 };
   const yarn = quickPlay.createYarnRollPlan({ x: 1240, y: 760 }, { x: 900, y: 300 }, workArea, quickPlay.QUICK_PLAY_ACTION_DEFAULTS.toss_yarn);
   const final = quickPlay.yarnRollAtTime(yarn, yarn.durationMs);

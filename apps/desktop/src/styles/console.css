@@ -3988,6 +3988,13 @@
   --pet-visual-cat-width: clamp(390px, 30vw, 455px);
   --pet-visual-cat-y: -2px;
 }
+.action-preview-play_cursor .pet-generated-actor-shell {
+  /* Directional Cursor poses occupy roughly half of the registered artboard.
+     Size this asset family from its visible alpha bounds so the whole cat stays
+     inside the sandbox while retaining enough room for the virtual pointer. */
+  --pet-visual-cat-width: clamp(430px, 33vw, 500px);
+  --pet-visual-cat-y: -22px;
+}
 .action-preview-stage .pet-appearance-visual-preview {
   width: 100%;
   height: 100%;

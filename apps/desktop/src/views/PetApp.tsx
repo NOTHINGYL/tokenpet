@@ -17,7 +17,7 @@ import {
 import { playPetActionSound } from "../features/pet-story/soundCueEngine";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
-import type { PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
+import type { CursorTrackingVisual, PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
 
 type PointerGesture = {
   pointerId: number;
@@ -56,6 +56,7 @@ export function PetApp() {
   const [summoning, setSummoning] = useState(false);
   const [batteryLow, setBatteryLow] = useState(false);
   const [pointerOffset, setPointerOffset] = useState({ x: 0, y: 0 });
+  const [cursorTracking, setCursorTracking] = useState<CursorTrackingVisual | null>(null);
   const [quickPlaySession, setQuickPlaySession] = useState<QuickPlaySession>({
     activeAction: null, startedAt: null, phase: "idle", phaseStartedAt: null, startBounds: null,
     startDirectorState: null, targetPoint: null, walkMotion: null, pointerMode: "none", resting: false, failure: null,
@@ -317,20 +318,24 @@ export function PetApp() {
       const quickPlayTracking = quickPlaySession.activeAction === "play_cursor" && quickPlaySession.phase === "tracking";
       if ((!story.followCursor && !quickPlayTracking) || (!quickPlayTracking && directorRef.current.activePriority > 200)) {
         setPointerOffset({ x: 0, y: 0 });
+        setCursorTracking(null);
         return;
       }
       const smoothing = quickPlayTracking ? Number(story.actionSettings.byAction.play_cursor?.followSmoothing ?? 74) / 100 : .72;
       const target = { x: Math.min(Math.max(position.x, -1), 1), y: Math.min(Math.max(position.y, -1), 1) };
       if (quickPlayTracking) {
         setPointerOffset(target);
+        setCursorTracking(position.tracking ? { ...position.tracking, stage: "tracking" } : null);
         return;
       }
+      setCursorTracking(null);
       setPointerOffset((current) => ({
         x: current.x + (target.x - current.x) * Math.max(.12, 1 - smoothing * .82),
         y: current.y + (target.y - current.y) * Math.max(.12, 1 - smoothing * .82),
       }));
     });
     if (!story.followCursor && quickPlaySession.activeAction !== "play_cursor") setPointerOffset({ x: 0, y: 0 });
+    if (quickPlaySession.activeAction !== "play_cursor") setCursorTracking(null);
     return () => unsubscribe?.();
   }, [quickPlaySession.activeAction, quickPlaySession.phase, story.actionSettings.byAction.play_cursor, story.followCursor]);
 
@@ -488,6 +493,14 @@ export function PetApp() {
   ) || quickPlaySession.activeAction === "token_snack" && (
     quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete"
   );
+  const playCursorTracking = quickPlaySession.activeAction !== "play_cursor"
+    ? undefined
+    : quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete"
+      ? {
+        eyeOffset: { x: 0, y: 0 }, headOffset: { x: 0, y: 0 }, earOffset: { x: 0, y: 0 },
+        headAngleDegrees: 0, withinAttention: false, earFollow: false, stage: "settle" as const,
+      }
+      : cursorTracking ?? undefined;
 
   return (
     <main
@@ -521,6 +534,7 @@ export function PetApp() {
           previewTimeMs={authoredLocomotionFrozen ? 0 : undefined}
           reduceMotion={story.reduceMotion || (story.safety.batteryLowPause && batteryLow)}
           pointerOffset={story.followCursor || quickPlaySession.activeAction === "play_cursor" ? pointerOffset : undefined}
+          cursorTracking={playCursorTracking}
           surface="desktop"
           onBubbleClick={openQuickPlay}
         />

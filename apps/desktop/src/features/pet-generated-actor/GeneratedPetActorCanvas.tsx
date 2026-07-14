@@ -8,7 +8,7 @@ import type {
   PetActorRect,
   PetActorTokenMode,
 } from "../../../../../packages/pet-asset-schema/src";
-import type { MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { getEffectiveTokenBubbleId, getMoodLabel, getTokenBubbleLabel, getTokenFrameOption, moodToneClass, shouldShowMoodBadge } from "../pet-appearance/appearanceView";
 import type { PetActorProps, PetSurface } from "../pet-actor/actorTypes";
 import { resolveActorMoodBadgeRect } from "./actorLayout";
@@ -30,6 +30,7 @@ type GeneratedActorRenderPlan = {
   styleVars: Record<string, string>;
   reduceMotion: boolean;
   pointerOffset: { x: number; y: number } | null;
+  cursorTracking: CursorTrackingVisual | null;
   facing: "left" | "right";
 };
 
@@ -166,6 +167,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
   if (!animation?.frames.length) return null;
   const isChromeFreeStoryAction = animation.id === "action.walk_round_trip"
     || animation.id === "action.walk_round_trip_look"
+    || animation.id === "action.play_cursor"
     || animation.id.startsWith("action.feed_snack_");
   const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
@@ -201,6 +203,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     },
     reduceMotion: props.reduceMotion ?? props.appearance.motionSettings.safety.reduceMotion,
     pointerOffset: props.pointerOffset ?? null,
+    cursorTracking: props.cursorTracking ?? null,
     facing: props.facing ?? "right",
   };
 }
@@ -319,12 +322,12 @@ function applyGeneratedBodyMotion(
 ) {
   const transform = frame.bodyTransform;
   const motionState = String(plan.animation.motionState);
-  if (plan.pointerOffset) {
-    context.translate(plan.pointerOffset.x * (motionState === "play_cursor" ? 2 : 7), plan.pointerOffset.y * (motionState === "play_cursor" ? 1 : 3));
-  }
-  // Cursor play is an anchored attention action. Directional art changes and
-  // the tiny pointer rig may move, but the cat body/window must never travel.
+  // Play Cursor is authored as registered whole-cat directional poses. The
+  // renderer chooses a frame but never shifts or warps the body artboard.
   if (motionState === "play_cursor") return;
+  if (plan.pointerOffset) {
+    context.translate(plan.pointerOffset.x * 7, plan.pointerOffset.y * 3);
+  }
   if (!transform) return;
 
   const speed = plan.reduceMotion ? 0.35 : plan.appearance.motionSettings.animationSpeed / 80;
@@ -372,6 +375,47 @@ function frameAtTime(animation: PetActorAnimation, elapsedMs: number) {
   return animation.frames.at(-1)!;
 }
 
+type CursorDirection = "left" | "right" | "up" | "down";
+
+function cursorDirection(offset: { x: number; y: number }): CursorDirection {
+  if (Math.abs(offset.x) >= Math.abs(offset.y)) return offset.x < 0 ? "left" : "right";
+  return offset.y < 0 ? "up" : "down";
+}
+
+function cursorFrame(animation: PetActorAnimation, role: "neutral" | "notice" | "blink" | "settle" | "eye" | "head" | "ear", direction?: CursorDirection) {
+  const filename = direction ? `play_cursor_${role}_${direction}.png` : `play_cursor_${role}.png`;
+  return animation.frames.find((frame) => frame.src.endsWith(filename));
+}
+
+function pointGap(first: { x: number; y: number }, second: { x: number; y: number }) {
+  return Math.hypot(first.x - second.x, first.y - second.y);
+}
+
+/** Select approved whole frames in the authored eyes → head → ears order. */
+function playCursorFrameAtTime(animation: PetActorAnimation, visual: CursorTrackingVisual | null, elapsedMs: number) {
+  if (visual?.stage === "settle") return cursorFrame(animation, "settle") ?? animation.frames.at(-1)!;
+  if (!visual && elapsedMs < 280) return cursorFrame(animation, "notice") ?? animation.frames[0];
+  if (!visual?.withinAttention) {
+    const idlePhase = elapsedMs % 3_800;
+    return idlePhase >= 3_620 && idlePhase < 3_760
+      ? cursorFrame(animation, "blink") ?? animation.frames[0]
+      : cursorFrame(animation, "neutral") ?? animation.frames[0];
+  }
+
+  const direction = cursorDirection(visual.eyeOffset);
+  const eyeHeadLag = pointGap(visual.eyeOffset, visual.headOffset);
+  const headEarLag = pointGap(visual.headOffset, visual.earOffset);
+  const role = eyeHeadLag > .16
+    ? "eye"
+    : visual.earFollow && headEarLag > .105
+      ? "head"
+      : visual.earFollow ? "ear" : "head";
+  return cursorFrame(animation, role, direction)
+    ?? cursorFrame(animation, "head", direction)
+    ?? cursorFrame(animation, "eye", direction)
+    ?? animation.frames[0];
+}
+
 function animationDurationMs(animation: PetActorAnimation) {
   return animation.frames.reduce((sum, frame) => sum + Math.max(frame.durationMs, 1), 0);
 }
@@ -384,7 +428,10 @@ function renderGeneratedPetActorCanvas(
   animationStartedAt = 0,
   interactiveState: { hover: boolean } = { hover: false },
 ) {
-  const frame = frameAtTime(plan.animation, Math.max(0, timeMs - animationStartedAt));
+  const elapsedMs = Math.max(0, timeMs - animationStartedAt);
+  const frame = plan.animation.id === "action.play_cursor"
+    ? playCursorFrameAtTime(plan.animation, plan.cursorTracking, elapsedMs)
+    : frameAtTime(plan.animation, elapsedMs);
   const frameImage = images.get(resolveFrameUrl(plan.manifest.actorId, frame));
   if (!frameImage) return null;
 

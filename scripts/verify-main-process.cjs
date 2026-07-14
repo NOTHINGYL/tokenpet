@@ -648,10 +648,47 @@ async function run() {
 
   qa.resetQuickPlayTrace();
   const cursorStart = pet.getBounds();
+  const cursorAnchor = { x: cursorStart.x + cursorStart.width / 2, y: cursorStart.y + cursorStart.height / 2 };
+  const cursorTarget = { x: Math.max(12, cursorStart.x - 500), y: Math.max(40, cursorStart.y - 250) };
+  const cursorTargetDistance = Math.hypot(cursorTarget.x - cursorAnchor.x, cursorTarget.y - cursorAnchor.y);
+  qa.setCursorPoint(cursorTarget);
+  qa.setQuickPlayTimeScale(1);
   panel = await openQuickPlay();
   await click(panel, "[data-action-id=play_cursor]");
   await waitForClosed(qa, "popover");
   await waitFor(() => qa.getQuickPlaySession().phase === "tracking", "cursor tracking phase");
+  const cursorFrame = () => execute(pet, "document.querySelector('[data-actor-animation=\"action.play_cursor\"] canvas')?.dataset.actorFrame ?? null");
+  const cursorVisualDir = join(root, "docs", "screenshots", "pet-story");
+  const cursorVisualFrames = [];
+  for (const [frameId, filename, role] of [
+    ["play_cursor-3", "quick-play-cursor-eyes.png", "eyes"],
+    ["play_cursor-7", "quick-play-cursor-head.png", "head"],
+    ["play_cursor-11", "quick-play-cursor-ears.png", "ears"],
+  ]) {
+    await waitFor(async () => await cursorFrame() === frameId, `Play Cursor ${role} offline frame`);
+    const screenshot = join(cursorVisualDir, filename);
+    writeFileSync(screenshot, (await pet.webContents.capturePage()).toPNG());
+    cursorVisualFrames.push({ frameId, role, screenshot });
+  }
+  const cursorChrome = await execute(pet, `(() => ({
+    tokenHidden: !document.querySelector('.pet-actor-token-hotspot'),
+    closeOpacity: getComputedStyle(document.querySelector('.pet-close')).opacity,
+    animation: document.querySelector('[data-actor-animation]')?.dataset.actorAnimation,
+  }))()`);
+  verify(
+    "Play cursor uses an offline eyes-head-ears cascade",
+    cursorVisualFrames.map((entry) => entry.frameId).join(",") === "play_cursor-3,play_cursor-7,play_cursor-11"
+      && cursorVisualFrames.every((entry) => existsSync(entry.screenshot))
+      && cursorChrome.animation === "action.play_cursor"
+      && cursorChrome.tokenHidden === true
+      && cursorChrome.closeOpacity === "0",
+    `fixed-body left target ${JSON.stringify(cursorTarget)} selected ${cursorVisualFrames.map((entry) => `${entry.role}:${entry.frameId}`).join(" → ")} with chrome ${JSON.stringify(cursorChrome)}`,
+  );
+  verify(
+    "Play cursor tracks the full desktop beyond the legacy local radius",
+    cursorTargetDistance > 240 && cursorVisualFrames.length === 3,
+    `remote cursor point remained tracked at ${Math.round(cursorTargetDistance)}px from the pet anchor`,
+  );
   const quickPlayDragAttempt = await execute(pet, "window.tokenpet.startDrag()");
   verify("Active Quick Play owns pet movement", quickPlayDragAttempt.started === false, "native drag is rejected while Cursor tracking holds the action mutex");
   panel = await openQuickPlay();
@@ -677,16 +714,25 @@ async function run() {
       && qa.getCaptureCount() === captureCountBefore + 2,
     `reopened panel state ${JSON.stringify({ activeButtons, activeBeforeCapture, activeAfterCapture, capturesCompleted: qa.getCaptureCount() - captureCountBefore })}`,
   );
+  await waitFor(() => qa.getQuickPlaySession().phase === "settle", "Play Cursor settle inside deadline");
+  const cursorSettleFrame = await waitFor(async () => await cursorFrame() === "play_cursor-16" ? "play_cursor-16" : null, "Play Cursor authored settle frame");
   await waitForQuickPlayEnd("play_cursor");
+  qa.setCursorPoint(null);
+  qa.setQuickPlayTimeScale(20);
   const cursorTrace = qa.getQuickPlayTrace();
+  const cursorElapsedMs = Date.now() - activeBeforeCapture.startedAt;
   verify(
-    "Play cursor stays body-anchored for its 30-second contract",
+    "Play cursor stays body-anchored for its 10-second contract",
     cursorTrace.some((entry) => entry.phase === "tracking")
+      && cursorTrace.some((entry) => entry.phase === "settle")
       && cursorTrace.every((entry) => !entry.bounds || JSON.stringify(entry.bounds) === JSON.stringify(cursorStart))
-      && JSON.stringify(pet.getBounds()) === JSON.stringify(cursorStart),
-    "the accelerated QA clock preserves the production 30,000ms semantic deadline while every native bound remains fixed",
+      && JSON.stringify(pet.getBounds()) === JSON.stringify(cursorStart)
+      && cursorSettleFrame === "play_cursor-16"
+      && cursorElapsedMs >= 9_900
+      && cursorElapsedMs <= 10_500,
+    `the production deadline completed in ${cursorElapsedMs}ms with byte-fixed bounds and authored settle frame ${cursorSettleFrame}`,
   );
-  quickPlaySummaries.push({ action: "play_cursor", startBounds: cursorStart, endBounds: pet.getBounds(), trace: cursorTrace, captureConcurrent: true });
+  quickPlaySummaries.push({ action: "play_cursor", startBounds: cursorStart, endBounds: pet.getBounds(), trace: cursorTrace, captureConcurrent: true, durationMs: cursorElapsedMs, visualFrames: cursorVisualFrames, settleFrame: cursorSettleFrame });
   await click(panel, "button[aria-label='Close Quick Play']");
   await waitForClosed(qa, "popover");
 

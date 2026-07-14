@@ -46,6 +46,7 @@ import {
   executeNapHere,
   executePet,
   executePlayCursor,
+  PLAY_CURSOR_DURATION_MS,
   executeSummon,
   executeTossYarn,
   executeWakeUp,
@@ -1324,11 +1325,15 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
   }
 
   if (action === "play_cursor") {
+    const acceptedAt = quickPlaySession.startedAt ?? Date.now();
+    const remainingMs = Math.max(0, PLAY_CURSOR_DURATION_MS - (Date.now() - acceptedAt));
     await executePlayCursor({
       phase: (phase) => updateQuickPlayPhase(phase, phase === "tracking" ? currentCursorScreenPoint() : undefined),
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      complete: () => completeQuickPlayRuntime(runtime),
-    });
+      // Cursor restore is already the final 350ms of its strict ten-second
+      // deadline, so do not append the generic 120ms completion tail.
+      complete: async () => finishQuickPlaySession(runtime.action),
+    }, remainingMs);
     return;
   }
 
@@ -1421,7 +1426,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
   quickPlayTrace.push({ at: Date.now(), action, phase: quickPlaySession.phase, bounds: runtime.startBounds, targetPoint });
   // QA may accelerate authored animation time, but must never compress the
   // human placement window so far that the overlay expires before it loads.
-  const watchdogMs = Math.max(15_000, (action === "play_cursor" ? 33_000 : 65_000) / quickPlayTimeScale);
+  const watchdogMs = Math.max(15_000, (action === "play_cursor" ? 13_000 : 65_000) / quickPlayTimeScale);
   quickPlaySessionTimer = setTimeout(() => void failQuickPlayRuntime(runtime, new Error("Quick Play watchdog timed out")), watchdogMs);
   quickPlaySessionTimer.unref();
   void runQuickPlayRuntime(runtime).catch((error) => void failQuickPlayRuntime(runtime, error));
@@ -1747,17 +1752,27 @@ function startCursorTracking() {
     const centerX = bounds.x + bounds.width / 2;
     const centerY = bounds.y + bounds.height / 2;
     if (quickPlayCursor) {
-      quickPlayCursorTrackingState = updateCursorTracking(
+      const config = actionConfig("play_cursor");
+      const tracking = updateCursorTracking(
         quickPlayCursorTrackingState,
         cursor,
         { x: centerX, y: centerY },
         Date.now(),
-        actionConfig("play_cursor"),
+        config,
       );
+      quickPlayCursorTrackingState = tracking;
       petWindow.webContents.send("pet:cursor-position", {
-        x: quickPlayCursorTrackingState.headOffset.x,
-        y: quickPlayCursorTrackingState.headOffset.y,
+        x: tracking.headOffset.x,
+        y: tracking.headOffset.y,
         quickPlay: true,
+        tracking: {
+          eyeOffset: tracking.eyeOffset,
+          headOffset: tracking.headOffset,
+          earOffset: tracking.earOffset,
+          headAngleDegrees: tracking.headAngleDegrees,
+          withinAttention: tracking.withinAttention,
+          earFollow: config.earFollow,
+        },
       });
       return;
     }

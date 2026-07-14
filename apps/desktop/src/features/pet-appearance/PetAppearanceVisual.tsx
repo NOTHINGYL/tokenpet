@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { PetCompositor } from "./PetCompositor";
 
 type PetAppearanceVisualProps = {
@@ -11,6 +11,7 @@ type PetAppearanceVisualProps = {
   motionActionId?: MotionActionId;
   reduceMotion?: boolean;
   pointerOffset?: { x: number; y: number };
+  cursorTracking?: CursorTrackingVisual;
   facing?: "left" | "right";
   animationNonce?: number;
   previewTimeMs?: number;

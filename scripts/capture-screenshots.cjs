@@ -750,7 +750,7 @@ async function verifyQuickPlay() {
   });
   verify("Quick Play v18 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or move your companion.", "the compact controller has the normative title and subtitle");
   verify("Quick Play 3×3 action order", structure.ids.join(",") === quickPlayIds.join(","), `nine stable ids follow the v18 order: ${structure.ids.join(", ")}`);
-  verify("Quick Play cursor helper", structure.helper === "30 sec", "Play cursor matches the concise v18 helper copy");
+  verify("Quick Play cursor helper", structure.helper === "10 sec", "Play cursor matches the concise v18 helper copy");
   verify("Quick Play exactly three controls", structure.controls.join(",") === "Always on top,Lock position,Mute pet sounds", `controls are ${structure.controls.join(", ")}`);
   verify("Quick Play unlocked actions", structure.disabled.length === 0, "all nine Golden British actions are available before dynamic gates");
   verify("Quick Play no repeated preview", !structure.repeatedPreview, "panel contains no duplicate cat preview");
@@ -1057,7 +1057,7 @@ async function verifyActions(window, desktopPet) {
   const expectedSettings = {
     walk_round_trip: ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect"],
     token_snack: ["snackStyle", "walkPace", "snackSize", "startMeow", "returnPace"],
-    play_cursor: ["attentionRadius", "followSmoothing", "maxHeadTurnAngle", "earFollow"],
+    play_cursor: ["followSmoothing", "maxHeadTurnAngle", "earFollow"],
     drag_dangle: ["fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect"],
     toss_yarn: ["yarnColor", "rollDistance", "rollSpeed", "returnPace"],
     nap_here: ["settlePose", "breathingIntensity", "zEffect", "sleepShadow"],
@@ -1115,6 +1115,84 @@ async function verifyActions(window, desktopPet) {
     settingsMatrix[actionId] = await evaluate(window, () => [...document.querySelectorAll("[data-action-settings] [data-action-setting]")].map((field) => field.dataset.actionSetting));
   }
   verify("Actions dedicated settings matrix", Object.entries(expectedSettings).every(([id, keys]) => JSON.stringify(settingsMatrix[id]) === JSON.stringify(keys)), `every action exposes only its specified controls: ${JSON.stringify(settingsMatrix)}`);
+
+  await click(window, "[data-action-id=play_cursor]", "select Play cursor preview");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "play_cursor", [], "Play cursor settings");
+  // The previous settings-matrix selection is Summon, whose preview actor can
+  // be translated toward the virtual pointer. Let the declared 80ms stage
+  // transition finish before measuring the registered Cursor alpha bounds.
+  await delay(240);
+  const sampleCursorPreviewAt = async (timeMs) => {
+    await evaluate(window, (nextTimeMs) => {
+      const scrubber = document.querySelector("[data-action-scrubber]");
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(scrubber, String(nextTimeMs));
+      scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+      scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+    }, timeMs);
+    await delay(160);
+    return evaluate(window, () => {
+      const stage = document.querySelector("[data-action-preview-stage]");
+      const actor = stage?.querySelector(".action-preview-actor");
+      const canvas = stage?.querySelector(".pet-generated-actor-canvas");
+      const context = canvas?.getContext("2d", { willReadFrequently: true });
+      const stageRect = stage?.getBoundingClientRect();
+      const canvasRect = canvas?.getBoundingClientRect();
+      let alphaBounds = null;
+      if (canvas && context && stageRect && canvasRect) {
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        let minX = canvas.width;
+        let minY = canvas.height;
+        let maxX = -1;
+        let maxY = -1;
+        for (let y = 0; y < canvas.height; y += 2) {
+          for (let x = 0; x < canvas.width; x += 2) {
+            if (pixels[(y * canvas.width + x) * 4 + 3] <= 8) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+        if (maxX >= minX && maxY >= minY) {
+          alphaBounds = {
+            left: canvasRect.left + minX / canvas.width * canvasRect.width,
+            top: canvasRect.top + minY / canvas.height * canvasRect.height,
+            right: canvasRect.left + (maxX + 2) / canvas.width * canvasRect.width,
+            bottom: canvasRect.top + (maxY + 2) / canvas.height * canvasRect.height,
+          };
+        }
+      }
+      return {
+        frame: stage?.querySelector(".pet-generated-actor-canvas")?.dataset.actorFrame,
+        animation: stage?.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+        contract: stage?.dataset.previewCursorContract,
+        actorX: actor?.style.getPropertyValue("--actor-preview-x"),
+        actorY: actor?.style.getPropertyValue("--actor-preview-y"),
+        stageBounds: stageRect ? { left: stageRect.left, top: stageRect.top, right: stageRect.right, bottom: stageRect.bottom } : null,
+        alphaBounds,
+        fitsStage: Boolean(alphaBounds && stageRect
+          && alphaBounds.left >= stageRect.left - 1
+          && alphaBounds.top >= stageRect.top - 1
+          && alphaBounds.right <= stageRect.right + 1
+          && alphaBounds.bottom <= stageRect.bottom + 1),
+      };
+    });
+  };
+  const cursorEyes = await sampleCursorPreviewAt(200);
+  const cursorHead = await sampleCursorPreviewAt(900);
+  const cursorEars = await sampleCursorPreviewAt(1_500);
+  verify(
+    "Actions Play Cursor preview shares the registered directional cascade",
+    cursorEyes.animation === "action.play_cursor"
+      && cursorEyes.contract === "offline-eyes-head-ears"
+      && /^play_cursor-[3-6]$/.test(cursorEyes.frame ?? "")
+      && /^play_cursor-(?:[7-9]|10)$/.test(cursorHead.frame ?? "")
+      && /^play_cursor-(?:1[1-4])$/.test(cursorEars.frame ?? "")
+      && [cursorEyes, cursorHead, cursorEars].every((sample) => sample.actorX === "0%" && sample.actorY === "0%" && sample.fitsStage),
+    `eyes, head and ears use production frames while the body anchor remains fixed and fully visible: ${JSON.stringify({ cursorEyes, cursorHead, cursorEars })}`,
+  );
+  await capture(window, "console-actions-play-cursor.png", "Console / Actions / Play Cursor preview");
 
   await click(window, "[data-action-id=walk_round_trip]", "select Pet locomotion preview");
   await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip", [], "Pet preview walk actor");

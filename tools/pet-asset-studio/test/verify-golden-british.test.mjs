@@ -15,6 +15,8 @@ const walkClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/
 const walkRegistrationPath = resolve(walkClipRoot, "locomotion-report.json");
 const feedClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/feed-snack-v2");
 const feedAssetReportPath = resolve(feedClipRoot, "asset-report.json");
+const cursorClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/play-cursor-v2");
+const cursorAssetReportPath = resolve(cursorClipRoot, "asset-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -130,6 +132,39 @@ test("Feed Snack ships dedicated approach, interaction, return and prop assets",
     const png = inspectPng(buffer);
     assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
     assert.ok([4, 6].includes(png.colorType), `${prop} must preserve transparency`);
+  }
+});
+
+test("Play Cursor ships registered eyes-head-ears whole-cat poses", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const animation = manifest.animations["action.play_cursor"];
+  const expectedRoles = [
+    "neutral", "notice",
+    "eye_left", "eye_right", "eye_up", "eye_down",
+    "head_left", "head_right", "head_up", "head_down",
+    "ear_left", "ear_right", "ear_up", "ear_down",
+    "blink", "settle",
+  ];
+  assert.equal(animation.frames.length, 16);
+  assert.deepEqual(animation.frames.map((frame) => frame.src), expectedRoles.map((role) => `frames/play_cursor_${role}.png`));
+  assert.equal(new Set(animation.frames.map((frame) => frame.src)).size, 16);
+  assert.equal(animation.bodyTransform, undefined, "the runtime must swap whole poses without warping the actor");
+
+  const report = JSON.parse(await readFile(cursorAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-play-cursor-assets/v2");
+  assert.equal(report.generationMode, "offline-authored-whole-frame-directional-poses");
+  assert.deepEqual(report.registration, {
+    visibleCenterX: 512,
+    visibleGroundLineY: 818,
+    runtimeBodyTransform: "forbidden",
+  });
+  const outputs = report.outputs.slice(0, 16);
+  assert.equal(outputs.length, 16);
+  assert.ok(outputs.every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  assert.ok(outputs.every((entry) => entry.alphaBounds[3] === 818));
+  assert.ok(outputs.every((entry) => Math.abs((entry.alphaBounds[0] + entry.alphaBounds[2]) / 2 - 512) <= 1));
+  for (const artifact of ["play-cursor-contact-sheet.png", "play-cursor-direction-preview.gif"]) {
+    assert.ok((await stat(resolve(cursorClipRoot, artifact))).size > 0, `${artifact} must remain available for directional visual review`);
   }
 });
 

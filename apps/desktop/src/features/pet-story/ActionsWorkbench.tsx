@@ -9,6 +9,7 @@ import {
   FEED_SNACK_WALK_ROOT_MOTION,
 } from "../../../electron/quick-play-choreography";
 import type {
+  CursorTrackingVisual,
   PetActionId,
   PetActionTuningValue,
   PetAppearanceSettings,
@@ -100,12 +101,11 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
     ],
   },
   play_cursor: {
-    id: "play_cursor", label: "Play cursor", icon: `${iconRoot}/play-cursor.png`, durationMs: 30_000,
-    contract: "30 sec · body anchored", propLabel: "virtual cursor", propMark: "➤",
+    id: "play_cursor", label: "Play cursor", icon: `${iconRoot}/play-cursor.png`, durationMs: 10_000,
+    contract: "10 sec · eyes → head → ears · body anchored", propLabel: "virtual cursor", propMark: "➤",
     phaseLabels: ["Notice", "Eyes follow", "Ears follow", "Track", "Restore"],
     authoredPhaseActions: ["idle_breathe", "play_cursor", "play_cursor", "play_cursor", "idle_breathe"],
     settings: [
-      { key: "attentionRadius", label: "Attention radius", type: "range", min: 80, max: 240, step: 10, defaultValue: 160, format: (value) => `${value}px` },
       { key: "followSmoothing", label: "Follow smoothing", type: "range", min: 20, max: 100, step: 5, defaultValue: 74, minMark: "Soft", maxMark: "Fluid", format: percent },
       { key: "maxHeadTurnAngle", label: "Maximum head-turn angle", type: "range", min: 10, max: 42, step: 1, defaultValue: 28, format: (value) => `${value}°` },
       { key: "earFollow", label: "Ear follow", type: "toggle", defaultValue: true, detail: "Ears trail the eyes and head" },
@@ -414,6 +414,22 @@ export function ActionsWorkbench(props: {
     moodBadge: { ...props.appearance.moodBadge, showMood: false },
     accessorySettings: { ...props.appearance.accessorySettings, tokenFrameId: "hidden" as const },
   };
+  const cursorTarget = {
+    x: Math.min(1, Math.max(-1, (stage.cursorX - 50) / 31)),
+    y: Math.min(1, Math.max(-1, (stage.cursorY - 45) / 18)),
+  };
+  const cursorCascade = elapsedMs % 1_800 / 1_800;
+  const headFactor = Math.min(1, Math.max(0, (cursorCascade - .14) / .3));
+  const earFactor = Math.min(1, Math.max(0, (cursorCascade - .46) / .34));
+  const cursorPreviewTracking: CursorTrackingVisual | undefined = selectedAction === "play_cursor" ? {
+    eyeOffset: cursorTarget,
+    headOffset: { x: cursorTarget.x * headFactor, y: cursorTarget.y * headFactor },
+    earOffset: { x: cursorTarget.x * headFactor * earFactor, y: cursorTarget.y * headFactor * earFactor },
+    headAngleDegrees: cursorTarget.x * Number(settings.maxHeadTurnAngle ?? 28) * headFactor,
+    withinAttention: true,
+    earFollow: settings.earFollow !== false,
+    stage: elapsedMs >= previewDurationMs - 350 ? "settle" : "tracking",
+  } : undefined;
 
   useEffect(() => {
     setElapsedMs(0);
@@ -502,6 +518,7 @@ export function ActionsWorkbench(props: {
             data-preview-walk-distance-px={selectedAction === "walk_round_trip" ? walkPreviewPlan.distancePx : undefined}
             data-preview-feed-phase={selectedAction === "token_snack" ? sampled.frame.actorActionId : undefined}
             data-preview-feed-root-progress={selectedAction === "token_snack" ? feedTravelProgress.toFixed(4) : undefined}
+            data-preview-cursor-contract={selectedAction === "play_cursor" ? "offline-eyes-head-ears" : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
               <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
@@ -509,7 +526,7 @@ export function ActionsWorkbench(props: {
             <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : undefined} previewTimeMs={sampled.actorTimeMs} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale } as CSSProperties} aria-label={definition.propLabel}>

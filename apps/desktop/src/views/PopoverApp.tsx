@@ -14,7 +14,7 @@ type QuickPlayAction = {
 const actions: QuickPlayAction[] = [
   { label: "Pet", id: "walk_round_trip", closesPanel: true, movesPet: true },
   { label: "Feed snack", id: "token_snack", closesPanel: true, movesPet: true },
-  { label: "Play cursor", id: "play_cursor", closesPanel: true, helper: "30 sec" },
+  { label: "Play cursor", id: "play_cursor", closesPanel: true, helper: "10 sec" },
   { label: "Dangle toy", id: "drag_dangle", closesPanel: true, movesPet: true },
   { label: "Toss yarn", id: "toss_yarn", closesPanel: true, movesPet: true },
   { label: "Nap here", id: "nap_here", closesPanel: false },
@@ -120,7 +120,7 @@ export function PopoverApp() {
               key={action.id}
               type="button"
               data-action-id={action.id}
-              aria-label={action.id === "play_cursor" ? `${action.label}. Tracks your cursor for 30 seconds.` : action.label}
+              aria-label={action.id === "play_cursor" ? `${action.label}. Tracks your cursor for 10 seconds.` : action.label}
               disabled={disabled}
               title={reason}
               onClick={() => void trigger(action)}

@@ -704,12 +704,12 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
     }
     case "play_cursor":
       // The deadline begins when main accepts the action. All phases, including
-      // notice and restore, fit inside the strict 30,000 ms contract.
+      // notice and restore, fit inside the strict 10,000 ms contract.
       return createPhaseTimeline([
         { id: "notice", durationMs: 350 },
         { id: "eyes_follow", durationMs: 450 },
         { id: "ears_follow", durationMs: 550 },
-        { id: "track", durationMs: 28_300 },
+        { id: "track", durationMs: 8_300 },
         { id: "restore", durationMs: 350 },
       ]);
     case "drag_dangle": {
@@ -882,8 +882,10 @@ export function updateCursorTracking(
   const dy = cursor.y - anchor.y;
   const distancePx = Math.hypot(dx, dy);
   const deadZonePx = Math.max(0, options.deadZonePx ?? 6);
-  const withinAttention = distancePx <= config.attentionRadius;
-  const active = withinAttention && distancePx > deadZonePx;
+  // Play Cursor is a ten-second full-desktop attention mode. Distance may
+  // saturate the authored directional response, but it must never gate it off.
+  const withinAttention = true;
+  const active = distancePx > deadZonePx;
   const magnitude = Math.max(distancePx, 1);
   const attentionProgress = active ? clamp((distancePx - deadZonePx) / Math.max(config.attentionRadius - deadZonePx, 1), 0, 1) : 0;
   const eyeOffset = active
