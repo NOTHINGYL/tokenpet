@@ -5,6 +5,8 @@ import {
   createDistanceLockedWalkPlan,
   DEFAULT_WALK_ROOT_MOTION,
   distanceLockedWalkProgressAtTime,
+  FEED_SNACK_RETURN_ROOT_MOTION,
+  FEED_SNACK_WALK_ROOT_MOTION,
 } from "../../../electron/quick-play-choreography";
 import type {
   PetActionId,
@@ -20,7 +22,7 @@ import { actorAnimationCandidates, actorManifestFor, capabilityFor } from "./Pet
 
 export type ActionsPreviewId = Exclude<QuickPlayActionId, "capture_moment">;
 
-type ChoiceOption = { value: string; label: string; mark?: string };
+type ChoiceOption = { value: string; label: string; mark?: string; asset?: string };
 type SettingDefinition =
   | { key: string; label: string; type: "range"; min: number; max: number; step: number; defaultValue: number; minMark?: string; maxMark?: string; format: (value: number) => string }
   | { key: string; label: string; type: "toggle"; defaultValue: boolean; detail?: string }
@@ -81,12 +83,16 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
     ],
   },
   token_snack: {
-    id: "token_snack", label: "Feed snack", icon: `${iconRoot}/token-snack.png`, durationMs: 7_000,
-    contract: "3 licks · return home", propLabel: "snack", propMark: "🐾",
-    phaseLabels: ["Stretch", "Slow walk", "Lick ×3", "Eat", "Return"],
-    authoredPhaseActions: ["idle_breathe", "token_snack", "click_purr", "token_snack", "idle_breathe"],
+    id: "token_snack", label: "Feed snack", icon: `${iconRoot}/token-snack.png`, durationMs: 9_000,
+    contract: "dedicated approach · 3 licks · separate return run", propLabel: "snack", propMark: "🐾",
+    phaseLabels: ["Stretch", "Slow walk", "Arrive", "Lick ×3", "Eat", "Return", "Settle"],
+    authoredPhaseActions: ["feed_snack_stretch", "feed_snack_walk_slow", "feed_snack_arrive", "feed_snack_lick", "feed_snack_eat", "feed_snack_return_run", "feed_snack_settle"],
     settings: [
-      { key: "snackStyle", label: "Snack style", type: "choices", defaultValue: "paw", options: [{ value: "paw", label: "Paw treat", mark: "🐾" }, { value: "fish", label: "Fish bite", mark: "🐟" }, { value: "token", label: "Token cookie", mark: "🪙" }] },
+      { key: "snackStyle", label: "Snack style", type: "choices", defaultValue: "paw", options: [
+        { value: "paw", label: "Paw treat", asset: "pet-actors/golden-british/props/snack-paw.png" },
+        { value: "fish", label: "Fish bite", asset: "pet-actors/golden-british/props/snack-fish.png" },
+        { value: "token", label: "Token cookie", asset: "pet-actors/golden-british/props/snack-token.png" },
+      ] },
       { key: "walkPace", label: "Walk pace", type: "range", min: 60, max: 140, step: 5, defaultValue: 82, minMark: "🐢", maxMark: "🐇", format: percent },
       { key: "snackSize", label: "Snack size", type: "range", min: 70, max: 130, step: 5, defaultValue: 100, minMark: "•", maxMark: "🐾", format: percent },
       { key: "startMeow", label: "Start meow", type: "toggle", defaultValue: true, detail: "Play one preview cue at phase one" },
@@ -184,8 +190,34 @@ function labelForFrame(labels: string[], index: number, count: number) {
   return labels[Math.min(labels.length - 1, Math.round(index * (labels.length - 1) / (count - 1)))];
 }
 
-function buildPreviewFrames(definition: ActionDefinition, manifest: PetActorManifest | null, fallbackImage: string, previewDurationMs = definition.durationMs): PreviewFrame[] {
+function buildPreviewFrames(
+  definition: ActionDefinition,
+  manifest: PetActorManifest | null,
+  fallbackImage: string,
+  previewDurationMs = definition.durationMs,
+  authoredPhaseDurations?: number[],
+): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
+  if (definition.id === "token_snack") {
+    let startMs = 0;
+    return definition.authoredPhaseActions.map((actorActionId, index) => {
+      const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
+      const sourceDurationMs = animation.frames.reduce((total, frame) => total + Math.max(1, frame.durationMs), 0);
+      const durationMs = authoredPhaseDurations?.[index] ?? previewDurationMs / definition.authoredPhaseActions.length;
+      const frame: PreviewFrame = {
+        id: `${definition.id}-${actorActionId}-${index}`,
+        label: definition.phaseLabels[index],
+        actorActionId,
+        src: frameUrl(manifest, animation.frames[0]),
+        startMs,
+        durationMs,
+        sourceStartMs: 0,
+        sourceDurationMs,
+      };
+      startMs += durationMs;
+      return frame;
+    });
+  }
   const requestedAnimation = resolveAnimation(manifest, definition.id);
   if (requestedAnimation && requestedAnimation.frames.length > 1) {
     const phaseDuration = previewDurationMs / requestedAnimation.frames.length;
@@ -249,7 +281,7 @@ function ChoiceSetting(props: { definition: Extract<SettingDefinition, { type: "
       <div className={`action-setting-choices action-setting-choices-${props.definition.options.length}`}>
         {props.definition.options.map((option) => (
           <button key={option.value} className={props.value === option.value ? "selected" : ""} type="button" aria-pressed={props.value === option.value} onClick={() => props.onChange(option.value)}>
-            {option.mark ? <span aria-hidden="true">{option.mark}</span> : null}<em>{option.label}</em>
+            {option.asset ? <img src={option.asset} alt="" draggable={false} aria-hidden="true" /> : option.mark ? <span aria-hidden="true">{option.mark}</span> : null}<em>{option.label}</em>
           </button>
         ))}
       </div>
@@ -307,10 +339,23 @@ export function ActionsWorkbench(props: {
     }
     : DEFAULT_WALK_ROOT_MOTION;
   const walkPreviewPlan = createDistanceLockedWalkPlan(PET_PREVIEW_TRAVEL_DISTANCE_PX, Number(settings.walkPace ?? 90), 1, walkRootMotion);
-  const previewDurationMs = selectedAction === "walk_round_trip" ? walkPreviewPlan.durationMs : definition.durationMs;
+  const feedWalkAnimation = manifest ? resolveAnimation(manifest, "feed_snack_walk_slow") : undefined;
+  const feedReturnAnimation = manifest ? resolveAnimation(manifest, "feed_snack_return_run") : undefined;
+  const feedWalkRootMotion = feedWalkAnimation?.locomotion ?? FEED_SNACK_WALK_ROOT_MOTION;
+  const feedReturnRootMotion = feedReturnAnimation?.locomotion ?? FEED_SNACK_RETURN_ROOT_MOTION;
+  const feedWalkPlan = createDistanceLockedWalkPlan(PET_PREVIEW_TRAVEL_DISTANCE_PX, Number(settings.walkPace ?? 82), 1, feedWalkRootMotion);
+  const feedReturnPace = String(settings.returnPace ?? "run") === "run" ? 140 : 118;
+  const feedReturnPlan = createDistanceLockedWalkPlan(PET_PREVIEW_TRAVEL_DISTANCE_PX, feedReturnPace, 1, feedReturnRootMotion);
+  const feedPhaseDurations = [900, feedWalkPlan.durationMs, 520, 1_080, 720, feedReturnPlan.durationMs, 280];
+  const feedPreviewDurationMs = feedPhaseDurations.reduce((total, duration) => total + duration, 0);
+  const previewDurationMs = selectedAction === "walk_round_trip"
+    ? walkPreviewPlan.durationMs
+    : selectedAction === "token_snack"
+      ? feedPreviewDurationMs
+      : definition.durationMs;
   const frames = useMemo(
-    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs),
-    [definition, fallbackImage, manifest, previewDurationMs],
+    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs, selectedAction === "token_snack" ? feedPhaseDurations : undefined),
+    [definition, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -318,15 +363,50 @@ export function ActionsWorkbench(props: {
   const walkActorTimeMs = elapsedMs * walkSourceCycleDurationMs / Math.max(1, walkPreviewPlan.cycleDurationMs);
   const walkCycleTimeMs = ((walkActorTimeMs % walkSourceCycleDurationMs) + walkSourceCycleDurationMs) % walkSourceCycleDurationMs;
   const walkFrame = frames.find((frame) => walkCycleTimeMs < frame.sourceStartMs + frame.sourceDurationMs) ?? frames[0];
-  const sampled = selectedAction === "walk_round_trip"
+  const sampledBase = selectedAction === "walk_round_trip"
     ? {
       frame: walkFrame,
       phaseProgress: Math.min(1, Math.max(0, (walkCycleTimeMs - walkFrame.sourceStartMs) / Math.max(1, walkFrame.sourceDurationMs))),
       actorTimeMs: walkActorTimeMs,
     }
     : timelineSample;
+  const sampledAnimation = manifest ? resolveAnimation(manifest, sampledBase.frame.actorActionId) : undefined;
+  const sampledAnimationDurationMs = sampledAnimation?.frames.reduce((total, frame) => total + Math.max(1, frame.durationMs), 0) ?? sampledBase.frame.sourceDurationMs;
+  const sampledPhaseElapsedMs = Math.max(0, elapsedMs - sampledBase.frame.startMs);
+  const sampled = selectedAction === "token_snack"
+    ? {
+      ...sampledBase,
+      actorTimeMs: sampledBase.frame.actorActionId === "feed_snack_walk_slow"
+        ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, feedWalkPlan.cycleDurationMs)
+        : sampledBase.frame.actorActionId === "feed_snack_return_run"
+          ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, feedReturnPlan.cycleDurationMs)
+          : sampledBase.frame.actorActionId === "feed_snack_lick"
+            ? sampledPhaseElapsedMs % Math.max(1, sampledAnimationDurationMs)
+            : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
+    }
+    : sampledBase;
   const walkRootProgress = selectedAction === "walk_round_trip" ? distanceLockedWalkProgressAtTime(walkPreviewPlan, elapsedMs) : progress;
-  const stage = stageSample(selectedAction, progress, walkRootProgress);
+  const baseStage = stageSample(selectedAction, progress, walkRootProgress);
+  const feedActorAction = sampled.frame.actorActionId;
+  const feedHomeX = -25;
+  const feedTargetX = 20;
+  const feedTravelProgress = feedActorAction === "feed_snack_walk_slow"
+    ? distanceLockedWalkProgressAtTime(feedWalkPlan, sampledPhaseElapsedMs)
+    : feedActorAction === "feed_snack_return_run"
+      ? distanceLockedWalkProgressAtTime(feedReturnPlan, sampledPhaseElapsedMs)
+      : feedActorAction === "feed_snack_stretch" || feedActorAction === "feed_snack_settle" ? 0 : 1;
+  const stage = selectedAction === "token_snack"
+    ? {
+      actorX: feedActorAction === "feed_snack_return_run"
+        ? feedTargetX + (feedHomeX - feedTargetX) * feedTravelProgress
+        : feedHomeX + (feedTargetX - feedHomeX) * feedTravelProgress,
+      actorY: 0,
+      propX: 70,
+      propY: 73,
+      cursorX: 70,
+      cursorY: 73,
+    }
+    : baseStage;
   const actorPreviewAppearance = {
     ...props.appearance,
     size: selectedAction === "walk_round_trip" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
@@ -385,7 +465,7 @@ export function ActionsWorkbench(props: {
 
   const propScale = selectedAction === "token_snack" ? Number(settings.snackSize ?? 100) / 100 : 1;
   const yarnColor = String(settings.yarnColor ?? "orange");
-  const showProp = !["walk_round_trip", "token_snack"].includes(selectedAction)
+  const showProp = selectedAction !== "walk_round_trip"
     && !(selectedAction === "nap_here" && settings.zEffect === false)
     && !(selectedAction === "wake_up" && settings.wakeSparkle === false);
 
@@ -420,6 +500,8 @@ export function ActionsWorkbench(props: {
             data-preview-walk-root-progress={selectedAction === "walk_round_trip" ? walkRootProgress.toFixed(4) : undefined}
             data-preview-walk-cycle-ms={selectedAction === "walk_round_trip" ? walkPreviewPlan.cycleDurationMs : undefined}
             data-preview-walk-distance-px={selectedAction === "walk_round_trip" ? walkPreviewPlan.distancePx : undefined}
+            data-preview-feed-phase={selectedAction === "token_snack" ? sampled.frame.actorActionId : undefined}
+            data-preview-feed-root-progress={selectedAction === "token_snack" ? feedTravelProgress.toFixed(4) : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
               <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
@@ -427,11 +509,13 @@ export function ActionsWorkbench(props: {
             <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : undefined} previewTimeMs={sampled.actorTimeMs} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : undefined} previewTimeMs={sampled.actorTimeMs} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale } as CSSProperties} aria-label={definition.propLabel}>
-                {definition.propMark}
+                {selectedAction === "token_snack"
+                  ? <img src={`pet-actors/golden-british/props/snack-${String(settings.snackStyle ?? "paw")}.png`} alt="" draggable={false} />
+                  : definition.propMark}
               </span>
             ) : null}
             {["play_cursor", "drag_dangle", "summon_to_pointer"].includes(selectedAction) ? <span className="action-virtual-pointer" data-virtual-pointer style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">➤</span> : null}

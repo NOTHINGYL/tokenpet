@@ -28,14 +28,29 @@ import {
   createPointToPointPath,
   createYarnRollPlan,
   DEFAULT_WALK_ROOT_MOTION,
+  FEED_SNACK_RETURN_ROOT_MOTION,
+  FEED_SNACK_WALK_ROOT_MOTION,
   interpolateQuickPlayBounds,
   normalizeQuickPlayActionConfig,
   sampleSafeRandomTarget,
   scaleDistanceLockedWalkPlan,
   distanceLockedWalkProgressAtTime,
+  feedSnackTargetBounds,
+  feedSnackReturnPacePercent,
   updateCursorTracking,
 } from "./quick-play-choreography.js";
 import type { CursorTrackingState, DistanceLockedWalkPlan, DangleMovementState, WalkRootMotionProfile } from "./quick-play-choreography.js";
+import {
+  executeDangleToy,
+  executeFeedSnack,
+  executeNapHere,
+  executePet,
+  executePlayCursor,
+  executeSummon,
+  executeTossYarn,
+  executeWakeUp,
+} from "./quick-play/executors/index.js";
+import type { FeedSnackLocomotionId } from "./quick-play/executors/feed-snack.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -89,10 +104,18 @@ let quickPlayTimeScale = 1;
 let quickPlayCursorTrackingState: CursorTrackingState = createCursorTrackingState();
 const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null }> = [];
 let petVisibleCaptureBounds: Rectangle | null = null;
-let cachedWalkRootMotion: WalkRootMotionProfile | null = null;
+type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId;
+const cachedLocomotionRootMotion = new Map<GoldenLocomotionActionId, WalkRootMotionProfile>();
 
-function loadGoldenWalkRootMotion(): WalkRootMotionProfile {
-  if (cachedWalkRootMotion) return cachedWalkRootMotion;
+function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
+  if (actionId === "feed_snack_walk_slow") return FEED_SNACK_WALK_ROOT_MOTION;
+  if (actionId === "feed_snack_return_run") return FEED_SNACK_RETURN_ROOT_MOTION;
+  return DEFAULT_WALK_ROOT_MOTION;
+}
+
+function loadGoldenLocomotionRootMotion(actionId: GoldenLocomotionActionId): WalkRootMotionProfile {
+  const cached = cachedLocomotionRootMotion.get(actionId);
+  if (cached) return cached;
   const candidates = [
     join(__dirname, "../dist-renderer/pet-actors/golden-british/actor.json"),
     join(app.getAppPath(), "apps/desktop/public/pet-actors/golden-british/actor.json"),
@@ -103,7 +126,7 @@ function loadGoldenWalkRootMotion(): WalkRootMotionProfile {
       const manifest = JSON.parse(readFileSync(path, "utf8")) as {
         animations?: Record<string, { locomotion?: WalkRootMotionProfile }>;
       };
-      const profile = manifest.animations?.["action.walk_round_trip"]?.locomotion;
+      const profile = manifest.animations?.[`action.${actionId}`]?.locomotion;
       if (
         profile
         && profile.footfallsPerCycle > 0
@@ -112,22 +135,25 @@ function loadGoldenWalkRootMotion(): WalkRootMotionProfile {
         && profile.rootStepKeyframes[0] === 0
         && profile.rootStepKeyframes.at(-1) === profile.footfallsPerCycle
       ) {
-        cachedWalkRootMotion = {
+        const resolved = {
           nominalStepDistancePx: profile.nominalStepDistancePx,
           footfallsPerCycle: profile.footfallsPerCycle,
           rootStepKeyframes: [...profile.rootStepKeyframes],
         };
-        return cachedWalkRootMotion;
+        cachedLocomotionRootMotion.set(actionId, resolved);
+        return resolved;
       }
     } catch (error) {
-      console.warn(`[tokenpet] unable to load authored walk root motion from ${path}`, error);
+      console.warn(`[tokenpet] unable to load authored ${actionId} root motion from ${path}`, error);
     }
   }
-  cachedWalkRootMotion = {
-    ...DEFAULT_WALK_ROOT_MOTION,
-    rootStepKeyframes: [...DEFAULT_WALK_ROOT_MOTION.rootStepKeyframes],
+  const fallback = fallbackLocomotionProfile(actionId);
+  const resolved = {
+    ...fallback,
+    rootStepKeyframes: [...fallback.rootStepKeyframes],
   };
-  return cachedWalkRootMotion;
+  cachedLocomotionRootMotion.set(actionId, resolved);
+  return resolved;
 }
 let captureQueue: Promise<unknown> = Promise.resolve();
 let mainProcessQaCaptureCount = 0;
@@ -870,6 +896,54 @@ function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySess
   publishQuickPlaySession();
 }
 
+function beginAuthoredWalkPhase(
+  phase: "outbound" | "return",
+  from: Rectangle,
+  to: Rectangle,
+  pacePercent: number,
+  targetPoint = quickPlaySession.targetPoint,
+  locomotionActionId: GoldenLocomotionActionId = "walk_round_trip",
+) {
+  const rootMotion = loadGoldenLocomotionRootMotion(locomotionActionId);
+  const distance = Math.hypot(to.x - from.x, to.y - from.y);
+  const authoredPlan = createDistanceLockedWalkPlan(distance, pacePercent, settings.petAppearance.size, rootMotion);
+  const wallClockPlan = scaleDistanceLockedWalkPlan(authoredPlan, quickPlayTimeScale);
+  const leadInMs = 90 / quickPlayTimeScale;
+  const startedAt = Date.now() + leadInMs;
+  quickPlaySession = {
+    ...quickPlaySession,
+    walkMotion: {
+      startedAt,
+      durationMs: wallClockPlan.durationMs,
+      stepDurationMs: wallClockPlan.stepDurationMs,
+      cycleDurationMs: wallClockPlan.cycleDurationMs,
+      stepCount: wallClockPlan.stepCount,
+      stepDistancePx: wallClockPlan.stepDistancePx,
+      footfallsPerCycle: wallClockPlan.rootMotion.footfallsPerCycle,
+      rootStepKeyframes: [...wallClockPlan.rootMotion.rootStepKeyframes],
+    },
+  };
+  updateQuickPlayPhase(phase, targetPoint);
+  return { authoredPlan, wallClockPlan, leadInMs, startedAt };
+}
+
+async function runAuthoredLocomotionLeg(
+  runtime: QuickPlayRuntime,
+  phase: "outbound" | "return",
+  from: Rectangle,
+  to: Rectangle,
+  pacePercent: number,
+  locomotionActionId: GoldenLocomotionActionId,
+  interruptionMessage: string,
+  targetPoint = quickPlaySession.targetPoint,
+) {
+  const authored = beginAuthoredWalkPhase(phase, from, to, pacePercent, targetPoint, locomotionActionId);
+  if (!await quickPlayDelay(runtime, 90)) return false;
+  const moved = await animateQuickPlayBounds(runtime, to, authored.authoredPlan.durationMs, false, "straight", "walk", authored.wallClockPlan, authored.startedAt);
+  if (!moved) throw new Error(interruptionMessage);
+  return true;
+}
+
 function clearQuickPlayRuntimeTimers(runtime: QuickPlayRuntime | null) {
   if (!runtime) return;
   [...runtime.cancelers].forEach((cancel) => cancel());
@@ -888,6 +962,14 @@ function closeQuickPlayOverlay() {
 
 function publishQuickPlayOverlayState(state: { phase?: "placing" | "playing" | "rolling" | "finishing"; enabled?: boolean; hint?: string; targetScreenX?: number; targetScreenY?: number; pointerScreenX?: number; pointerScreenY?: number; durationMs?: number }) {
   if (isUsableWindow(quickPlayOverlayWindow)) quickPlayOverlayWindow.webContents.send("quick-play:overlay-state", state);
+}
+
+function releaseFeedSnackPlacementPointer(runtime: QuickPlayRuntime, point: { x: number; y: number }) {
+  if (runtime.action !== "token_snack" || !isUsableWindow(quickPlayOverlayWindow)) return;
+  // Keep the placed prop visible through the eat keyframe, while returning
+  // pointer ownership and click handling to the desktop immediately.
+  quickPlayOverlayWindow.setIgnoreMouseEvents(true);
+  publishQuickPlayOverlayState({ enabled: false, targetScreenX: point.x, targetScreenY: point.y });
 }
 
 function finishQuickPlaySession(action?: Exclude<QuickPlayActionId, "capture_moment">, restoreStart = false) {
@@ -1116,139 +1198,147 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
       roamDistance: config.roamDistance,
       minimumVerticalDistance: config.roamDistance === "near" ? 72 : config.roamDistance === "far" ? 180 : 120,
     });
-    const rootMotion = loadGoldenWalkRootMotion();
-    const walkDistance = Math.hypot(
-      target.x - runtime.startBounds.x,
-      target.y - runtime.startBounds.y,
-    );
-    const authoredWalkPlan = createDistanceLockedWalkPlan(walkDistance, config.walkPace, settings.petAppearance.size, rootMotion);
-    const wallClockWalkPlan = scaleDistanceLockedWalkPlan(authoredWalkPlan, quickPlayTimeScale);
-    const walkLeadInMs = 90 / quickPlayTimeScale;
-    const beginWalkPhase = (phase: "outbound" | "return") => {
-      const startedAt = Date.now() + walkLeadInMs;
-      quickPlaySession = {
-        ...quickPlaySession,
-        walkMotion: {
-          startedAt,
-          durationMs: wallClockWalkPlan.durationMs,
-          stepDurationMs: wallClockWalkPlan.stepDurationMs,
-          cycleDurationMs: wallClockWalkPlan.cycleDurationMs,
-          stepCount: wallClockWalkPlan.stepCount,
-          stepDistancePx: wallClockWalkPlan.stepDistancePx,
-          footfallsPerCycle: wallClockWalkPlan.rootMotion.footfallsPerCycle,
-          rootStepKeyframes: [...wallClockWalkPlan.rootMotion.rootStepKeyframes],
-        },
-      };
-      updateQuickPlayPhase(phase);
-      return startedAt;
-    };
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: { x: target.x + target.width / 2, y: target.y + target.height / 2 } };
-    updateQuickPlayPhase("stand");
-    if (!await quickPlayDelay(runtime, 320)) return;
-    const outboundStartedAt = beginWalkPhase("outbound");
-    if (!await quickPlayDelay(runtime, 90)) return;
-    if (!await animateQuickPlayBounds(runtime, target, authoredWalkPlan.durationMs, false, "straight", "walk", wallClockWalkPlan, outboundStartedAt)) throw new Error("Pet walk was interrupted");
-    updateQuickPlayPhase("pause");
-    if (!await quickPlayDelay(runtime, config.destinationPause * 1_000)) return;
-    const returnStartedAt = beginWalkPhase("return");
-    if (!await quickPlayDelay(runtime, 90)) return;
-    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, authoredWalkPlan.durationMs, false, "straight", "walk", wallClockWalkPlan, returnStartedAt)) throw new Error("Pet return was interrupted");
-    updateQuickPlayPhase("settle");
-    if (!await quickPlayDelay(runtime, 260)) return;
-    await completeQuickPlayRuntime(runtime);
+    await executePet({
+      phase: updateQuickPlayPhase,
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      locomote: (phase) => runAuthoredLocomotionLeg(
+        runtime,
+        phase,
+        phase === "outbound" ? runtime.startBounds : target,
+        phase === "outbound" ? target : runtime.startBounds,
+        config.walkPace,
+        "walk_round_trip",
+        phase === "outbound" ? "Pet walk was interrupted" : "Pet return was interrupted",
+      ),
+      complete: () => completeQuickPlayRuntime(runtime),
+    }, config.destinationPause);
     return;
   }
 
-  if (action === "token_snack" || action === "toss_yarn") {
-    const mode = action === "token_snack" ? "snack" : "yarn";
-    createQuickPlayOverlay(runtime, mode);
+  if (action === "token_snack") {
+    createQuickPlayOverlay(runtime, "snack");
     updateQuickPlayPhase("awaiting-placement");
     const point = await waitForQuickPlayOverlay(runtime);
     runtime.resolveOverlay = null;
-    if (!point) throw new Error(`${mode} placement canceled`);
+    if (!point) throw new Error("snack placement canceled");
     const workArea = screen.getDisplayNearestPoint(point).workArea;
-    const config = actionConfig(action);
-    let interactionPoint: { x: number; y: number } = point;
-    if (action === "toss_yarn") {
-      const roll = createYarnRollPlan(point, { x: point.velocityX, y: point.velocityY }, workArea, actionConfig("toss_yarn"));
-      interactionPoint = roll.target;
-      publishQuickPlayOverlayState({
-        enabled: false,
-        phase: "rolling",
-        hint: "The yarn is rolling…",
-        targetScreenX: roll.target.x,
-        targetScreenY: roll.target.y,
-        durationMs: roll.durationMs / quickPlayTimeScale,
-      });
-      if (!await quickPlayDelay(runtime, roll.durationMs)) return;
-      publishQuickPlayOverlayState({ enabled: false, phase: "finishing", hint: "Your cat is retrieving the yarn…" });
-    } else {
-      publishQuickPlayOverlayState({ enabled: false, phase: "finishing", hint: "Snack placed — here comes your cat…" });
-    }
+    const interactionPoint = { x: point.x, y: point.y };
+    publishQuickPlayOverlayState({
+      enabled: false,
+      phase: "finishing",
+      hint: "Snack placed — here comes your cat…",
+      targetScreenX: interactionPoint.x,
+      targetScreenY: interactionPoint.y,
+    });
+    const target = feedSnackTargetBounds(runtime.startBounds, interactionPoint, workArea).bounds;
+    runtime.targetBounds = target;
+    quickPlaySession = { ...quickPlaySession, targetPoint: interactionPoint };
+    const feedConfig = actionConfig("token_snack");
+    await executeFeedSnack({
+      phase: (phase) => updateQuickPlayPhase(phase, interactionPoint),
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      locomote: (phase, locomotionId, pacePercent) => runAuthoredLocomotionLeg(
+        runtime,
+        phase,
+        phase === "outbound" ? runtime.startBounds : target,
+        phase === "outbound" ? target : runtime.startBounds,
+        pacePercent,
+        locomotionId,
+        phase === "outbound" ? "Snack approach was interrupted" : "Snack return was interrupted",
+        interactionPoint,
+      ),
+      closePropOverlay: closeQuickPlayOverlay,
+      complete: () => completeQuickPlayRuntime(runtime),
+    }, {
+      walkPace: feedConfig.walkPace,
+      returnPacePercent: feedSnackReturnPacePercent(feedConfig.returnPace),
+    });
+    return;
+  }
+
+  if (action === "toss_yarn") {
+    createQuickPlayOverlay(runtime, "yarn");
+    updateQuickPlayPhase("awaiting-placement");
+    const point = await waitForQuickPlayOverlay(runtime);
+    runtime.resolveOverlay = null;
+    if (!point) throw new Error("yarn placement canceled");
+    const workArea = screen.getDisplayNearestPoint(point).workArea;
+    const yarnConfig = actionConfig("toss_yarn");
+    const roll = createYarnRollPlan(point, { x: point.velocityX, y: point.velocityY }, workArea, yarnConfig);
+    const interactionPoint = roll.target;
+    publishQuickPlayOverlayState({
+      enabled: false,
+      phase: "rolling",
+      hint: "The yarn is rolling…",
+      targetScreenX: roll.target.x,
+      targetScreenY: roll.target.y,
+      durationMs: roll.durationMs / quickPlayTimeScale,
+    });
+    if (!await quickPlayDelay(runtime, roll.durationMs)) return;
+    publishQuickPlayOverlayState({ enabled: false, phase: "finishing", hint: "Your cat is retrieving the yarn…" });
     const target = clampBoundsToWorkArea({ ...runtime.startBounds, x: Math.round(interactionPoint.x - runtime.startBounds.width / 2), y: Math.round(interactionPoint.y - runtime.startBounds.height * .68) }, workArea);
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: interactionPoint };
-    updateQuickPlayPhase("stand", interactionPoint);
-    if (!await quickPlayDelay(runtime, action === "token_snack" ? 620 : 350)) return;
-    updateQuickPlayPhase("outbound", interactionPoint);
-    const pace = "walkPace" in config ? config.walkPace : config.rollSpeed;
-    if (!await animateQuickPlayBounds(runtime, target, Math.round((action === "token_snack" ? 1_650 : 1_250) * 100 / pace))) throw new Error("Toy approach was interrupted");
-    if (action === "token_snack") {
-      // Three distinct authored lick cycles are observable in the native trace;
-      // repeated phase timestamps also restart the visible snack loop at each cycle.
-      for (let lick = 0; lick < 3; lick += 1) {
-        updateQuickPlayPhase("interact", interactionPoint);
-        if (!await quickPlayDelay(runtime, 520)) return;
-      }
-      updateQuickPlayPhase("interact", interactionPoint);
-      if (!await quickPlayDelay(runtime, 420)) return;
-    } else {
-      updateQuickPlayPhase("interact", interactionPoint);
-      if (!await quickPlayDelay(runtime, 850)) return;
-    }
-    closeQuickPlayOverlay();
-    updateQuickPlayPhase("return", interactionPoint);
-    const returnMs = config.returnPace === "run" ? 820 : 1_150;
-    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, returnMs)) throw new Error("Toy return was interrupted");
-    updateQuickPlayPhase("settle", interactionPoint);
-    if (!await quickPlayDelay(runtime, 260)) return;
-    await completeQuickPlayRuntime(runtime);
+    const returnMs = yarnConfig.returnPace === "run" ? 820 : 1_150;
+    await executeTossYarn({
+      phase: (phase) => updateQuickPlayPhase(phase, interactionPoint),
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      approach: async () => {
+        const moved = await animateQuickPlayBounds(runtime, target, Math.round(1_250 * 100 / yarnConfig.rollSpeed));
+        if (!moved) throw new Error("Toy approach was interrupted");
+        return true;
+      },
+      returnHome: async () => {
+        const moved = await animateQuickPlayBounds(runtime, runtime.startBounds, returnMs);
+        if (!moved) throw new Error("Toy return was interrupted");
+        return true;
+      },
+      closePropOverlay: closeQuickPlayOverlay,
+      complete: () => completeQuickPlayRuntime(runtime),
+    });
     return;
   }
 
   if (action === "drag_dangle") {
     createQuickPlayOverlay(runtime, "dangle");
-    const releasePromise = waitForQuickPlayOverlay(runtime);
-    updateQuickPlayPhase("stand");
-    if (!await quickPlayDelay(runtime, 650)) return;
-    if (quickPlaySession.phase !== "interact") updateQuickPlayPhase("stalk");
-    const releasedAt = await releasePromise;
-    runtime.resolveOverlay = null;
-    if (!releasedAt) throw new Error("Dangle toy canceled");
-    closeQuickPlayOverlay();
-    updateQuickPlayPhase("return", releasedAt);
-    if (!await animateQuickPlayBounds(runtime, runtime.startBounds, 1_250)) throw new Error("Dangle return was interrupted");
-    updateQuickPlayPhase("settle", releasedAt);
-    if (!await quickPlayDelay(runtime, 260)) return;
-    await completeQuickPlayRuntime(runtime);
+    await executeDangleToy({
+      phase: updateQuickPlayPhase,
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      waitForRelease: async () => {
+        const point = await waitForQuickPlayOverlay(runtime);
+        runtime.resolveOverlay = null;
+        return point;
+      },
+      isInteractionActive: () => quickPlaySession.phase === "interact",
+      closePropOverlay: closeQuickPlayOverlay,
+      returnHome: async () => {
+        const moved = await animateQuickPlayBounds(runtime, runtime.startBounds, 1_250);
+        if (!moved) throw new Error("Dangle return was interrupted");
+        return true;
+      },
+      complete: () => completeQuickPlayRuntime(runtime),
+    });
     return;
   }
 
   if (action === "play_cursor") {
-    updateQuickPlayPhase("tracking", currentCursorScreenPoint());
-    if (!await quickPlayDelay(runtime, 30_000)) return;
-    updateQuickPlayPhase("settle");
-    if (!await quickPlayDelay(runtime, 120)) return;
-    await completeQuickPlayRuntime(runtime);
+    await executePlayCursor({
+      phase: (phase) => updateQuickPlayPhase(phase, phase === "tracking" ? currentCursorScreenPoint() : undefined),
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      complete: () => completeQuickPlayRuntime(runtime),
+    });
     return;
   }
 
   if (action === "nap_here") {
-    updateQuickPlayPhase("settle");
-    if (!await quickPlayDelay(runtime, 1_800)) return;
-    reportedPetDirectorState = { action: "sleep_loop", resting: true };
-    await completeQuickPlayRuntime(runtime);
+    await executeNapHere({
+      phase: updateQuickPlayPhase,
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      markResting: () => { reportedPetDirectorState = { action: "sleep_loop", resting: true }; },
+      complete: () => completeQuickPlayRuntime(runtime),
+    });
     return;
   }
 
@@ -1256,16 +1346,17 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     const config = actionConfig("wake_up");
     const timeline = createQuickPlayActionTimeline("wake_up", config);
     const [blink, roll, stretch, gather] = timeline.phases;
-    updateQuickPlayPhase("stand");
-    if (!await quickPlayDelay(runtime, blink.durationMs)) return;
-    updateQuickPlayPhase("outbound");
-    if (!await quickPlayDelay(runtime, roll.durationMs)) return;
-    updateQuickPlayPhase("interact");
-    if (!await quickPlayDelay(runtime, stretch.durationMs)) return;
-    updateQuickPlayPhase("settle");
-    if (!await quickPlayDelay(runtime, gather.durationMs)) return;
-    reportedPetDirectorState = { ...reportedPetDirectorState, resting: false };
-    await completeQuickPlayRuntime(runtime);
+    await executeWakeUp({
+      phase: updateQuickPlayPhase,
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      markAwake: () => { reportedPetDirectorState = { ...reportedPetDirectorState, resting: false }; },
+      complete: () => completeQuickPlayRuntime(runtime),
+    }, {
+      blinkMs: blink.durationMs,
+      rollMs: roll.durationMs,
+      stretchMs: stretch.durationMs,
+      gatherMs: gather.durationMs,
+    });
     return;
   }
 
@@ -1278,17 +1369,21 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     const offsetY = config.arrivalOffset === "below" ? 44 : config.arrivalOffset === "near" ? -16 : 0;
     const target = clampBoundsToWorkArea({ ...baseTarget, x: baseTarget.x + offsetX, y: baseTarget.y + offsetY }, workArea);
     runtime.targetBounds = target;
-    updateQuickPlayPhase("stand", point);
-    if (!await quickPlayDelay(runtime, 380)) return;
-    updateQuickPlayPhase("outbound", point);
-    if (!await animateQuickPlayBounds(runtime, target, Math.round(3_250 * 92 / config.walkPace), false, config.routeCurve)) throw new Error("Summon walk was interrupted");
-    updateQuickPlayPhase("settle", point);
-    if (!await quickPlayDelay(runtime, config.settleDelay * 1_000)) return;
-    if (isUsableWindow(petWindow)) {
-      petWindow.setBounds(target, false);
-      writeStoredPetPosition(target);
-    }
-    await completeQuickPlayRuntime(runtime);
+    await executeSummon({
+      phase: (phase) => updateQuickPlayPhase(phase, point),
+      delay: (durationMs) => quickPlayDelay(runtime, durationMs),
+      walkToTarget: async () => {
+        const moved = await animateQuickPlayBounds(runtime, target, Math.round(3_250 * 92 / config.walkPace), false, config.routeCurve);
+        if (!moved) throw new Error("Summon walk was interrupted");
+        return true;
+      },
+      persistTarget: () => {
+        if (!isUsableWindow(petWindow)) return;
+        petWindow.setBounds(target, false);
+        writeStoredPetPosition(target);
+      },
+      complete: () => completeQuickPlayRuntime(runtime),
+    }, config.settleDelay);
   }
 }
 
@@ -1519,6 +1614,7 @@ function createPopoverWindow() {
     hasShadow: false,
     alwaysOnTop: true,
     acceptFirstMouse: true,
+    focusable: true,
     skipTaskbar: true,
     show: false,
     webPreferences: {
@@ -1545,7 +1641,14 @@ function createPopoverWindow() {
         createdWindow.setPosition(position.x, position.y, false);
       }
     }
-    if (isUsableWindow(createdWindow) && popoverWindow === createdWindow) createdWindow.showInactive();
+    if (isUsableWindow(createdWindow) && popoverWindow === createdWindow) {
+      createdWindow.show();
+      createdWindow.focus();
+    }
+  });
+
+  createdWindow.on("blur", () => {
+    if (popoverWindow === createdWindow) closeUsableWindow(createdWindow);
   });
 
   createdWindow.on("closed", () => {
@@ -1747,6 +1850,7 @@ export const mainProcessQa = {
     const resolver = runtime?.resolveOverlay;
     if (!runtime || !resolver) return false;
     runtime.resolveOverlay = null;
+    if (point) releaseFeedSnackPlacementPointer(runtime, point);
     resolver(point ? { ...point, velocityX: 0, velocityY: 0 } : null);
     return true;
   },
@@ -1861,9 +1965,10 @@ ipcMain.on("quick-play:overlay-input", (event, input: { type?: string; screenX?:
   }
   const resolve = runtime.resolveOverlay;
   runtime.resolveOverlay = null;
+  const point = { x: Number(input.screenX), y: Number(input.screenY) };
+  releaseFeedSnackPlacementPointer(runtime, point);
   resolve({
-    x: Number(input.screenX),
-    y: Number(input.screenY),
+    ...point,
     velocityX: Number.isFinite(input.velocityX) ? Number(input.velocityX) : 0,
     velocityY: Number.isFinite(input.velocityY) ? Number(input.velocityY) : 0,
   });

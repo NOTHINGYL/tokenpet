@@ -69,6 +69,34 @@ function verifyManifest() {
     "v4 interleaves the source rows so every planted paw owns one contact/support pair",
   );
 
+  const feedWalk = manifest.animations["action.feed_snack_walk_slow"];
+  const feedReturn = manifest.animations["action.feed_snack_return_run"];
+  const feedActions = ["feed_snack_stretch", "feed_snack_walk_slow", "feed_snack_arrive", "feed_snack_lick", "feed_snack_eat", "feed_snack_return_run", "feed_snack_settle"];
+  verify(
+    "Feed Snack owns a complete offline asset pack",
+    feedActions.every((id) => manifest.animations[`action.${id}`]?.frames?.length)
+      && feedWalk.frames.length === 8
+      && feedReturn.frames.length === 8
+      && feedWalk.frames.every((frame) => frame.src.includes("feed_snack_walk_slow"))
+      && feedReturn.frames.every((frame) => frame.src.includes("feed_snack_return_run"))
+      && !feedWalk.frames.some((frame) => frame.src.includes("walk_round_trip"))
+      && !feedReturn.frames.some((frame) => frame.src.includes("walk_round_trip")),
+    "stretch, approach, arrival, lick/eat, return and settle all resolve to Feed-only approved raster frames",
+  );
+  verify(
+    "Feed Snack locomotion clips are independent",
+    feedWalk.locomotion?.nominalStepDistancePx === 16
+      && feedReturn.locomotion?.nominalStepDistancePx === 24
+      && JSON.stringify(feedWalk.locomotion.rootStepKeyframes) === JSON.stringify([0, .14, 1, 1.14, 2, 2.14, 3, 3.14, 4])
+      && JSON.stringify(feedReturn.locomotion.rootStepKeyframes) === JSON.stringify([0, .32, 1, 1.32, 2, 2.32, 3, 3.32, 4]),
+    "the cautious outbound walk and satisfied return run carry different stride lengths and root curves",
+  );
+  verify(
+    "Feed Snack has three authored props",
+    ["paw", "fish", "token"].every((id) => fileIsNonEmpty(join(root, `apps/desktop/public/pet-actors/golden-british/props/snack-${id}.png`))),
+    "Paw treat, Fish bite and Token cookie are transparent runtime PNG assets",
+  );
+
   for (const reference of manifest.visualReferences ?? []) {
     verify(`visual reference ${reference}`, fileIsNonEmpty(join(root, reference)), "approved visual reference resolves to a non-empty file");
   }
@@ -160,6 +188,9 @@ function verifyReachableUi() {
   const popoverSource = read("apps/desktop/src/views/PopoverApp.tsx");
   const menuBarSource = read("apps/desktop/src/views/MenuBarApp.tsx");
   const consoleSource = read("apps/desktop/src/views/ConsoleApp.tsx");
+  const electronMainSource = read("apps/desktop/electron/main.ts");
+  const quickPlayOverlaySource = read("apps/desktop/src/views/QuickPlayOverlayApp.tsx");
+  const quickPlayOverlayStyles = read("apps/desktop/src/styles/quick-play-overlay.css");
   for (const actionId of quickPlayIds) {
     verify(`Quick Play stable id ${actionId}`, popoverSource.includes(`id: "${actionId}"`), "friendly action maps to its stable implementation id");
   }
@@ -171,6 +202,8 @@ function verifyReachableUi() {
   verify("Menu Bar Console entries target Overview", menuBarSource.match(/openConsole\("overview"\)/gu)?.length === 2, "both the settings icon and Open Console footer explicitly request Overview");
   verify("Quick Play Console entry targets Pet", popoverSource.includes('openConsole("pet")'), "the double-click panel explicitly requests the Pet console");
   verify("Pet navigation resets to Appearance", consoleSource.includes('if (tab === "pet")') && consoleSource.includes('setPetSection("appearance")') && consoleSource.includes("setPetNavigationEpoch"), "an external Pet request remounts the Pet surface at Appearance even when Console is already on another Pet subpage");
+  verify("Quick Play closes on outside focus", electronMainSource.includes('if (popoverWindow === createdWindow) closeUsableWindow(createdWindow)') && electronMainSource.includes("createdWindow.show();") && electronMainSource.includes("createdWindow.focus();") && !electronMainSource.includes("createdWindow.showInactive();"), "the native Quick Play window acquires focus and closes itself on blur");
+  verify("Feed placement restores the system pointer and preserves two-dimensional screen coordinates", quickPlayOverlaySource.includes("window.screenX + event.clientX") && quickPlayOverlaySource.includes("window.screenY + event.clientY") && quickPlayOverlaySource.includes("setReleased(true)") && quickPlayOverlayStyles.includes(".quick-play-overlay-snack.is-released") && quickPlayOverlayStyles.includes("cursor: default") && electronMainSource.includes("quickPlayOverlayWindow.setIgnoreMouseEvents(true)"), "the released snack remains visible while the full-screen overlay becomes pointer-pass-through; placement uses the overlay window origin plus client X/Y");
   const v18Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "summon-to-pointer", "capture-moment", "control-pin", "control-lock", "control-mute"];
   verify("Quick Play v18 normative artwork", v18Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local crops from the normative v18 design");
 
@@ -188,11 +221,17 @@ function verifyReachableUi() {
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
   verify("desktop shared renderer", desktop.includes("<PetAppearanceVisual"), "desktop pet uses the shared appearance/actor renderer");
   verify("Pet walk starts and stops on the locomotion clip", desktop.includes('return phase === "pause" ? "walk_round_trip_look" : "walk_round_trip"') && desktop.includes('quickPlaySession.phase === "stand"') && desktop.includes('quickPlaySession.phase === "settle"'), "stand and settle freeze the planted first pose of the same side-profile clip; only pause switches to the look-around asset");
+  const feedExecutor = read("apps/desktop/electron/quick-play/executors/feed-snack.ts");
+  verify("Feed snack uses an isolated authored executor", electronMainSource.includes("executeFeedSnack") && electronMainSource.includes("locomotionId") && feedExecutor.includes('"feed_snack_walk_slow"') && feedExecutor.includes('"feed_snack_return_run"') && feedExecutor.includes('ports.phase("arrive")') && feedExecutor.includes('ports.phase("lick")') && feedExecutor.includes('ports.phase("eat")') && desktop.includes('return "feed_snack_walk_slow"') && desktop.includes('return "feed_snack_return_run"'), "Feed owns its semantic executor and two locomotion assets while sharing only the root-motion transport primitive");
+  const executorIndex = read("apps/desktop/electron/quick-play/executors/index.ts");
+  const executorModules = ["pet", "feed-snack", "play-cursor", "dangle-toy", "toss-yarn", "nap-here", "wake-up", "summon"];
+  verify("Quick Play actions have isolated executor modules", executorModules.every((name) => fileIsNonEmpty(join(root, `apps/desktop/electron/quick-play/executors/${name}.ts`)) && executorIndex.includes(`./${name}.js`)) && electronMainSource.includes('from "./quick-play/executors/index.js"') && electronMainSource.includes("runAuthoredLocomotionLeg") && !electronMainSource.includes('action === "token_snack" || action === "toss_yarn"'), "each animated action owns one semantic module; Electron window ports and the authored locomotion transport are reused explicitly");
   verify("console shared renderer", story.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
   verify("Actions v19 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v19 preview actions and excludes Capture from its selector");
   verify("Actions v19 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes("previewTimeMs={sampled.actorTimeMs}") && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
   verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses one sandbox edge to the other with the shared root curve, a contained actor artboard, and pointer cursors on Settings controls");
+  verify("Actions Feed preview mirrors the production asset sequence", actions.includes("feedPhaseDurations") && actions.includes("data-preview-feed-phase") && actions.includes("feed_snack_arrive") && actions.includes("feed_snack_eat") && actions.includes("snack-${String(settings.snackStyle") && consoleStyles.includes(".action-preview-token_snack .pet-generated-actor-shell"), "Console uses the seven Feed phases, matching root motion, contained cat artboard and selected offline snack PNG");
   verify("Actions v19 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
   verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "attentionRadius", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePose", "breathingIntensity", "zEffect", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)), "all action-specific v19 setting keys are modeled without a generic Save form");
   verify("Actions v19 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop/u.test(actions), "the Actions implementation contains none of the retired director-dashboard modules");

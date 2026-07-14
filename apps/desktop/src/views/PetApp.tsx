@@ -436,11 +436,18 @@ export function PetApp() {
       // clip, so starting/stopping never hard-cuts from the upright look asset.
       return phase === "pause" ? "walk_round_trip_look" : "walk_round_trip";
     }
+    if (action === "token_snack") {
+      if (phase === "stand") return "feed_snack_stretch";
+      if (phase === "outbound") return "feed_snack_walk_slow";
+      if (phase === "arrive") return "feed_snack_arrive";
+      if (phase === "lick") return "feed_snack_lick";
+      if (phase === "eat") return "feed_snack_eat";
+      if (phase === "return") return "feed_snack_return_run";
+      if (phase === "settle" || phase === "complete") return "feed_snack_settle";
+    }
     if (action === "summon_to_pointer" && phase === "outbound") return "summon_to_pointer";
     if (action === "toss_yarn" && phase === "return") return "toss_yarn";
     if (phase === "return" || phase === "outbound") return "run_across";
-    if (action === "token_snack" && phase === "stand") return "drag_dangle";
-    if (action === "token_snack" && phase === "interact") return "token_snack";
     if (action === "drag_dangle" && phase === "stalk") return "focus_loop";
     if (action === "drag_dangle" && phase === "interact") return "drag_dangle";
     if (action === "toss_yarn" && phase === "interact") return "toss_yarn";
@@ -458,12 +465,29 @@ export function PetApp() {
   }, [quickPlaySession.activeAction, quickPlaySession.phase, story.actionSettings.byAction.nap_here, story.actionSettings.byAction.walk_round_trip]);
 
   const quickPlayFacing = useMemo<"left" | "right" | undefined>(() => {
-    if (quickPlaySession.activeAction !== "walk_round_trip" || !quickPlaySession.startBounds || !quickPlaySession.targetPoint) return undefined;
+    if (
+      !["walk_round_trip", "token_snack"].includes(quickPlaySession.activeAction ?? "")
+      || !quickPlaySession.startBounds
+      || !quickPlaySession.targetPoint
+    ) return undefined;
     const startCenterX = quickPlaySession.startBounds.x + quickPlaySession.startBounds.width / 2;
     const outboundFacing = quickPlaySession.targetPoint.x >= startCenterX ? "right" : "left";
     const facesHome = quickPlaySession.phase === "return" || quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete";
     return facesHome ? (outboundFacing === "right" ? "left" : "right") : outboundFacing;
   }, [quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.startBounds, quickPlaySession.targetPoint]);
+
+  const authoredLocomotionActive = (
+    quickPlaySession.activeAction === "walk_round_trip"
+    || quickPlaySession.activeAction === "token_snack"
+  ) && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "return");
+  const authoredLocomotionFrozen = quickPlaySession.activeAction === "walk_round_trip" && (
+    quickPlaySession.phase === "stand"
+    || quickPlaySession.phase === "settle"
+    || quickPlaySession.phase === "complete"
+    || (quickPlaySession.phase === "pause" && story.actionSettings.byAction.walk_round_trip?.lookAroundEffect === false)
+  ) || quickPlaySession.activeAction === "token_snack" && (
+    quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete"
+  );
 
   return (
     <main
@@ -487,19 +511,14 @@ export function PetApp() {
           moodId={mood}
           storyActionId={quickPlayActorAction ?? directorAction}
           facing={quickPlayFacing}
-          animationNonce={quickPlaySession.activeAction === "walk_round_trip" && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "return")
+          animationNonce={authoredLocomotionActive
             ? quickPlaySession.walkMotion?.startedAt
-            : quickPlaySession.activeAction === "token_snack" && quickPlaySession.phase === "interact"
+            : quickPlaySession.activeAction === "token_snack" && ["stand", "arrive", "lick", "eat", "settle"].includes(quickPlaySession.phase)
               ? quickPlaySession.phaseStartedAt ?? undefined
               : undefined}
-          animationStartedAtMs={quickPlaySession.activeAction === "walk_round_trip" ? quickPlaySession.walkMotion?.startedAt : undefined}
-          animationCycleDurationMs={quickPlaySession.activeAction === "walk_round_trip" ? quickPlaySession.walkMotion?.cycleDurationMs : undefined}
-          previewTimeMs={quickPlaySession.activeAction === "walk_round_trip" && (
-            quickPlaySession.phase === "stand"
-            || quickPlaySession.phase === "settle"
-            || quickPlaySession.phase === "complete"
-            || (quickPlaySession.phase === "pause" && story.actionSettings.byAction.walk_round_trip?.lookAroundEffect === false)
-          ) ? 0 : undefined}
+          animationStartedAtMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.startedAt : undefined}
+          animationCycleDurationMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.cycleDurationMs : undefined}
+          previewTimeMs={authoredLocomotionFrozen ? 0 : undefined}
           reduceMotion={story.reduceMotion || (story.safety.batteryLowPause && batteryLow)}
           pointerOffset={story.followCursor || quickPlaySession.activeAction === "play_cursor" ? pointerOffset : undefined}
           surface="desktop"

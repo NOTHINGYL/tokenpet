@@ -248,6 +248,25 @@ export function clampQuickPlayBounds(bounds: QuickPlayBounds, workArea: QuickPla
   };
 }
 
+/**
+ * Register a Feed interaction by the authored cat's nose, not by the center of
+ * its transparent BrowserWindow. The source faces right; left approaches flip
+ * the complete canvas and therefore mirror the nose anchor.
+ */
+export function feedSnackTargetBounds(start: QuickPlayBounds, snack: QuickPlayPoint, workArea: QuickPlayBounds) {
+  const startCenterX = start.x + start.width / 2;
+  const facing: "left" | "right" = snack.x >= startCenterX ? "right" : "left";
+  const noseOffsetX = start.width * .245 * (facing === "right" ? 1 : -1);
+  return {
+    facing,
+    bounds: clampQuickPlayBounds({
+      ...start,
+      x: Math.round(snack.x - start.width / 2 - noseOffsetX),
+      y: Math.round(snack.y - start.height * .68),
+    }, workArea),
+  };
+}
+
 export function interpolateQuickPlayBounds(
   from: QuickPlayBounds,
   to: QuickPlayBounds,
@@ -292,6 +311,20 @@ export const DEFAULT_WALK_ROOT_MOTION: WalkRootMotionProfile = {
   rootStepKeyframes: [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4],
 };
 
+/** Feed Snack owns a cautious, nose-led approach instead of borrowing Pet. */
+export const FEED_SNACK_WALK_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 16,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .14, 1, 1.14, 2, 2.14, 3, 3.14, 4],
+};
+
+/** The satisfied trip home is a separate light run with longer strides. */
+export const FEED_SNACK_RETURN_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 24,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .32, 1, 1.32, 2, 2.32, 3, 3.32, 4],
+};
+
 const NATURAL_WALK_STEP_DURATION_MS = 220;
 
 export function createDistanceLockedWalkPlan(distancePx: number, pacePercent = 100, actorScale = 1, rootMotion: WalkRootMotionProfile = DEFAULT_WALK_ROOT_MOTION): DistanceLockedWalkPlan {
@@ -324,6 +357,11 @@ export function scaleDistanceLockedWalkPlan(plan: DistanceLockedWalkPlan, timeSc
     cycleDurationMs: plan.cycleDurationMs / scale,
     durationMs: plan.durationMs / scale,
   };
+}
+
+/** Feed return pace drives the dedicated Feed return-run clip. */
+export function feedSnackReturnPacePercent(returnPace: FeedSnackQuickPlayConfig["returnPace"]) {
+  return returnPace === "run" ? 140 : 118;
 }
 
 function smoothStep(value: number) {
@@ -649,16 +687,18 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
     }
     case "token_snack": {
       const options = config as FeedSnackQuickPlayConfig;
-      const outwardMs = travelDuration(travelDistancePx, options.walkPace, 185);
-      const returnPercent = options.returnPace === "run" ? 145 : 118;
+      const outwardMs = createDistanceLockedWalkPlan(travelDistancePx, options.walkPace, 1, FEED_SNACK_WALK_ROOT_MOTION).durationMs;
+      const returnPercent = feedSnackReturnPacePercent(options.returnPace);
+      const returnMs = createDistanceLockedWalkPlan(travelDistancePx, returnPercent, 1, FEED_SNACK_RETURN_ROOT_MOTION).durationMs;
       return createPhaseTimeline([
         { id: "snack_stretch", durationMs: 900 },
         { id: "walk_slow", durationMs: outwardMs },
+        { id: "arrive_and_lower", durationMs: 520 },
         { id: "snack_lick_1", durationMs: 360 },
         { id: "snack_lick_2", durationMs: 360 },
         { id: "snack_lick_3", durationMs: 360 },
-        { id: "snack_eat", durationMs: 360 },
-        { id: "run_return", durationMs: travelDuration(travelDistancePx, returnPercent) },
+        { id: "snack_eat", durationMs: 720 },
+        { id: "run_return", durationMs: returnMs },
         { id: "restore", durationMs: 280 },
       ]);
     }

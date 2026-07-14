@@ -22,6 +22,13 @@ export const PET_ACTOR_ACTION_IDS = [
   "drag_dangle",
   "drop_bounce",
   "token_snack",
+  "feed_snack_stretch",
+  "feed_snack_walk_slow",
+  "feed_snack_arrive",
+  "feed_snack_lick",
+  "feed_snack_eat",
+  "feed_snack_return_run",
+  "feed_snack_settle",
   "play_cursor",
   "run_across",
   "walk_round_trip",
@@ -279,6 +286,11 @@ export class PetActorManifestValidationError extends Error {
 }
 
 const actionIds = new Set<string>(PET_ACTOR_ACTION_IDS);
+const locomotionActionIds = new Set<string>([
+  "walk_round_trip",
+  "feed_snack_walk_slow",
+  "feed_snack_return_run",
+]);
 const quickPlayActionIds = new Set<string>(PET_ACTOR_QUICK_PLAY_ACTION_IDS);
 const moods = new Set<string>(PET_ACTOR_MOODS);
 const lifeStages = new Set<string>(PET_ACTOR_LIFE_STAGES);
@@ -626,8 +638,8 @@ export function validatePetActorManifest(value: unknown): PetActorValidationResu
         continue;
       }
       if (animation.locomotion !== undefined) {
-        if (animation.motionState !== "walk_round_trip") {
-          pushIssue(issues, "locomotion.motionState", `${animationPath}.locomotion`, "is only valid for walk_round_trip");
+        if (!locomotionActionIds.has(String(animation.motionState))) {
+          pushIssue(issues, "locomotion.motionState", `${animationPath}.locomotion`, "is only valid for a declared locomotion action");
         }
         validateLocomotion(animation.locomotion, animation.frames.length, issues, `${animationPath}.locomotion`);
       }
@@ -767,8 +779,8 @@ export function validatePetActorSourceSpec(value: unknown): PetActorValidationRe
         pushIssue(issues, "source.priority", `${actionPath}.priority`, "must be a finite number");
       }
       if (action.locomotion !== undefined) {
-        if (actionId !== "walk_round_trip") {
-          pushIssue(issues, "source.locomotionAction", `${actionPath}.locomotion`, "is only valid for walk_round_trip");
+        if (!locomotionActionIds.has(actionId)) {
+          pushIssue(issues, "source.locomotionAction", `${actionPath}.locomotion`, "is only valid for a declared locomotion action");
         }
         validateLocomotion(action.locomotion, Array.isArray(action.sourceFrames) ? action.sourceFrames.length : 0, issues, `${actionPath}.locomotion`);
       }

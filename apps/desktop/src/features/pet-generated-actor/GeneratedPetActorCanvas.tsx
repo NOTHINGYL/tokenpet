@@ -164,12 +164,14 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     moodId,
   );
   if (!animation?.frames.length) return null;
-  const isRoundTripLocomotion = animation.id === "action.walk_round_trip" || animation.id === "action.walk_round_trip_look";
-  const tokenMode = isRoundTripLocomotion ? "hidden" : resolveTokenMode(props.appearance, manifest);
+  const isChromeFreeStoryAction = animation.id === "action.walk_round_trip"
+    || animation.id === "action.walk_round_trip_look"
+    || animation.id.startsWith("action.feed_snack_");
+  const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
-  const declaredMoodBadgeRect = !isRoundTripLocomotion && shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
+  const declaredMoodBadgeRect = !isChromeFreeStoryAction && shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
   const moodBadgeRect = declaredMoodBadgeRect ? resolveActorMoodBadgeRect(manifest, declaredMoodBadgeRect, props.surface) : null;
   const tokenCenterX = tokenRect ? tokenRect.x + tokenRect.width / 2 : 0;
   const tokenCenterY = tokenRect ? tokenRect.y + tokenRect.height / 2 : 0;
@@ -394,7 +396,10 @@ function renderGeneratedPetActorCanvas(
 
   context.save();
   applyGeneratedBodyMotion(context, plan, frame, time, interactiveState.hover);
-  if (plan.facing === "left" && (plan.animation.id === "action.walk_round_trip" || plan.animation.id === "action.walk_round_trip_look")) {
+  const supportsAuthoredFacing = plan.animation.id === "action.walk_round_trip"
+    || plan.animation.id === "action.walk_round_trip_look"
+    || plan.animation.id.startsWith("action.feed_snack_");
+  if (plan.facing === "left" && supportsAuthoredFacing) {
     context.translate(plan.manifest.artboard.width, 0);
     context.scale(-1, 1);
   }

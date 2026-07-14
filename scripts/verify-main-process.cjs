@@ -392,6 +392,13 @@ async function run() {
   verify("Quick Play reopening preserves action", reopenedSession.activeAction === "play_cursor", "closing and reopening the panel does not cancel the active action");
   qa.finishQuickPlaySession();
 
+  popover.blur();
+  await waitForClosed(qa, "popover");
+  verify("Quick Play closes on outside focus", pet.isVisible() && qa.getQuickPlaySession().activeAction === null, "losing focus closes only the panel and leaves the desktop pet/session state intact");
+
+  await doubleClickPet(pet);
+  popover = await waitForWindow(qa, "popover");
+  await waitForDom(popover, "[data-testid=quick-play-panel]");
   await doubleClickPet(pet);
   await waitForClosed(qa, "popover");
   verify("double-click closes Quick Play", pet.isVisible(), "second double-click closes only the independent panel");
@@ -409,7 +416,7 @@ async function run() {
   const waitForQuickPlayEnd = (action) => waitFor(
     () => qa.getQuickPlaySession().activeAction === null,
     `${action} Quick Play completion`,
-    action === "walk_round_trip" ? 30_000 : 12_000,
+    action === "walk_round_trip" || action === "token_snack" ? 30_000 : 12_000,
   );
   const runClosedQuickPlayAction = async (action, placement = null) => {
     qa.resetQuickPlayTrace();
@@ -421,15 +428,23 @@ async function run() {
     await waitFor(() => qa.getQuickPlaySession().activeAction === action, `${action} session acceptance`);
     let activeVisual = null;
     let activeVisualScreenshot = null;
-    if (action === "walk_round_trip") {
-      await waitFor(() => qa.getQuickPlaySession().phase === "outbound", "Pet authored walk phase");
-      await waitFor(() => execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === 'action.walk_round_trip'"), "Pet walk actor frames");
+    let returnVisual = null;
+    let arrivalScreenshot = null;
+    let eatScreenshot = null;
+    let eatOverlayScreenshot = null;
+    const captureAuthoredWalkVisual = async (phase, screenshotName = null) => {
+      await waitFor(() => qa.getQuickPlaySession().phase === phase, `${action} authored ${phase} phase`);
+      const expectedAnimation = action === "token_snack"
+        ? phase === "outbound" ? "action.feed_snack_walk_slow" : "action.feed_snack_return_run"
+        : "action.walk_round_trip";
+      const expectedFramePrefix = expectedAnimation.slice("action.".length);
+      await waitFor(() => execute(pet, `document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === '${expectedAnimation}'`), `${action} ${phase} actor frames`);
       await waitFor(() => execute(pet, `(() => {
         const canvas = document.querySelector('.pet-generated-actor-canvas');
-        return canvas?.dataset.actorFrame !== 'walk_round_trip-1'
+        return canvas?.dataset.actorFrame !== '${expectedFramePrefix}-1'
           && Number(canvas?.dataset.actorTimelineMs ?? 0) >= 100;
-      })()`), "Pet 1x non-initial authored walk frame");
-      activeVisual = await execute(pet, `(() => {
+      })()`), `${action} ${phase} non-initial authored walk frame`);
+      const visual = await execute(pet, `(() => {
         const actor = document.querySelector('[data-actor-animation]');
         const canvas = document.querySelector('.pet-generated-actor-canvas');
         const shell = document.querySelector('.pet-generated-actor-shell');
@@ -441,14 +456,22 @@ async function run() {
           timelineMs: Number(canvas?.dataset.actorTimelineMs ?? NaN),
           cycleDurationMs: Number(actor?.dataset.actorCycleDurationMs ?? NaN),
           startedAtMs: Number(actor?.dataset.actorStartedAtMs ?? NaN),
-          walkMotion: ${JSON.stringify(null)},
           tokenHidden: shell?.classList.contains('pet-token-hidden') ?? false,
           closeOpacity: close ? getComputedStyle(close).opacity : null,
         };
       })()`);
-      activeVisual.walkMotion = qa.getQuickPlaySession().walkMotion;
-      activeVisualScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-pet-walk.png");
-      writeFileSync(activeVisualScreenshot, (await pet.webContents.capturePage()).toPNG());
+      visual.walkMotion = qa.getQuickPlaySession().walkMotion;
+      if (screenshotName) {
+        const screenshot = join(root, "docs", "screenshots", "pet-story", screenshotName);
+        writeFileSync(screenshot, (await pet.webContents.capturePage()).toPNG());
+        return { visual, screenshot };
+      }
+      return { visual, screenshot: null };
+    };
+    if (action === "walk_round_trip") {
+      const capture = await captureAuthoredWalkVisual("outbound", "quick-play-pet-walk.png");
+      activeVisual = capture.visual;
+      activeVisualScreenshot = capture.screenshot;
     }
     let overlayBounds = null;
     let overlayScreenshot = null;
@@ -464,15 +487,34 @@ async function run() {
         JSON.stringify(overlayBounds) === JSON.stringify(screen.getDisplayNearestPoint(placement.point).workArea),
         `${placement.mode} overlay covers the active display work area ${JSON.stringify(overlayBounds)}`,
       );
-      verify(`${action} accepts exactly one placement`, qa.submitQuickPlayOverlayInput(placement.point) === true && qa.submitQuickPlayOverlayInput(placement.point) === false, "the first placement resolves the native pointer promise and a second placement cannot queue");
+      const acceptedOnce = qa.submitQuickPlayOverlayInput(placement.point) === true && qa.submitQuickPlayOverlayInput(placement.point) === false;
+      const pointerRestored = action !== "token_snack" || await waitFor(
+        () => execute(overlay, "getComputedStyle(document.querySelector('.quick-play-overlay')).cursor === 'default'"),
+        "Feed Snack system pointer restoration",
+      );
+      verify(`${action} accepts exactly one placement`, acceptedOnce && pointerRestored, "the first placement resolves the native pointer promise, restores the system pointer for Feed, and a second placement cannot queue");
+      if (action === "token_snack") {
+        const capture = await captureAuthoredWalkVisual("outbound", "quick-play-feed-walk.png");
+        activeVisual = capture.visual;
+        activeVisualScreenshot = capture.screenshot;
+        await waitFor(() => qa.getQuickPlaySession().phase === "arrive", "Feed Snack arrival phase");
+        arrivalScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-arrive.png");
+        writeFileSync(arrivalScreenshot, (await pet.webContents.capturePage()).toPNG());
+        await waitFor(() => qa.getQuickPlaySession().phase === "eat", "Feed Snack eat phase");
+        eatScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-eat.png");
+        writeFileSync(eatScreenshot, (await pet.webContents.capturePage()).toPNG());
+        eatOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-eat-overlay.png");
+        writeFileSync(eatOverlayScreenshot, (await overlay.webContents.capturePage()).toPNG());
+        returnVisual = (await captureAuthoredWalkVisual("return")).visual;
+      }
     }
     await waitForQuickPlayEnd(action);
     await delay(120);
     const endBounds = pet.getBounds();
     const endAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
     const trace = qa.getQuickPlayTrace();
-    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, activeVisualScreenshot, overlayBounds, overlayScreenshot, trace });
-    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, activeVisualScreenshot, trace };
+    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, activeVisualScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, overlayBounds, overlayScreenshot, trace });
+    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, activeVisualScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, trace };
   };
 
   qa.setQuickPlayTimeScale(1);
@@ -515,14 +557,65 @@ async function run() {
   );
 
   const placementWorkArea = screen.getDisplayMatching(pet.getBounds()).workArea;
-  const snackPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .36), y: placementWorkArea.y + Math.round(placementWorkArea.height * .66) };
+  const snackPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .36), y: placementWorkArea.y + placementWorkArea.height - 48 };
+  qa.setQuickPlayTimeScale(1);
   const feed = await runClosedQuickPlayAction("token_snack", { mode: "snack", point: snackPoint });
+  qa.setQuickPlayTimeScale(20);
+  verify(
+    "Feed snack uses two dedicated distance-locked locomotion assets",
+    feed.activeVisual?.animation === "action.feed_snack_walk_slow"
+      && feed.returnVisual?.animation === "action.feed_snack_return_run"
+      && /^feed_snack_walk_slow-[2-8]$/.test(feed.activeVisual?.frame ?? "")
+      && /^feed_snack_return_run-[2-8]$/.test(feed.returnVisual?.frame ?? "")
+      && feed.activeVisual?.facing !== feed.returnVisual?.facing
+      && feed.activeVisual?.walkMotion?.stepDistancePx > 0
+      && feed.activeVisual?.walkMotion?.stepDistancePx <= 26
+      && feed.returnVisual?.walkMotion?.stepDistancePx > 0
+      && feed.returnVisual?.walkMotion?.stepDistancePx <= 26
+      && feed.activeVisual?.walkMotion?.footfallsPerCycle === 4
+      && feed.returnVisual?.walkMotion?.footfallsPerCycle === 4
+      && JSON.stringify(feed.activeVisual?.walkMotion?.rootStepKeyframes) === JSON.stringify([0, .14, 1, 1.14, 2, 2.14, 3, 3.14, 4])
+      && JSON.stringify(feed.returnVisual?.walkMotion?.rootStepKeyframes) === JSON.stringify([0, .32, 1, 1.32, 2, 2.32, 3, 3.32, 4])
+      && feed.activeVisual?.cycleDurationMs === feed.activeVisual?.walkMotion?.cycleDurationMs
+      && feed.returnVisual?.cycleDurationMs === feed.returnVisual?.walkMotion?.cycleDurationMs
+      && Math.abs(feed.activeVisual?.startedAtMs - feed.activeVisual?.walkMotion?.startedAt) < 1
+      && Math.abs(feed.returnVisual?.startedAtMs - feed.returnVisual?.walkMotion?.startedAt) < 1
+      && feed.activeVisual?.tokenHidden === true
+      && feed.returnVisual?.tokenHidden === true
+      && feed.activeVisual?.closeOpacity === "0"
+      && feed.returnVisual?.closeOpacity === "0"
+      && existsSync(feed.activeVisualScreenshot)
+      && existsSync(feed.arrivalScreenshot)
+      && existsSync(feed.eatScreenshot)
+      && existsSync(feed.eatOverlayScreenshot),
+    `outbound ${JSON.stringify(feed.activeVisual)}; return ${JSON.stringify(feed.returnVisual)}`,
+  );
   verify(
     "Feed snack performs three lick cycles, eats, and returns exactly",
-    feed.trace.filter((entry) => entry.phase === "interact").length === 4
+    feed.trace.filter((entry) => entry.phase === "lick").length === 3
+      && feed.trace.filter((entry) => entry.phase === "arrive").length === 1
+      && feed.trace.filter((entry) => entry.phase === "eat").length === 1
+      && (() => {
+        const arriveBounds = feed.trace.find((entry) => entry.phase === "arrive")?.bounds;
+        if (!arriveBounds) return false;
+        const direction = snackPoint.x >= feed.startBounds.x + feed.startBounds.width / 2 ? 1 : -1;
+        const noseX = arriveBounds.x + arriveBounds.width / 2 + arriveBounds.width * .245 * direction;
+        return Math.abs(noseX - snackPoint.x) <= 2;
+      })()
       && JSON.stringify(feed.endBounds) === JSON.stringify(feed.startBounds)
       && feed.endAnimation === feed.startAnimation,
-    `trace contains three lick restarts plus eat: ${feed.trace.map((entry) => entry.phase).join(" → ")}`,
+    `trace contains arrival, three lick restarts and one eat phase: ${feed.trace.map((entry) => entry.phase).join(" → ")}`,
+  );
+  const feedArrivalBounds = feed.trace.find((entry) => entry.phase === "arrive")?.bounds;
+  const feedOutboundBounds = feed.trace.filter((entry) => entry.phase === "outbound" && entry.bounds).map((entry) => entry.bounds);
+  const feedYDirection = Math.sign((feedArrivalBounds?.y ?? feed.startBounds.y) - feed.startBounds.y);
+  verify(
+    "Feed snack traverses both desktop axes toward a lower placement",
+    feedArrivalBounds
+      && Math.abs(feedArrivalBounds.y - feed.startBounds.y) >= 120
+      && new Set(feedOutboundBounds.map((entry) => entry.y)).size >= 4
+      && feedOutboundBounds.every((bounds, index) => index === 0 || feedYDirection === 0 || Math.sign(bounds.y - feedOutboundBounds[index - 1].y) === feedYDirection || bounds.y === feedOutboundBounds[index - 1].y),
+    `lower snack ${JSON.stringify(snackPoint)} moved pet row from y=${feed.startBounds.y} to y=${feedArrivalBounds?.y}; ${new Set(feedOutboundBounds.map((entry) => entry.y)).size} distinct outbound rows`,
   );
 
   qa.resetQuickPlayTrace();

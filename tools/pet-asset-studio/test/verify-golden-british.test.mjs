@@ -13,6 +13,8 @@ const bundleDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-briti
 const sourceSpecPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
 const walkClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v4");
 const walkRegistrationPath = resolve(walkClipRoot, "locomotion-report.json");
+const feedClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/feed-snack-v2");
+const feedAssetReportPath = resolve(feedClipRoot, "asset-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -95,6 +97,39 @@ test("walk frames share a registered body anchor before native root motion", asy
   assert.ok(registration.frames.every((frame) => frame.residualPx <= 0.5));
   for (const artifact of ["walk-cycle-preview.gif", "walk-root-motion-preview.gif", "walk-root-motion-contact-sheet.png"]) {
     assert.ok((await stat(resolve(walkClipRoot, artifact))).size > 0, `${artifact} must remain available for visual gait review`);
+  }
+});
+
+test("Feed Snack ships dedicated approach, interaction, return and prop assets", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const feedIds = ["feed_snack_stretch", "feed_snack_walk_slow", "feed_snack_arrive", "feed_snack_lick", "feed_snack_eat", "feed_snack_return_run", "feed_snack_settle"];
+  for (const id of feedIds) assert.ok(manifest.animations[`action.${id}`]?.frames.length > 0, `${id} needs approved Feed frames`);
+
+  const walk = manifest.animations["action.feed_snack_walk_slow"];
+  const returning = manifest.animations["action.feed_snack_return_run"];
+  assert.equal(walk.frames.length, 8);
+  assert.equal(returning.frames.length, 8);
+  assert.ok(walk.frames.every((frame) => /feed_snack_walk_slow_\d\d\.png$/.test(frame.src)));
+  assert.ok(returning.frames.every((frame) => /feed_snack_return_run_\d\d\.png$/.test(frame.src)));
+  assert.deepEqual(walk.locomotion.rootStepKeyframes, [0, .14, 1, 1.14, 2, 2.14, 3, 3.14, 4]);
+  assert.deepEqual(returning.locomotion.rootStepKeyframes, [0, .32, 1, 1.32, 2, 2.32, 3, 3.32, 4]);
+  assert.equal(walk.locomotion.nominalStepDistancePx, 16);
+  assert.equal(returning.locomotion.nominalStepDistancePx, 24);
+
+  const report = JSON.parse(await readFile(feedAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-feed-snack-assets/v2");
+  assert.equal(report.outputs.filter((entry) => entry.path.includes("feed_snack_")).length, 24);
+  const transparentOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/") || entry.path.includes("/props/"));
+  assert.equal(transparentOutputs.length, 27);
+  assert.ok(transparentOutputs.every((entry) => entry.cornerAlpha?.every((alpha) => alpha === 0)));
+  for (const artifact of ["feed-snack-contact-sheet.png", "feed-walk-slow-preview.gif", "feed-return-run-preview.gif"]) {
+    assert.ok((await stat(resolve(feedClipRoot, artifact))).size > 0, `${artifact} must remain available for Feed visual review`);
+  }
+  for (const prop of ["snack-paw.png", "snack-fish.png", "snack-token.png"]) {
+    const buffer = await readFile(resolve(bundleDir, "props", prop));
+    const png = inspectPng(buffer);
+    assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
+    assert.ok([4, 6].includes(png.colorType), `${prop} must preserve transparency`);
   }
 });
 

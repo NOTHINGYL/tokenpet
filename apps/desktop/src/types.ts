@@ -217,6 +217,7 @@ export type AppSettings = {
 export type PetActionId =
   | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
   | "hatch" | "click_purr" | "drag_dangle" | "drop_bounce" | "token_snack" | "play_cursor"
+  | "feed_snack_stretch" | "feed_snack_walk_slow" | "feed_snack_arrive" | "feed_snack_lick" | "feed_snack_eat" | "feed_snack_return_run" | "feed_snack_settle"
   | "run_across" | "walk_round_trip_look" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | "nap_here" | "wake_up"
   | "settle_down" | "focus_start" | "cool_down" | "walk_round_trip" | "summon_to_screen" | "summon_to_pointer" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
@@ -288,7 +289,7 @@ export type QuickPlayActionId =
   | "wake_up"
   | "summon_to_pointer"
   | "capture_moment";
-export type QuickPlayPhase = "idle" | "awaiting-placement" | "stand" | "outbound" | "pause" | "tracking" | "stalk" | "interact" | "return" | "settle" | "complete" | "failed";
+export type QuickPlayPhase = "idle" | "awaiting-placement" | "stand" | "outbound" | "arrive" | "lick" | "eat" | "pause" | "tracking" | "stalk" | "interact" | "return" | "settle" | "complete" | "failed";
 export type QuickPlayWalkMotion = {
   startedAt: number;
   durationMs: number;

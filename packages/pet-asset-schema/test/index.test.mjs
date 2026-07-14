@@ -81,6 +81,22 @@ test("locomotion clips reject unordered root motion and incomplete paw phases", 
   assert.ok(codes.includes("locomotion.phases"));
 });
 
+test("Feed Snack owns dedicated outbound and return locomotion clips", async () => {
+  const fixture = await readSourceFixture();
+  const outbound = fixture.actions.feed_snack_walk_slow;
+  const returning = fixture.actions.feed_snack_return_run;
+  assert.equal(outbound.sourceFrames.length, 8);
+  assert.equal(returning.sourceFrames.length, 8);
+  assert.notDeepEqual(outbound.sourceFrames.map((frame) => frame.src), fixture.actions.walk_round_trip.sourceFrames.map((frame) => frame.src));
+  assert.notDeepEqual(returning.sourceFrames.map((frame) => frame.src), fixture.actions.walk_round_trip.sourceFrames.map((frame) => frame.src));
+  assert.equal(outbound.locomotion.nominalStepDistancePx, 16);
+  assert.equal(returning.locomotion.nominalStepDistancePx, 24);
+  assert.equal(sourceIssueCodes(fixture).includes("source.locomotionAction"), false);
+
+  fixture.actions.token_snack.locomotion = structuredClone(outbound.locomotion);
+  assert.ok(sourceIssueCodes(fixture).includes("source.locomotionAction"));
+});
+
 test("every Quick Play action must be represented", async () => {
   const fixture = await readFixture();
   fixture.capabilities = fixture.capabilities.filter((capability) => capability.id !== "capture_moment");

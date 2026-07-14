@@ -17,6 +17,11 @@ body:has(.quick-play-overlay),
   touch-action: none;
 }
 
+.quick-play-overlay-snack.is-released,
+.quick-play-overlay-snack.phase-finishing {
+  cursor: default;
+}
+
 .quick-overlay-focus-ring {
   position: absolute;
   width: 42px;
@@ -46,10 +51,10 @@ body:has(.quick-play-overlay),
 .quick-overlay-snack-prop.is-released {
   width: 74px;
   height: 62px;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -42%) scale(var(--snack-scale, 1));
 }
 
-.quick-overlay-snack-prop.is-released .quick-overlay-snack-accent {
+.quick-overlay-snack-prop.is-released .quick-overlay-snack-image {
   animation: quick-overlay-snack-land .32s cubic-bezier(.2, .9, .25, 1) both;
 }
 
@@ -57,19 +62,11 @@ body:has(.quick-play-overlay),
   display: block;
   width: 100%;
   height: 100%;
-  overflow: visible;
+  object-fit: contain;
   filter: drop-shadow(0 6px 5px rgba(34, 42, 54, .14));
   animation: quick-overlay-snack-bob .8s ease-in-out infinite alternate;
 }
-
-.quick-overlay-prop-fill { fill: #f2f4f7; stroke: #758195; stroke-width: 3; stroke-linejoin: round; }
-.quick-overlay-prop-line { fill: none; stroke: #758195; stroke-width: 3; stroke-linecap: round; }
-.quick-overlay-prop-shadow { fill: none; stroke: rgba(24, 47, 78, .12); stroke-width: 5; stroke-linecap: round; }
-.quick-overlay-snack-accent { fill: #2f9f68; stroke: #1f7d50; stroke-width: 2.5; stroke-linejoin: round; }
-.quick-overlay-snack-prop.snack-fish .quick-overlay-snack-accent { fill: #5ca8d7; stroke: #256a9b; }
-.quick-overlay-snack-prop.snack-token .quick-overlay-snack-accent { fill: #f2bd4f; stroke: #a96a14; }
 .quick-overlay-cutout { fill: #fff; stroke: none; }
-.quick-overlay-token-mark { fill: none; stroke: #fff7dc; stroke-width: 4; stroke-linecap: round; }
 
 .quick-overlay-yarn-prop {
   width: 82px;
@@ -148,6 +145,11 @@ body:has(.quick-play-overlay),
 
 .quick-play-overlay.is-submitted .quick-overlay-hint {
   color: #276846;
+}
+
+.quick-play-overlay-snack.phase-finishing .quick-overlay-focus-ring,
+.quick-play-overlay-snack.phase-finishing .quick-overlay-hint {
+  opacity: 0;
 }
 
 @keyframes quick-overlay-ring {

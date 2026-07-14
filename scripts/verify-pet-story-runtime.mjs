@@ -8,14 +8,17 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const storyBuildPath = join(root, "dist-electron/story.js");
 const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
 const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
+const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
 const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
+const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
   entryPoints: [join(root, "apps/desktop/src/features/pet-story/PetDirector.ts")],
   bundle: true,
@@ -606,11 +609,64 @@ verify("Quick Play semantic timelines preserve strict action contracts", () => {
   const feed = quickPlay.createQuickPlayActionTimeline("token_snack", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.token_snack, 280);
   const feedIds = feed.phases.map((phase) => phase.id);
   assert.deepEqual(feedIds.filter((id) => id.startsWith("snack_lick_")), ["snack_lick_1", "snack_lick_2", "snack_lick_3"]);
+  assert.ok(feedIds.includes("arrive_and_lower"));
   const cursor = quickPlay.createQuickPlayActionTimeline("play_cursor", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor);
   assert.equal(cursor.durationMs, 30_000);
   const wake = quickPlay.createQuickPlayActionTimeline("wake_up", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.wake_up);
   assert.equal(wake.durationMs, 5_000);
   assert.ok(wake.phases.some((phase) => phase.id === "long_full_body_stretch"));
+});
+
+verify("Feed snack travel owns two distance-locked four-footfall gaits", () => {
+  const distance = 280;
+  const config = quickPlay.QUICK_PLAY_ACTION_DEFAULTS.token_snack;
+  const timeline = quickPlay.createQuickPlayActionTimeline("token_snack", config, distance);
+  const outward = quickPlay.createDistanceLockedWalkPlan(distance, config.walkPace, 1, quickPlay.FEED_SNACK_WALK_ROOT_MOTION);
+  const returnPace = quickPlay.feedSnackReturnPacePercent(config.returnPace);
+  const returning = quickPlay.createDistanceLockedWalkPlan(distance, returnPace, 1, quickPlay.FEED_SNACK_RETURN_ROOT_MOTION);
+  assert.equal(timeline.phases.find((phase) => phase.id === "walk_slow")?.durationMs, outward.durationMs);
+  assert.equal(timeline.phases.find((phase) => phase.id === "run_return")?.durationMs, returning.durationMs);
+  assert.equal(outward.rootMotion.footfallsPerCycle, 4);
+  assert.equal(returning.rootMotion.footfallsPerCycle, 4);
+  assert.notDeepEqual(outward.rootMotion.rootStepKeyframes, returning.rootMotion.rootStepKeyframes);
+  assert.equal(outward.rootMotion.nominalStepDistancePx, 16);
+  assert.equal(returning.rootMotion.nominalStepDistancePx, 24);
+  assert.ok(returning.stepDurationMs < outward.stepDurationMs, "the satisfied return uses a quicker dedicated clock");
+  assert.equal(quickPlay.distanceLockedWalkProgressAtTime(outward, outward.durationMs), 1);
+  assert.equal(quickPlay.distanceLockedWalkProgressAtTime(returning, returning.durationMs), 1);
+  const start = { x: 120, y: 80, width: 260, height: 260 };
+  const snack = { x: 860, y: 610 };
+  const target = quickPlay.feedSnackTargetBounds(start, snack, { x: 0, y: 0, width: 1_440, height: 900 });
+  assert.equal(target.facing, "right");
+  assert.ok(Math.abs(target.bounds.x + target.bounds.width / 2 + target.bounds.width * .245 - snack.x) <= 1, "the authored nose anchor must land on the snack instead of the window center");
+  const lowerTarget = quickPlay.feedSnackTargetBounds(start, { x: 540, y: 852 }, { x: 0, y: 25, width: 1_440, height: 875 });
+  assert.ok(lowerTarget.bounds.y - start.y >= 120, "a lower-screen snack must change the native pet row substantially");
+  assert.equal(lowerTarget.bounds.y, 640, "the lower target clamps only at the active display work-area edge");
+});
+
+const feedExecutorPhases = [];
+const feedExecutorLocomotion = [];
+let feedExecutorOverlayClosed = false;
+let feedExecutorCompleted = false;
+const feedExecutorResult = await feedSnackExecutor.executeFeedSnack({
+    phase: (phase) => feedExecutorPhases.push(phase),
+    delay: async () => true,
+    locomote: async (phase, actionId, pacePercent) => {
+      feedExecutorLocomotion.push({ phase, actionId, pacePercent });
+      return true;
+    },
+    closePropOverlay: () => { feedExecutorOverlayClosed = true; },
+    complete: async () => { feedExecutorCompleted = true; },
+  }, { walkPace: 82, returnPacePercent: 140 });
+verify("Feed Snack executor preserves isolated semantic ordering", () => {
+  assert.equal(feedExecutorResult, true);
+  assert.deepEqual(feedExecutorPhases, ["stand", "arrive", "lick", "lick", "lick", "eat", "settle"]);
+  assert.deepEqual(feedExecutorLocomotion, [
+    { phase: "outbound", actionId: "feed_snack_walk_slow", pacePercent: 82 },
+    { phase: "return", actionId: "feed_snack_return_run", pacePercent: 140 },
+  ]);
+  assert.equal(feedExecutorOverlayClosed, true);
+  assert.equal(feedExecutorCompleted, true);
 });
 
 verify("Quick Play dangle gate rejects jitter and requires over two seconds", () => {
