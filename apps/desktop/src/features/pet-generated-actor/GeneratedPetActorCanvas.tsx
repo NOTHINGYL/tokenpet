@@ -168,7 +168,8 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
   const isChromeFreeStoryAction = animation.id === "action.walk_round_trip"
     || animation.id === "action.walk_round_trip_look"
     || animation.id === "action.play_cursor"
-    || animation.id.startsWith("action.feed_snack_");
+    || animation.id.startsWith("action.feed_snack_")
+    || animation.id.startsWith("action.dangle_");
   const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
@@ -420,6 +421,13 @@ function animationDurationMs(animation: PetActorAnimation) {
   return animation.frames.reduce((sum, frame) => sum + Math.max(frame.durationMs, 1), 0);
 }
 
+function animationSupportsAuthoredFacing(animationId: string) {
+  return animationId === "action.walk_round_trip"
+    || animationId === "action.walk_round_trip_look"
+    || animationId.startsWith("action.feed_snack_")
+    || animationId.startsWith("action.dangle_");
+}
+
 function renderGeneratedPetActorCanvas(
   context: CanvasRenderingContext2D,
   plan: GeneratedActorRenderPlan,
@@ -443,9 +451,7 @@ function renderGeneratedPetActorCanvas(
 
   context.save();
   applyGeneratedBodyMotion(context, plan, frame, time, interactiveState.hover);
-  const supportsAuthoredFacing = plan.animation.id === "action.walk_round_trip"
-    || plan.animation.id === "action.walk_round_trip_look"
-    || plan.animation.id.startsWith("action.feed_snack_");
+  const supportsAuthoredFacing = animationSupportsAuthoredFacing(plan.animation.id);
   if (plan.facing === "left" && supportsAuthoredFacing) {
     context.translate(plan.manifest.artboard.width, 0);
     context.scale(-1, 1);
@@ -566,6 +572,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       data-actor-id={plan.manifest.actorId}
       data-actor-animation={plan.animation.id}
       data-actor-facing={plan.facing}
+      data-actor-mirrored={plan.facing === "left" && animationSupportsAuthoredFacing(plan.animation.id) ? "true" : "false"}
       data-actor-cycle-duration-ms={props.animationCycleDurationMs}
       data-actor-started-at-ms={props.animationStartedAtMs}
       data-mood-badge-y={plan.moodBadgeRect?.y}

@@ -392,7 +392,11 @@ async function run() {
   verify("Quick Play reopening preserves action", reopenedSession.activeAction === "play_cursor", "closing and reopening the panel does not cancel the active action");
   qa.finishQuickPlaySession();
 
-  popover.blur();
+  // The headless QA app cannot become the active macOS application, so native
+  // focus transfer is intentionally unavailable here. Emit the same
+  // BrowserWindow event delivered by an outside click and verify the production
+  // blur handler closes only this panel.
+  popover.emit("blur");
   await waitForClosed(qa, "popover");
   verify("Quick Play closes on outside focus", pet.isVisible() && qa.getQuickPlaySession().activeAction === null, "losing focus closes only the panel and leaves the desktop pet/session state intact");
 
@@ -441,7 +445,8 @@ async function run() {
       await waitFor(() => execute(pet, `document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === '${expectedAnimation}'`), `${action} ${phase} actor frames`);
       await waitFor(() => execute(pet, `(() => {
         const canvas = document.querySelector('.pet-generated-actor-canvas');
-        return canvas?.dataset.actorFrame !== '${expectedFramePrefix}-1'
+        return canvas?.dataset.actorFrame?.startsWith('${expectedFramePrefix}-')
+          && canvas.dataset.actorFrame !== '${expectedFramePrefix}-1'
           && Number(canvas?.dataset.actorTimelineMs ?? 0) >= 100;
       })()`), `${action} ${phase} non-initial authored walk frame`);
       const visual = await execute(pet, `(() => {
@@ -733,36 +738,127 @@ async function run() {
     `the production deadline completed in ${cursorElapsedMs}ms with byte-fixed bounds and authored settle frame ${cursorSettleFrame}`,
   );
   quickPlaySummaries.push({ action: "play_cursor", startBounds: cursorStart, endBounds: pet.getBounds(), trace: cursorTrace, captureConcurrent: true, durationMs: cursorElapsedMs, visualFrames: cursorVisualFrames, settleFrame: cursorSettleFrame });
-  await click(panel, "button[aria-label='Close Quick Play']");
+  const cursorPanel = safeWindow(qa, "popover");
+  if (cursorPanel) await click(cursorPanel, "button[aria-label='Close Quick Play']");
   await waitForClosed(qa, "popover");
 
   qa.resetQuickPlayTrace();
-  const dangleStart = pet.getBounds();
+  const currentDangleBounds = pet.getBounds();
+  const dangleStart = {
+    ...currentDangleBounds,
+    x: placementWorkArea.x + Math.round(placementWorkArea.width * .62),
+    y: placementWorkArea.y + 96,
+  };
+  pet.setBounds(dangleStart, false);
+  panel = await openQuickPlay();
+  await click(panel, "[data-action-id=drag_dangle]");
+  await waitForClosed(qa, "popover");
+  const earlyDangleOverlay = await waitForWindow(qa, "quickplayOverlay");
+  await waitForDom(earlyDangleOverlay, "[data-overlay-mode=dangle]");
+  await waitFor(() => execute(earlyDangleOverlay, "[...document.images].every((image) => image.complete && image.naturalWidth > 0)"), "early dangle overlay prop assets");
+  const dangleOrigin = {
+    x: placementWorkArea.x + 180,
+    y: placementWorkArea.y + placementWorkArea.height - 180,
+  };
+  await execute(earlyDangleOverlay, `window.tokenpet.quickPlayOverlayInput({ type: 'click', screenX: ${dangleOrigin.x}, screenY: ${dangleOrigin.y}, timestamp: Date.now() })`);
+  await waitForClosed(qa, "quickplayOverlay");
+  await waitForQuickPlayEnd("drag_dangle");
+  const earlyDangleTrace = qa.getQuickPlayTrace();
+  verify(
+    "Dangle click releases at any time",
+    JSON.stringify(pet.getBounds()) === JSON.stringify(dangleStart)
+      && earlyDangleTrace.some((entry) => entry.phase === "release")
+      && earlyDangleTrace.some((entry) => entry.phase === "settle")
+      && !earlyDangleTrace.some((entry) => entry.phase === "pounce"),
+    `pre-arm click removed the overlay immediately and traced ${earlyDangleTrace.map((entry) => entry.phase).join(" → ")}`,
+  );
+
+  qa.resetQuickPlayTrace();
+  qa.setCursorPoint(dangleOrigin);
   panel = await openQuickPlay();
   await click(panel, "[data-action-id=drag_dangle]");
   await waitForClosed(qa, "popover");
   const dangleOverlay = await waitForWindow(qa, "quickplayOverlay");
   await waitForDom(dangleOverlay, "[data-overlay-mode=dangle]");
-  await waitFor(() => execute(dangleOverlay, "[...document.images].every((image) => image.complete && image.naturalWidth > 0)"), "dangle overlay prop assets");
-  const dangleOrigin = { x: placementWorkArea.x + 180, y: placementWorkArea.y + 180 };
-  await execute(dangleOverlay, `window.tokenpet.quickPlayOverlayInput({ type: 'click', screenX: ${dangleOrigin.x}, screenY: ${dangleOrigin.y}, timestamp: Date.now() })`);
-  await delay(260);
-  verify("Dangle ignores release before meaningful movement", qa.getQuickPlaySession().activeAction === "drag_dangle" && qa.getQuickPlaySession().phase !== "return", "an early click keeps pointer mode active and requests more movement");
-  for (let index = 0; index < 150; index += 1) {
-    qa.setCursorPoint({ x: dangleOrigin.x + index * 3, y: dangleOrigin.y + (index % 3) * 14 });
+  await waitFor(() => execute(dangleOverlay, "[...document.images].every((image) => image.complete && image.naturalWidth > 0)"), "dangle overlay offline prop assets");
+  await waitFor(() => dangleOverlay.isVisible(), "visible dangle overlay window");
+  await waitFor(async () => {
+    const session = qa.getQuickPlaySession();
+    const currentCenterX = session.currentBounds ? session.currentBounds.x + session.currentBounds.width / 2 : Number.NEGATIVE_INFINITY;
+    return session.targetPoint?.x < currentCenterX
+      && await execute(pet, "document.querySelector('[data-actor-facing]')?.dataset.actorFacing === 'left' && document.querySelector('[data-actor-mirrored]')?.dataset.actorMirrored === 'true'");
+  }, "dangle actor facing the lower-left fish target");
+  await execute(dangleOverlay, "new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve(true))))");
+  const dangleOverlayCapture = await waitFor(async () => {
+    const capture = await dangleOverlay.webContents.capturePage();
+    const bitmap = capture.toBitmap();
+    return bitmap.some((value, index) => index % 4 === 3 && value > 0) ? capture : null;
+  }, "painted dangle hand, rod, cord, fish, and hint");
+  const dangleOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-dangle-overlay.png");
+  writeFileSync(dangleOverlayScreenshot, dangleOverlayCapture.toPNG());
+  const dangleDownPoint = {
+    x: dangleStart.x + Math.round(dangleStart.width / 2),
+    y: placementWorkArea.y + placementWorkArea.height - 140,
+  };
+  qa.setCursorPoint(dangleDownPoint);
+  await delay(700);
+  for (let index = 0; index < 110; index += 1) {
+    qa.setCursorPoint({
+      x: dangleDownPoint.x + ((index % 12) - 6) * 14,
+      y: dangleDownPoint.y + (index % 3) * 10,
+    });
     await delay(20);
   }
-  await waitFor(() => qa.getQuickPlaySession().phase === "interact", "dangle meaningful movement gate");
+  await waitFor(() => qa.getQuickPlayTrace().some((entry) => entry.phase === "pounce"), "dangle meaningful movement pounce gate");
+  await waitFor(async () => {
+    const session = qa.getQuickPlaySession();
+    return session.actorDirection === "front"
+      && await execute(pet, "/^action\\.dangle_(pounce|play|pursuit_run)_front$/.test(document.querySelector('[data-actor-animation]')?.dataset.actorAnimation || '')");
+  }, "dangle straight-down route uses authored front-facing frames");
+  verify("Dangle straight-down pursuit uses authored front-facing frames", true, "the live session and rendered actor both selected the front bundle");
   const pursuedBounds = pet.getBounds();
-  const dangleOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-dangle-overlay.png");
-  writeFileSync(dangleOverlayScreenshot, (await dangleOverlay.webContents.capturePage()).toPNG());
-  verify("Dangle requires more than two seconds of meaningful movement", JSON.stringify(pursuedBounds) !== JSON.stringify(dangleStart), `continuous pointer motion armed pursuit at ${JSON.stringify(pursuedBounds)}`);
-  verify("Dangle click releases its one pointer mode", qa.submitQuickPlayOverlayInput(qa.getSettings().petVisible ? dangleOrigin : null) === true, "one click resolves and removes the wand/fish overlay");
+  const chasePoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .88), y: placementWorkArea.y + Math.round(placementWorkArea.height * .48) };
+  qa.setCursorPoint(chasePoint);
+  await waitFor(async () => {
+    const session = qa.getQuickPlaySession();
+    return session.actorDirection === "back-right"
+      && await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === 'action.dangle_pursuit_run_back_right' && document.querySelector('[data-actor-mirrored]')?.dataset.actorMirrored === 'false'");
+  }, "dangle actor selecting the authored upper-right diagonal pursuit");
+  verify("Dangle upper-right pursuit uses native diagonal frames", true, "the session and renderer selected action.dangle_pursuit_run_back_right without runtime mirroring");
+  await waitFor(() => {
+    const trace = qa.getQuickPlayTrace();
+    return trace.some((entry) => entry.phase === "pursuit"
+      && entry.bounds
+      && entry.bounds.x >= pursuedBounds.x + 180
+      && entry.bounds.y !== pursuedBounds.y);
+  }, "dangle authored multi-axis pursuit");
+  verify("Dangle requires more than one second of meaningful movement", JSON.stringify(pursuedBounds) !== JSON.stringify(dangleStart), `continuous pointer motion armed an authored pounce at ${JSON.stringify(pursuedBounds)}`);
+  const reverseStartedAt = Date.now();
+  const reverseStartBounds = pet.getBounds();
+  const sideReversePoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .12), y: chasePoint.y };
+  qa.setCursorPoint(sideReversePoint);
+  await waitFor(async () => {
+    const session = qa.getQuickPlaySession();
+    const currentCenterX = session.currentBounds ? session.currentBounds.x + session.currentBounds.width / 2 : Number.NEGATIVE_INFINITY;
+    return session.targetPoint?.x < currentCenterX
+      && await execute(pet, "document.querySelector('[data-actor-facing]')?.dataset.actorFacing === 'left' && document.querySelector('[data-actor-mirrored]')?.dataset.actorMirrored === 'true'");
+  }, "dangle actor reversing toward the rendered fish");
+  await waitFor(() => qa.getQuickPlayTrace().some((entry) => entry.at >= reverseStartedAt && entry.phase === "pursuit" && entry.bounds?.x < reverseStartBounds.x), "dangle replanned leftward pursuit");
+  const reversedBounds = pet.getBounds();
+  await execute(dangleOverlay, `window.tokenpet.quickPlayOverlayInput({ type: 'click', screenX: ${sideReversePoint.x}, screenY: ${sideReversePoint.y}, timestamp: Date.now() })`);
+  await waitForClosed(qa, "quickplayOverlay");
   qa.setCursorPoint(null);
   await waitForQuickPlayEnd("drag_dangle");
   const dangleTrace = qa.getQuickPlayTrace();
-  verify("Dangle returns to exact starting bounds", JSON.stringify(pet.getBounds()) === JSON.stringify(dangleStart) && dangleTrace.some((entry) => entry.phase === "interact"), "pursuit ends with an exact home restoration");
-  quickPlaySummaries.push({ action: "drag_dangle", startBounds: dangleStart, pursuedBounds, endBounds: pet.getBounds(), overlayScreenshot: dangleOverlayScreenshot, trace: dangleTrace });
+  verify(
+    "Dangle uses offline phases and returns to exact starting bounds",
+    JSON.stringify(pet.getBounds()) === JSON.stringify(dangleStart)
+      && existsSync(dangleOverlayScreenshot)
+      && ["alert", "stalk", "crouch", "pounce", "play", "pursuit", "release", "return", "settle"].every((phase) => dangleTrace.some((entry) => entry.phase === phase)),
+    `painted offline prop rig; authored trace ${dangleTrace.map((entry) => entry.phase).join(" → ")} ends at the exact captured home`,
+  );
+  verify("Dangle faces the rendered fish throughout target changes", reversedBounds.x < reverseStartBounds.x, "the actor faced lower-left, turned right when the fish crossed it, then interrupted the stale route and moved left when the fish crossed back");
+  quickPlaySummaries.push({ action: "drag_dangle", startBounds: dangleStart, earlyReleaseTrace: earlyDangleTrace, pursuedBounds, chasePoint, reversePoint: sideReversePoint, reversedBounds, endBounds: pet.getBounds(), overlayScreenshot: dangleOverlayScreenshot, trace: dangleTrace });
 
   const yarnPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .61), y: placementWorkArea.y + Math.round(placementWorkArea.height * .62) };
   const yarn = await runClosedQuickPlayAction("toss_yarn", { mode: "yarn", point: yarnPoint });

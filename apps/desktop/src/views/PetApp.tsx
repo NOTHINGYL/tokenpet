@@ -49,6 +49,36 @@ function interactionAllowed(event: PetDirectorEvent, story: typeof defaultPetSto
   return true;
 }
 
+const dangleDirectionalActions = {
+  pounce: {
+    left: "dangle_pounce", right: "dangle_pounce", front: "dangle_pounce_front", back: "dangle_pounce_back",
+    "front-left": "dangle_pounce_front_left", "front-right": "dangle_pounce_front_right",
+    "back-left": "dangle_pounce_back_left", "back-right": "dangle_pounce_back_right",
+  },
+  play: {
+    left: "dangle_play", right: "dangle_play", front: "dangle_play_front", back: "dangle_play_back",
+    "front-left": "dangle_play_front_left", "front-right": "dangle_play_front_right",
+    "back-left": "dangle_play_back_left", "back-right": "dangle_play_back_right",
+  },
+  pursuit: {
+    left: "dangle_pursuit_run", right: "dangle_pursuit_run", front: "dangle_pursuit_run_front", back: "dangle_pursuit_run_back",
+    "front-left": "dangle_pursuit_run_front_left", "front-right": "dangle_pursuit_run_front_right",
+    "back-left": "dangle_pursuit_run_back_left", "back-right": "dangle_pursuit_run_back_right",
+  },
+  return: {
+    left: "dangle_return_walk", right: "dangle_return_walk", front: "dangle_return_walk_front", back: "dangle_return_walk_back",
+    "front-left": "dangle_return_walk_front_left", "front-right": "dangle_return_walk_front_right",
+    "back-left": "dangle_return_walk_back_left", "back-right": "dangle_return_walk_back_right",
+  },
+} as const satisfies Record<string, Record<NonNullable<QuickPlaySession["actorDirection"]>, PetActionId>>;
+
+function dangleDirectionalAction(
+  phase: keyof typeof dangleDirectionalActions,
+  direction: QuickPlaySession["actorDirection"],
+): PetActionId {
+  return dangleDirectionalActions[phase][direction ?? "right"];
+}
+
 export function PetApp() {
   const { usage } = useUsage();
   const { settings } = useAppSettings();
@@ -59,7 +89,7 @@ export function PetApp() {
   const [cursorTracking, setCursorTracking] = useState<CursorTrackingVisual | null>(null);
   const [quickPlaySession, setQuickPlaySession] = useState<QuickPlaySession>({
     activeAction: null, startedAt: null, phase: "idle", phaseStartedAt: null, startBounds: null,
-    startDirectorState: null, targetPoint: null, walkMotion: null, pointerMode: "none", resting: false, failure: null,
+    startDirectorState: null, targetPoint: null, walkMotion: null, actorDirection: null, pointerMode: "none", resting: false, failure: null,
   });
   const appearance = normalizePetAppearance(settings);
   const story = settings.petStory ?? defaultPetStory;
@@ -450,11 +480,20 @@ export function PetApp() {
       if (phase === "return") return "feed_snack_return_run";
       if (phase === "settle" || phase === "complete") return "feed_snack_settle";
     }
+    if (action === "drag_dangle") {
+      const direction = quickPlaySession.actorDirection;
+      if (phase === "alert" || phase === "stand" || phase === "awaiting-placement") return "dangle_alert";
+      if (phase === "stalk") return "dangle_stalk";
+      if (phase === "crouch") return "dangle_crouch";
+      if (phase === "pounce") return dangleDirectionalAction("pounce", direction);
+      if (phase === "play" || phase === "interact") return dangleDirectionalAction("play", direction);
+      if (phase === "pursuit") return dangleDirectionalAction("pursuit", direction);
+      if (phase === "return") return dangleDirectionalAction("return", direction);
+      if (phase === "release" || phase === "settle" || phase === "complete") return "dangle_settle";
+    }
     if (action === "summon_to_pointer" && phase === "outbound") return "summon_to_pointer";
     if (action === "toss_yarn" && phase === "return") return "toss_yarn";
     if (phase === "return" || phase === "outbound") return "run_across";
-    if (action === "drag_dangle" && phase === "stalk") return "focus_loop";
-    if (action === "drag_dangle" && phase === "interact") return "drag_dangle";
     if (action === "toss_yarn" && phase === "interact") return "toss_yarn";
     if (action === "play_cursor") return "play_cursor";
     if (action === "nap_here") {
@@ -467,9 +506,23 @@ export function PetApp() {
     if (action === "summon_to_pointer" && phase === "stand") return "summon_to_screen";
     if (action === "summon_to_pointer") return phase === "settle" ? "focus_loop" : "run_across";
     return action;
-  }, [quickPlaySession.activeAction, quickPlaySession.phase, story.actionSettings.byAction.nap_here, story.actionSettings.byAction.walk_round_trip]);
+  }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.phase, story.actionSettings.byAction.nap_here, story.actionSettings.byAction.walk_round_trip]);
 
   const quickPlayFacing = useMemo<"left" | "right" | undefined>(() => {
+    if (quickPlaySession.activeAction === "drag_dangle") {
+      if (quickPlaySession.actorDirection && !["left", "right"].includes(quickPlaySession.actorDirection)) return undefined;
+      if (quickPlaySession.actorDirection === "left" || quickPlaySession.actorDirection === "right") return quickPlaySession.actorDirection;
+      const currentBounds = quickPlaySession.currentBounds;
+      if (!currentBounds) return undefined;
+      const currentCenterX = currentBounds.x + currentBounds.width / 2;
+      if (quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete") return undefined;
+      if (quickPlaySession.phase === "return" && quickPlaySession.startBounds) {
+        const homeCenterX = quickPlaySession.startBounds.x + quickPlaySession.startBounds.width / 2;
+        return homeCenterX >= currentCenterX ? "right" : "left";
+      }
+      if (!quickPlaySession.targetPoint) return undefined;
+      return quickPlaySession.targetPoint.x >= currentCenterX ? "right" : "left";
+    }
     if (
       !["walk_round_trip", "token_snack"].includes(quickPlaySession.activeAction ?? "")
       || !quickPlaySession.startBounds
@@ -479,12 +532,17 @@ export function PetApp() {
     const outboundFacing = quickPlaySession.targetPoint.x >= startCenterX ? "right" : "left";
     const facesHome = quickPlaySession.phase === "return" || quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete";
     return facesHome ? (outboundFacing === "right" ? "left" : "right") : outboundFacing;
-  }, [quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.startBounds, quickPlaySession.targetPoint]);
+  }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.currentBounds, quickPlaySession.phase, quickPlaySession.startBounds, quickPlaySession.targetPoint]);
+
+  const actorAppearance = useMemo(() => quickPlaySession.activeAction === "drag_dangle"
+    ? { ...appearance, size: appearance.size * .84 }
+    : appearance, [appearance, quickPlaySession.activeAction]);
 
   const authoredLocomotionActive = (
     quickPlaySession.activeAction === "walk_round_trip"
     || quickPlaySession.activeAction === "token_snack"
-  ) && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "return");
+    || quickPlaySession.activeAction === "drag_dangle"
+  ) && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "pursuit" || quickPlaySession.phase === "return");
   const authoredLocomotionFrozen = quickPlaySession.activeAction === "walk_round_trip" && (
     quickPlaySession.phase === "stand"
     || quickPlaySession.phase === "settle"
@@ -519,7 +577,7 @@ export function PetApp() {
     >
       <div className="pet-drag-region" aria-label="Drag TokenPet">
         <PetAppearanceVisual
-          appearance={appearance}
+          appearance={actorAppearance}
           usage={usage}
           moodId={mood}
           storyActionId={quickPlayActorAction ?? directorAction}
@@ -528,6 +586,8 @@ export function PetApp() {
             ? quickPlaySession.walkMotion?.startedAt
             : quickPlaySession.activeAction === "token_snack" && ["stand", "arrive", "lick", "eat", "settle"].includes(quickPlaySession.phase)
               ? quickPlaySession.phaseStartedAt ?? undefined
+              : quickPlaySession.activeAction === "drag_dangle"
+                ? quickPlaySession.phaseStartedAt ?? undefined
               : undefined}
           animationStartedAtMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.startedAt : undefined}
           animationCycleDurationMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.cycleDurationMs : undefined}

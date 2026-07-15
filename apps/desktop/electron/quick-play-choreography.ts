@@ -9,6 +9,9 @@
 export type QuickPlayPoint = { x: number; y: number };
 
 export type QuickPlayBounds = QuickPlayPoint & { width: number; height: number };
+export type DangleActorDirection =
+  | "left" | "right" | "front" | "back"
+  | "front-left" | "front-right" | "back-left" | "back-right";
 
 export type QuickPlayAnimatedActionId =
   | "walk_round_trip"
@@ -249,6 +252,23 @@ export function clampQuickPlayBounds(bounds: QuickPlayBounds, workArea: QuickPla
 }
 
 /**
+ * Resolve one of the eight authored Dangle camera sectors. Sector boundaries
+ * sit at 22.5 degrees, so diagonal destinations use diagonal anatomy instead
+ * of rotating a front/back cat or sliding a side cat across the screen.
+ */
+export function dangleActorDirection(from: QuickPlayBounds, to: QuickPlayBounds): DangleActorDirection {
+  const deltaX = to.x + to.width / 2 - (from.x + from.width / 2);
+  const deltaY = to.y + to.height / 2 - (from.y + from.height / 2);
+  const absoluteX = Math.abs(deltaX);
+  const absoluteY = Math.abs(deltaY);
+  const sectorBoundary = Math.SQRT2 - 1; // tan(22.5°)
+  if (absoluteY <= absoluteX * sectorBoundary) return deltaX >= 0 ? "right" : "left";
+  if (absoluteX <= absoluteY * sectorBoundary) return deltaY >= 0 ? "front" : "back";
+  if (deltaY >= 0) return deltaX >= 0 ? "front-right" : "front-left";
+  return deltaX >= 0 ? "back-right" : "back-left";
+}
+
+/**
  * Register a Feed interaction by the authored cat's nose, not by the center of
  * its transparent BrowserWindow. The source faces right; left approaches flip
  * the complete canvas and therefore mirror the nose anchor.
@@ -323,6 +343,20 @@ export const FEED_SNACK_RETURN_ROOT_MOTION: WalkRootMotionProfile = {
   nominalStepDistancePx: 24,
   footfallsPerCycle: 4,
   rootStepKeyframes: [0, .32, 1, 1.32, 2, 2.32, 3, 3.32, 4],
+};
+
+/** Dangle pursuit is a low, fast four-contact run authored around the fish. */
+export const DANGLE_PURSUIT_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 26,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4],
+};
+
+/** Releasing the wand uses a calm dedicated walk back to the captured home. */
+export const DANGLE_RETURN_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 18,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4],
 };
 
 const NATURAL_WALK_STEP_DURATION_MS = 220;
@@ -720,7 +754,7 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
         // The native executor additionally gates this phase with
         // accumulateDangleMovement; elapsed time alone can never substitute for
         // meaningful continuous pointer movement.
-        { id: "swing_until_armed", durationMs: 2_001 },
+        { id: "swing_until_armed", durationMs: 1_001 },
         { id: "pounce", durationMs: 620 },
         { id: "play_and_pursue", durationMs: clamp(2_200 * 100 / options.pursuitPace, 1_200, 3_200) },
         { id: "walk_return", durationMs: travelDuration(travelDistancePx, options.pursuitPace) },
@@ -804,7 +838,7 @@ export function accumulateDangleMovement(
   timestampMs: number,
   options: DangleMovementOptions = {},
 ): DangleMovementState & { meaningfulSample: boolean } {
-  const requiredDurationMs = Math.max(2_000, options.requiredDurationMs ?? 2_000);
+  const requiredDurationMs = Math.max(1_000, options.requiredDurationMs ?? 1_000);
   const minimumSampleDistancePx = Math.max(0.5, options.minimumSampleDistancePx ?? 1.5);
   const minimumVelocityPxPerSecond = Math.max(1, options.minimumVelocityPxPerSecond ?? 28);
   const maximumSampleGapMs = Math.max(16, options.maximumSampleGapMs ?? 180);
@@ -830,7 +864,7 @@ export function accumulateDangleMovement(
     lastTimestampMs: timestampMs,
     meaningfulDurationMs,
     meaningfulDistancePx,
-    // Strictly greater than two seconds, as required by the design contract.
+    // Strictly greater than one second, as required by the design contract.
     armed: previous.armed || meaningfulDurationMs > requiredDurationMs,
     meaningfulSample,
   };

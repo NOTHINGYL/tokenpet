@@ -9,18 +9,21 @@ const storyBuildPath = join(root, "dist-electron/story.js");
 const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
 const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
 const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
+const dangleToyExecutorBuildPath = join(root, "dist-electron/quick-play/executors/dangle-toy.js");
 const playCursorExecutorBuildPath = join(root, "dist-electron/quick-play/executors/play-cursor.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(dangleToyExecutorBuildPath), "Dangle Toy executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(playCursorExecutorBuildPath), "Play Cursor executor build is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
 const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
 const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
+const dangleToyExecutor = await import(`${pathToFileURL(dangleToyExecutorBuildPath).href}?qa=${Date.now()}`);
 const playCursorExecutor = await import(`${pathToFileURL(playCursorExecutorBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
   entryPoints: [join(root, "apps/desktop/src/features/pet-story/PetDirector.ts")],
@@ -672,17 +675,73 @@ verify("Feed Snack executor preserves isolated semantic ordering", () => {
   assert.equal(feedExecutorCompleted, true);
 });
 
-verify("Quick Play dangle gate rejects jitter and requires over two seconds", () => {
+verify("Quick Play dangle gate rejects jitter and requires over one second", () => {
   let state = quickPlay.createDangleMovementState();
-  for (let time = 0; time <= 2_200; time += 100) {
+  for (let time = 0; time <= 1_100; time += 100) {
     state = quickPlay.accumulateDangleMovement(state, { x: time / 10, y: 40 }, time);
   }
   assert.equal(state.armed, true);
+  let exactBoundary = quickPlay.createDangleMovementState();
+  for (let time = 0; time <= 1_000; time += 100) {
+    exactBoundary = quickPlay.accumulateDangleMovement(exactBoundary, { x: time / 10, y: 40 }, time);
+  }
+  assert.equal(exactBoundary.armed, false, "the gate remains strictly greater than 1,000ms");
   let jitter = quickPlay.createDangleMovementState();
   for (let time = 0; time <= 3_000; time += 100) {
     jitter = quickPlay.accumulateDangleMovement(jitter, { x: (time / 100) % 2 * .2, y: 40 }, time);
   }
   assert.equal(jitter.armed, false);
+});
+
+verify("Dangle selects authored eight-sector camera directions", () => {
+  const origin = { x: 500, y: 300, width: 260, height: 260 };
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 210, y: 520 }), "front-left", "lower-left target uses its diagonal frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 790, y: 520 }), "front-right", "lower-right target uses its diagonal frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 210, y: 80 }), "back-left", "upper-left target uses its diagonal frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 790, y: 80 }), "back-right", "upper-right target uses its diagonal frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, y: 620 }), "front", "straight-down target uses front frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, y: 20 }), "back", "screen-up target uses rear frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 900, y: 360 }), "right", "shallow right diagonal keeps side frames");
+  assert.equal(quickPlay.dangleActorDirection(origin, { ...origin, x: 100, y: 360 }), "left", "shallow left diagonal keeps mirrored side frames");
+});
+
+const earlyDanglePhases = [];
+let earlyDangleStopped = false;
+let earlyDangleReturned = false;
+const earlyDangleResult = await dangleToyExecutor.executeDangleToy({
+  phase: (phase) => earlyDanglePhases.push(phase),
+  delay: (durationMs) => durationMs === 280 ? Promise.resolve(true) : new Promise(() => {}),
+  waitForRelease: async () => ({ x: 10, y: 20, velocityX: 0, velocityY: 0 }),
+  closePropOverlay: () => {},
+  stopPursuit: async () => { earlyDangleStopped = true; },
+  returnHome: async () => { earlyDangleReturned = true; return true; },
+  complete: async () => {},
+});
+verify("Dangle executor accepts a release before the one-second gate", () => {
+  assert.equal(earlyDangleResult, true);
+  assert.deepEqual(earlyDanglePhases, ["alert", "release", "return", "settle"]);
+  assert.equal(earlyDangleStopped, true);
+  assert.equal(earlyDangleReturned, true);
+});
+
+const fullDanglePhases = [];
+let resolveFullDangleRelease;
+const fullDangleRelease = new Promise((resolve) => { resolveFullDangleRelease = resolve; });
+const fullDanglePromise = dangleToyExecutor.executeDangleToy({
+  phase: (phase) => fullDanglePhases.push(phase),
+  delay: async () => true,
+  waitForRelease: () => fullDangleRelease,
+  closePropOverlay: () => {},
+  stopPursuit: async () => {},
+  returnHome: async () => true,
+  complete: async () => {},
+});
+await new Promise((resolve) => setImmediate(resolve));
+resolveFullDangleRelease({ x: 500, y: 400, velocityX: 20, velocityY: 30 });
+const fullDangleResult = await fullDanglePromise;
+verify("Dangle executor preserves isolated setup, release and exact-return semantics", () => {
+  assert.equal(fullDangleResult, true);
+  assert.deepEqual(fullDanglePhases, ["alert", "stalk", "crouch", "release", "return", "settle"]);
 });
 
 const cursorExecutorPhases = [];

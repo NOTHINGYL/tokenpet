@@ -7,7 +7,7 @@
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "5ebf0b1f6ec174d4dbdd6b7780b4c1ded1a4c9b027927b96cd392170eae33af2",
+  "contentHash": "e290c6919fa0ba4b9692aa3bfa0d9a106aa5da8ccb423dd006793bda10839694",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -575,15 +575,15 @@
       "kind": "loop",
       "mood": "focused",
       "motionState": "drag_dangle",
-      "fps": 12,
+      "fps": 8,
       "loop": true,
       "priority": 100,
-      "reducedMotionFallback": "idle_breathe",
+      "reducedMotionFallback": "dangle_crouch",
       "frames": [
         {
           "id": "drag_dangle-1",
           "mood": "focused",
-          "src": "frames/focus_loop.png",
+          "src": "frames/dangle_alert_01.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -591,25 +591,14 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 360,
-          "sha256": "ba1a2529dd18c3814e51a2c5e2ca77360465228901243bf2206d9ec4a71181a9",
-          "sourceAssetId": "drag_dangle:1",
-          "bodyTransform": {
-            "origin": {
-              "x": 512,
-              "y": 650
-            },
-            "translateX": 10,
-            "translateY": 10,
-            "scaleX": -0.006,
-            "scaleY": 0.012,
-            "rotation": 1.6
-          }
+          "durationMs": 180,
+          "sha256": "378f8bd16d1df8fce45e43f4b6d834eface9e33de14b961d51a6e977ffa55a59",
+          "sourceAssetId": "drag_dangle:1"
         },
         {
           "id": "drag_dangle-2",
           "mood": "focused",
-          "src": "frames/drag_dangle.png",
+          "src": "frames/dangle_alert_02.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -617,25 +606,344 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 520,
-          "sha256": "f199d760b9d773670223a4e2cdc9d9ea5968331ae389e7c23b57a8c177b81bfa",
-          "sourceAssetId": "drag_dangle:2",
-          "bodyTransform": {
-            "origin": {
-              "x": 512,
-              "y": 650
-            },
-            "translateX": 10,
-            "translateY": 10,
-            "scaleX": -0.006,
-            "scaleY": 0.012,
-            "rotation": 1.6
-          }
+          "durationMs": 210,
+          "sha256": "419053e4f9f1c89771f4505fcf46b9c80e164b47525fc76b1d0abd5c196f400c",
+          "sourceAssetId": "drag_dangle:2"
         },
         {
           "id": "drag_dangle-3",
           "mood": "focused",
-          "src": "frames/play_cursor.png",
+          "src": "frames/dangle_stalk_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "c0fe31ff0b72f25e27a268e014aac9dce907c09a9d7bf9bcd1206c29e2de78d8",
+          "sourceAssetId": "drag_dangle:3"
+        },
+        {
+          "id": "drag_dangle-4",
+          "mood": "focused",
+          "src": "frames/dangle_stalk_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "d7bc9241952b4b6d72e8384956116c9e71bc036b89eb63ca11827e935e09e3a0",
+          "sourceAssetId": "drag_dangle:4"
+        },
+        {
+          "id": "drag_dangle-5",
+          "mood": "focused",
+          "src": "frames/dangle_crouch_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "a374ae1de39e217c6422b2e920b735874cf3cd58c92b38f87426693905f9cbc1",
+          "sourceAssetId": "drag_dangle:5"
+        },
+        {
+          "id": "drag_dangle-6",
+          "mood": "focused",
+          "src": "frames/dangle_crouch_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "20f7f7bdd02e939a93e0c0b6eb26a8091c3e0b57f3d3a9c2a61588fc71ac15cc",
+          "sourceAssetId": "drag_dangle:6"
+        },
+        {
+          "id": "drag_dangle-7",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "cfde345c4949d65fe92d321231c3bf301fce012f9d8ab1438946252f3d290256",
+          "sourceAssetId": "drag_dangle:7"
+        },
+        {
+          "id": "drag_dangle-8",
+          "mood": "focused",
+          "src": "frames/dangle_play_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "02879238a2696daa42ca62da1bb512ecc6f51ec1499cd768d076ad5bc2a5a4d5",
+          "sourceAssetId": "drag_dangle:8"
+        }
+      ]
+    },
+    "action.dangle_alert": {
+      "id": "action.dangle_alert",
+      "kind": "transition",
+      "mood": "focused",
+      "motionState": "dangle_alert",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "frames": [
+        {
+          "id": "dangle_alert-1",
+          "mood": "focused",
+          "src": "frames/dangle_alert_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "378f8bd16d1df8fce45e43f4b6d834eface9e33de14b961d51a6e977ffa55a59",
+          "sourceAssetId": "dangle_alert:1"
+        },
+        {
+          "id": "dangle_alert-2",
+          "mood": "focused",
+          "src": "frames/dangle_alert_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 210,
+          "sha256": "419053e4f9f1c89771f4505fcf46b9c80e164b47525fc76b1d0abd5c196f400c",
+          "sourceAssetId": "dangle_alert:2"
+        }
+      ]
+    },
+    "action.dangle_stalk": {
+      "id": "action.dangle_stalk",
+      "kind": "transition",
+      "mood": "focused",
+      "motionState": "dangle_stalk",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "frames": [
+        {
+          "id": "dangle_stalk-1",
+          "mood": "focused",
+          "src": "frames/dangle_stalk_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "c0fe31ff0b72f25e27a268e014aac9dce907c09a9d7bf9bcd1206c29e2de78d8",
+          "sourceAssetId": "dangle_stalk:1"
+        },
+        {
+          "id": "dangle_stalk-2",
+          "mood": "focused",
+          "src": "frames/dangle_stalk_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "d7bc9241952b4b6d72e8384956116c9e71bc036b89eb63ca11827e935e09e3a0",
+          "sourceAssetId": "dangle_stalk:2"
+        }
+      ]
+    },
+    "action.dangle_crouch": {
+      "id": "action.dangle_crouch",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_crouch",
+      "fps": 6,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_stalk",
+      "frames": [
+        {
+          "id": "dangle_crouch-1",
+          "mood": "focused",
+          "src": "frames/dangle_crouch_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "a374ae1de39e217c6422b2e920b735874cf3cd58c92b38f87426693905f9cbc1",
+          "sourceAssetId": "dangle_crouch:1"
+        },
+        {
+          "id": "dangle_crouch-2",
+          "mood": "focused",
+          "src": "frames/dangle_crouch_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "20f7f7bdd02e939a93e0c0b6eb26a8091c3e0b57f3d3a9c2a61588fc71ac15cc",
+          "sourceAssetId": "dangle_crouch:2"
+        }
+      ]
+    },
+    "action.dangle_pounce": {
+      "id": "action.dangle_pounce",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "ac9ff970d2dae6b0d633ebc04a4220298072c53509dc7e6a7a6cc9b974503ccd",
+          "sourceAssetId": "dangle_pounce:1"
+        },
+        {
+          "id": "dangle_pounce-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "cf9490ad952a5b348098ab4ad3027bc0cfc6f5355513c313f0b5c414c499ed9a",
+          "sourceAssetId": "dangle_pounce:2"
+        },
+        {
+          "id": "dangle_pounce-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "cfde345c4949d65fe92d321231c3bf301fce012f9d8ab1438946252f3d290256",
+          "sourceAssetId": "dangle_pounce:3"
+        },
+        {
+          "id": "dangle_pounce-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "53d9c9089ecdd7ca848bbd271b4db33083faab3a66d6094524feceafa1beea16",
+          "sourceAssetId": "dangle_pounce:4"
+        }
+      ]
+    },
+    "action.dangle_play": {
+      "id": "action.dangle_play",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "02879238a2696daa42ca62da1bb512ecc6f51ec1499cd768d076ad5bc2a5a4d5",
+          "sourceAssetId": "dangle_play:1"
+        },
+        {
+          "id": "dangle_play-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "3022c27d8af867ec612b66d63ef91a4c62f2a799b30661baa9f4f9ef26230d59",
+          "sourceAssetId": "dangle_play:2"
+        },
+        {
+          "id": "dangle_play-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_03.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -644,24 +952,13 @@
             "height": 1024
           },
           "durationMs": 280,
-          "sha256": "9b92b56a4f53d918112728b52e5fd797626dc4189dd4dc38e5473647e7e20238",
-          "sourceAssetId": "drag_dangle:3",
-          "bodyTransform": {
-            "origin": {
-              "x": 512,
-              "y": 650
-            },
-            "translateX": 10,
-            "translateY": 10,
-            "scaleX": -0.006,
-            "scaleY": 0.012,
-            "rotation": 1.6
-          }
+          "sha256": "232c274e3beb86e1949d2e6132fa75b7972ce9239de9d0e562ab68db9850a7b8",
+          "sourceAssetId": "dangle_play:3"
         },
         {
-          "id": "drag_dangle-4",
+          "id": "dangle_play-4",
           "mood": "focused",
-          "src": "frames/drag_dangle.png",
+          "src": "frames/dangle_play_04.png",
           "kind": "png",
           "rect": {
             "x": 0,
@@ -669,20 +966,1575 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 420,
-          "sha256": "f199d760b9d773670223a4e2cdc9d9ea5968331ae389e7c23b57a8c177b81bfa",
-          "sourceAssetId": "drag_dangle:4",
-          "bodyTransform": {
-            "origin": {
-              "x": 512,
-              "y": 650
-            },
-            "translateX": 10,
-            "translateY": 10,
-            "scaleX": -0.006,
-            "scaleY": 0.012,
-            "rotation": 1.6
+          "durationMs": 260,
+          "sha256": "3a52d0023445908a19d0e1dc4ce5bf98a7f648ca31ce3eb3eeff8321191465c7",
+          "sourceAssetId": "dangle_play:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run": {
+      "id": "action.dangle_pursuit_run",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
           }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "abcc7d968d9c925a1a346c773decec4161460f36c769072b4f7083ac47349b94",
+          "sourceAssetId": "dangle_pursuit_run:1"
+        },
+        {
+          "id": "dangle_pursuit_run-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "0eddafdb8fef2d90817fc6289786f387bbb3ac4087ceb51a7229bf8d38067eaa",
+          "sourceAssetId": "dangle_pursuit_run:2"
+        },
+        {
+          "id": "dangle_pursuit_run-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "007c238dc2006f55a091c8309cffe3055fa54ba8f03c434e00d878d56085485d",
+          "sourceAssetId": "dangle_pursuit_run:3"
+        },
+        {
+          "id": "dangle_pursuit_run-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f19220be6a1401a47ba25a472c0bc22acfe90087152aaa4ef1d708c4f6bc375b",
+          "sourceAssetId": "dangle_pursuit_run:4"
+        },
+        {
+          "id": "dangle_pursuit_run-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "5f4d41d3817fcf718f1d59e2aa25c46de94a1ede94991f95e7875c9903bce004",
+          "sourceAssetId": "dangle_pursuit_run:5"
+        },
+        {
+          "id": "dangle_pursuit_run-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "24c7da9e0e8f8e37cb232dd58cce2237539c0630d729bba269156e9b986e6e25",
+          "sourceAssetId": "dangle_pursuit_run:6"
+        },
+        {
+          "id": "dangle_pursuit_run-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "49b445de92c4ce0c82849e192d06a739bb0a4c36b72713754fc94298a5e56e70",
+          "sourceAssetId": "dangle_pursuit_run:7"
+        },
+        {
+          "id": "dangle_pursuit_run-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "11687226e0d17fc74767e2e2b9a961f247e9507bbf38bd92478bb9825c401938",
+          "sourceAssetId": "dangle_pursuit_run:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk": {
+      "id": "action.dangle_return_walk",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "965ad409fb7768be4dc6d798b834305fbfb58fe6ce4e56eb200d30bf092337ce",
+          "sourceAssetId": "dangle_return_walk:1"
+        },
+        {
+          "id": "dangle_return_walk-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "8014ef90a3536d5297663f2b56a9901b5299e7bb02121c01b80c995dd496fc6a",
+          "sourceAssetId": "dangle_return_walk:2"
+        },
+        {
+          "id": "dangle_return_walk-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "d67fb39cdfc880e568d26a38bf690b6672da01a6fd41a69fc0acfa8e8e5eacfa",
+          "sourceAssetId": "dangle_return_walk:3"
+        },
+        {
+          "id": "dangle_return_walk-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "0f940250324ce7d430d16eaec35653178a8b8716e8da1b8c5680b210c7949084",
+          "sourceAssetId": "dangle_return_walk:4"
+        },
+        {
+          "id": "dangle_return_walk-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "d312ceb8e8192b14fee1e01d1747c6e53b2d8c49116acf18ba6efc354b678d51",
+          "sourceAssetId": "dangle_return_walk:5"
+        },
+        {
+          "id": "dangle_return_walk-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "b7e68d10c885d42a619a5e1bcdb59eccd261dfbf70b381ff18fb5d9beed9257d",
+          "sourceAssetId": "dangle_return_walk:6"
+        },
+        {
+          "id": "dangle_return_walk-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "83abebd8d8e302d2e3a628162dd9474cc74cfd6e5ffe4180884003f92d78c882",
+          "sourceAssetId": "dangle_return_walk:7"
+        },
+        {
+          "id": "dangle_return_walk-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "c674425948098a82891f14985595378797e583a13f8847884b25a4fb51262122",
+          "sourceAssetId": "dangle_return_walk:8"
+        }
+      ]
+    },
+    "action.dangle_pounce_front": {
+      "id": "action.dangle_pounce_front",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_front",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_front-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "c5b3eb58e3eecc11ad70965ff9e4c1620e242483ce9743b177c3d53a7ab4522d",
+          "sourceAssetId": "dangle_pounce_front:1"
+        },
+        {
+          "id": "dangle_pounce_front-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "4c6ebe1dc48febebff33264c411e7e7bf1a0c430611ea9bf3e9c84ae42241429",
+          "sourceAssetId": "dangle_pounce_front:2"
+        },
+        {
+          "id": "dangle_pounce_front-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "56f5b5cbc66f472746dd0a1fdd7bccf789b75a7ef91892f0fe36fee4f5d712ba",
+          "sourceAssetId": "dangle_pounce_front:3"
+        },
+        {
+          "id": "dangle_pounce_front-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "94bd1d5e7dee25adf427292f2fcc989f1c987f3740bdb7f3aa9f8507e2023d6c",
+          "sourceAssetId": "dangle_pounce_front:4"
+        }
+      ]
+    },
+    "action.dangle_pounce_back": {
+      "id": "action.dangle_pounce_back",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_back",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_back-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "c083ec67e64d0b673eaec34b1e2111994e1321ae07ca405306cf9f72b8e5bf41",
+          "sourceAssetId": "dangle_pounce_back:1"
+        },
+        {
+          "id": "dangle_pounce_back-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "df8f9689595326a36f76f4a2421a4daebf11769eaac04f82fbb043f4e294713e",
+          "sourceAssetId": "dangle_pounce_back:2"
+        },
+        {
+          "id": "dangle_pounce_back-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "b1b30c6cf8678a6fe35e20a11d49d58d55b79991de6e747988651a337f006d24",
+          "sourceAssetId": "dangle_pounce_back:3"
+        },
+        {
+          "id": "dangle_pounce_back-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "ed9c304cc93df1690240163355a7dce6b7b60892da3d74a91733d49772bf59cf",
+          "sourceAssetId": "dangle_pounce_back:4"
+        }
+      ]
+    },
+    "action.dangle_play_front": {
+      "id": "action.dangle_play_front",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_front",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_front-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "416d492658e2ec4cf56d317dc9d279a415e4da4a3ffc07f903280bf4811b5b74",
+          "sourceAssetId": "dangle_play_front:1"
+        },
+        {
+          "id": "dangle_play_front-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "6b6629c3a868a2b434c8386558d5b6d0992517c33e90459fa41d01b8448040f1",
+          "sourceAssetId": "dangle_play_front:2"
+        },
+        {
+          "id": "dangle_play_front-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "2cd9e31813eac727df451e6bfe7d82d3da729f20e6cfe8938ad8aecbdea9e6f1",
+          "sourceAssetId": "dangle_play_front:3"
+        },
+        {
+          "id": "dangle_play_front-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "73294a959a40397bd5313e6f0b3eb759d72a7e11eb8f6a5890c83609339d8572",
+          "sourceAssetId": "dangle_play_front:4"
+        }
+      ]
+    },
+    "action.dangle_play_back": {
+      "id": "action.dangle_play_back",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_back",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_back-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "cb698c0395845907e05575cf2ced188a94877349ea271c0d53523b6bba4a1c72",
+          "sourceAssetId": "dangle_play_back:1"
+        },
+        {
+          "id": "dangle_play_back-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "9dad81b9650fd5c66746184f7bc11a97666418ffe7a934557aca23343da72210",
+          "sourceAssetId": "dangle_play_back:2"
+        },
+        {
+          "id": "dangle_play_back-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "1e150ef954a47e0cb53ae55b35670dc68ec5a431c64c86667b0869bcaaacd542",
+          "sourceAssetId": "dangle_play_back:3"
+        },
+        {
+          "id": "dangle_play_back-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "430c380245e34cd5d99fcc2654769477c214aa81d1aa1d1caec888baf44325d2",
+          "sourceAssetId": "dangle_play_back:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_front": {
+      "id": "action.dangle_pursuit_run_front",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_front",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_front-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "b01299c65921f4540904b984f58b33c9b8d11d53fbae5ee992a83fee4a17b3de",
+          "sourceAssetId": "dangle_pursuit_run_front:1"
+        },
+        {
+          "id": "dangle_pursuit_run_front-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "72db6c4b092b7f6684bb7c73e1bd72265658f1662202d82fac3839b48c79c6cf",
+          "sourceAssetId": "dangle_pursuit_run_front:2"
+        },
+        {
+          "id": "dangle_pursuit_run_front-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "c0bff48db6fac031fd382856c48bde6547e470e871d86fbc6109218286934685",
+          "sourceAssetId": "dangle_pursuit_run_front:3"
+        },
+        {
+          "id": "dangle_pursuit_run_front-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "e37b4bb463220be8175d2c93308c49f276351f66ee95d258a1e05f35081c18af",
+          "sourceAssetId": "dangle_pursuit_run_front:4"
+        },
+        {
+          "id": "dangle_pursuit_run_front-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "083861e8272844bba6f660d110c871014fdba2c9f5bafa051d48ed515c37f1c9",
+          "sourceAssetId": "dangle_pursuit_run_front:5"
+        },
+        {
+          "id": "dangle_pursuit_run_front-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "bc14a7f154ca7d24e64198846e7377c3118c54dd4a84d236b947aa733dd3ef0e",
+          "sourceAssetId": "dangle_pursuit_run_front:6"
+        },
+        {
+          "id": "dangle_pursuit_run_front-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "ffa1181a7ee7f98e360e0d883598be63503d05a4723f61283b33fd6a942b48c6",
+          "sourceAssetId": "dangle_pursuit_run_front:7"
+        },
+        {
+          "id": "dangle_pursuit_run_front-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "8136f49b0fc075f2a806846de1bfaff31370ef80b253f41289612bc51e81669e",
+          "sourceAssetId": "dangle_pursuit_run_front:8"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_back": {
+      "id": "action.dangle_pursuit_run_back",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_back",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_back-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "7f5146073a80d6a4182fa384cfdc4815093352e6530832e039101f019245e9eb",
+          "sourceAssetId": "dangle_pursuit_run_back:1"
+        },
+        {
+          "id": "dangle_pursuit_run_back-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "8bbcb7e3a7c9f2254ec10914c05d6e45e421b525a9f948e353fbf1e6cb98a03c",
+          "sourceAssetId": "dangle_pursuit_run_back:2"
+        },
+        {
+          "id": "dangle_pursuit_run_back-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "046edca98a3fce97cf9114408a6b93dc4e9ccedaba4c4a5923e65329a1b3e01c",
+          "sourceAssetId": "dangle_pursuit_run_back:3"
+        },
+        {
+          "id": "dangle_pursuit_run_back-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "840edcf3f3fa9d5f6299e22c67e3f802b2a60db28c553c5ac5f64f01c2c3b766",
+          "sourceAssetId": "dangle_pursuit_run_back:4"
+        },
+        {
+          "id": "dangle_pursuit_run_back-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "a827828fd75f53a346f3f6e66ce7b87393ab2966e8772f0e4ff5cf502183500f",
+          "sourceAssetId": "dangle_pursuit_run_back:5"
+        },
+        {
+          "id": "dangle_pursuit_run_back-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "56197cab24d1761943209b6d79b4d721240219f1ac074456382f0d297b9ff6ef",
+          "sourceAssetId": "dangle_pursuit_run_back:6"
+        },
+        {
+          "id": "dangle_pursuit_run_back-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "1763e2dd019582a0d19b67e6629ae710a2325bc4ac893352308627b764838b53",
+          "sourceAssetId": "dangle_pursuit_run_back:7"
+        },
+        {
+          "id": "dangle_pursuit_run_back-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "d372be0a4cf4e3534e7b391eed9a1ad0032bb9730978dfc368ee960cc206105c",
+          "sourceAssetId": "dangle_pursuit_run_back:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_front": {
+      "id": "action.dangle_return_walk_front",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_front",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_front-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "b02dda13d370abbaa0d7fff0e66f033025059e4e54581236fa272483ffaaab4b",
+          "sourceAssetId": "dangle_return_walk_front:1"
+        },
+        {
+          "id": "dangle_return_walk_front-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "cd5108db3cd011adfc5016c3504bfae3151f16de744170f346181a2c4b59c0b0",
+          "sourceAssetId": "dangle_return_walk_front:2"
+        },
+        {
+          "id": "dangle_return_walk_front-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "25e4e4a2e859f352407de571cd5706f3ea02ca255d6427ccc53b91b56b77ef69",
+          "sourceAssetId": "dangle_return_walk_front:3"
+        },
+        {
+          "id": "dangle_return_walk_front-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "c4dd55ecee32e553451aa1f3b2081ebd5e554e114fcb6b9a45bf90796f88aae0",
+          "sourceAssetId": "dangle_return_walk_front:4"
+        },
+        {
+          "id": "dangle_return_walk_front-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "6b7d28e5294f8117efe4ee27f73262d463055e729c8e9ab7ab6bfcbe65ddfbfe",
+          "sourceAssetId": "dangle_return_walk_front:5"
+        },
+        {
+          "id": "dangle_return_walk_front-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "ee35d84d8328ec936f0464b418219db1e4bb87c4e8ed8b6f460f0d2fad8099d9",
+          "sourceAssetId": "dangle_return_walk_front:6"
+        },
+        {
+          "id": "dangle_return_walk_front-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "d899c20ab906336e98f30b33ffcd18ff0968d6333fecee96de629e031b378fbe",
+          "sourceAssetId": "dangle_return_walk_front:7"
+        },
+        {
+          "id": "dangle_return_walk_front-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "4e4c9d51555d06a2582bda513cb93253f496b7f31bf8714783bd62f2e7d029b1",
+          "sourceAssetId": "dangle_return_walk_front:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_back": {
+      "id": "action.dangle_return_walk_back",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_back",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_back-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "ff47167cc1cc2fabbb552a84cd4fb615efe1f85851093f0b9c04c9be51360453",
+          "sourceAssetId": "dangle_return_walk_back:1"
+        },
+        {
+          "id": "dangle_return_walk_back-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "3d64a2639cb7f3ed62984f4731b82cdd953d65dda1a077631773c26741b1e42a",
+          "sourceAssetId": "dangle_return_walk_back:2"
+        },
+        {
+          "id": "dangle_return_walk_back-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "546a802e9980d45aedcf0328c56310ecc615648e72c0caa9138b79c87080835c",
+          "sourceAssetId": "dangle_return_walk_back:3"
+        },
+        {
+          "id": "dangle_return_walk_back-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "d5b261d99b11254d5f9f7da51d5aaaa2f32830d7063e1c7600ba9d89f03328c9",
+          "sourceAssetId": "dangle_return_walk_back:4"
+        },
+        {
+          "id": "dangle_return_walk_back-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "4a8ace1fc4849705f9afb31eb7839c9655f52c83a8d4e4200143b32245729f52",
+          "sourceAssetId": "dangle_return_walk_back:5"
+        },
+        {
+          "id": "dangle_return_walk_back-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "dff993a6b717ccb10529035f65a889b2c056e1204ee00b1658d2f5e04317c4ac",
+          "sourceAssetId": "dangle_return_walk_back:6"
+        },
+        {
+          "id": "dangle_return_walk_back-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "88a9d1b2130ce5e1d1c9fc1a6b430fd679893cf469650989f28387b7699fa869",
+          "sourceAssetId": "dangle_return_walk_back:7"
+        },
+        {
+          "id": "dangle_return_walk_back-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "a97f13cd71418c4872ab54cc145f93a7ec845620c3f886446c4de36358444cb7",
+          "sourceAssetId": "dangle_return_walk_back:8"
+        }
+      ]
+    },
+    "action.dangle_settle": {
+      "id": "action.dangle_settle",
+      "kind": "transition",
+      "mood": "focused",
+      "motionState": "dangle_settle",
+      "fps": 6,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "idle_breathe",
+      "frames": [
+        {
+          "id": "dangle_settle-1",
+          "mood": "focused",
+          "src": "frames/dangle_settle_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "48af92002cbf14fa78cfdc1b1a807f374f50b36d4daa0d3177f8ca5dea3f5261",
+          "sourceAssetId": "dangle_settle:1"
+        },
+        {
+          "id": "dangle_settle-2",
+          "mood": "focused",
+          "src": "frames/dangle_settle_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "f85f998936268f28d4ebddaca035240aa5da28d40c30493f078704d0d0281f06",
+          "sourceAssetId": "dangle_settle:2"
         }
       ]
     },
@@ -2966,6 +4818,2230 @@
         }
       ]
     },
+    "action.dangle_pounce_front_left": {
+      "id": "action.dangle_pounce_front_left",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_front_left",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_front_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "911e97b71309d0d991cbf9c6e08eedf6e8b0eae827b7531e7c75d65a8c83687c",
+          "sourceAssetId": "dangle_pounce_front_left:1"
+        },
+        {
+          "id": "dangle_pounce_front_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "fbed7f7d4c7be36f4bbb7d813ec56dbddbabf94ee891c9a8bd4ee6d13a71d392",
+          "sourceAssetId": "dangle_pounce_front_left:2"
+        },
+        {
+          "id": "dangle_pounce_front_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "fc9615e5a37cbff705d4f07f36a2f6e197bcec929e9771213053cc90bebd8768",
+          "sourceAssetId": "dangle_pounce_front_left:3"
+        },
+        {
+          "id": "dangle_pounce_front_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "76778947acf96add079ffc1cd142b492a6be81ff7b92d3efe43fed7e0a30042d",
+          "sourceAssetId": "dangle_pounce_front_left:4"
+        }
+      ]
+    },
+    "action.dangle_play_front_left": {
+      "id": "action.dangle_play_front_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_front_left",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_front_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "be51be6dbf6ec26874a02f61e2071c4a7eaf42762bc47975d471fff410ffd977",
+          "sourceAssetId": "dangle_play_front_left:1"
+        },
+        {
+          "id": "dangle_play_front_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "6a15ea7631b61f628576cb1db76c9474ad14915c1aaf8bc779d91463c999ab79",
+          "sourceAssetId": "dangle_play_front_left:2"
+        },
+        {
+          "id": "dangle_play_front_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "821510ffdc1680181724ba870bfd5d914eb64ff635a907dd2cfcd1365a3a87b0",
+          "sourceAssetId": "dangle_play_front_left:3"
+        },
+        {
+          "id": "dangle_play_front_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "b76a86d213bb22263d1422b4c2aa212c09fa4b90ed33b3461885f38ec57661e9",
+          "sourceAssetId": "dangle_play_front_left:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_front_left": {
+      "id": "action.dangle_pursuit_run_front_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_front_left",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_front_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "afdbf841e813ce005d7c36a36bab8567f78c96b16b62376950dbef6a3483848b",
+          "sourceAssetId": "dangle_pursuit_run_front_left:1"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "39459b10b5b9c48856cf694bdb8386fc3cb3b7dfadf38eb023dbe52282ffd294",
+          "sourceAssetId": "dangle_pursuit_run_front_left:2"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "7c85920df500d81dfc1b59b07da3311d5dcd234b95921f40d1c4714215dfca34",
+          "sourceAssetId": "dangle_pursuit_run_front_left:3"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "65f9e110816f39be1fd69a2be9ed2ad2bb9857b022dc7aecc4cb9da9cb79913a",
+          "sourceAssetId": "dangle_pursuit_run_front_left:4"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "b013431d10cae03cd34205fa872d7ee51100be4b65fd49412b4010b3fbc33be1",
+          "sourceAssetId": "dangle_pursuit_run_front_left:5"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "00cba46e814361f9351409bafac71258d7dd34cd760bc0f21ccb151091dde128",
+          "sourceAssetId": "dangle_pursuit_run_front_left:6"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "d2f3637ef581bc9c13f57b21ea2288c395eafa3c3a34380160c4bfd4f20fb6c7",
+          "sourceAssetId": "dangle_pursuit_run_front_left:7"
+        },
+        {
+          "id": "dangle_pursuit_run_front_left-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "3dd67ebfe617e55bd7d0db109f5a90089ad41dd22f2403a3ee4079150f05a15d",
+          "sourceAssetId": "dangle_pursuit_run_front_left:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_front_left": {
+      "id": "action.dangle_return_walk_front_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_front_left",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_front_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "811108f2a7d84819c8b7ad19f90a80155eaa563d0438e1bfac0feafcd91cd7f5",
+          "sourceAssetId": "dangle_return_walk_front_left:1"
+        },
+        {
+          "id": "dangle_return_walk_front_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "3d835418a5ba60488af2e661cfe277af441cfe5cd37cf309f011228e7e58b8d3",
+          "sourceAssetId": "dangle_return_walk_front_left:2"
+        },
+        {
+          "id": "dangle_return_walk_front_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "812291d79a0f5beda265e400acb8cf938caf4de99122e7aea6a92008e10be451",
+          "sourceAssetId": "dangle_return_walk_front_left:3"
+        },
+        {
+          "id": "dangle_return_walk_front_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "0448d3ce1588692ab9da662c96a94b2afe0088ccc11c3748590a5a862470a765",
+          "sourceAssetId": "dangle_return_walk_front_left:4"
+        },
+        {
+          "id": "dangle_return_walk_front_left-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "c233847df203c759e961157e10211c97b20d2d76ce6be6b60d32b3ae81f9c142",
+          "sourceAssetId": "dangle_return_walk_front_left:5"
+        },
+        {
+          "id": "dangle_return_walk_front_left-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "9a481235b22e3de0a5f4dfd388fd599c392c264d98d8a3a036d246a59be61a9f",
+          "sourceAssetId": "dangle_return_walk_front_left:6"
+        },
+        {
+          "id": "dangle_return_walk_front_left-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "a87baa3afe979e531772556c27db1c08d2fa5ecf333d183f671f3eaf46b846ee",
+          "sourceAssetId": "dangle_return_walk_front_left:7"
+        },
+        {
+          "id": "dangle_return_walk_front_left-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "1fcbddcc09ebf232a7733fb8a1b32716d528a32607809560e491b94395d261db",
+          "sourceAssetId": "dangle_return_walk_front_left:8"
+        }
+      ]
+    },
+    "action.dangle_pounce_front_right": {
+      "id": "action.dangle_pounce_front_right",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_front_right",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_front_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "e9c306611e32662d69efd2dfad9ab8ee8c4f994bbce8ff888d73b813ef858d46",
+          "sourceAssetId": "dangle_pounce_front_right:1"
+        },
+        {
+          "id": "dangle_pounce_front_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "c1545d96d4e8ada06ca9905f9cc79a67595f2e740f2c6186d08233db450dcd0b",
+          "sourceAssetId": "dangle_pounce_front_right:2"
+        },
+        {
+          "id": "dangle_pounce_front_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "07999522942da406ce1bee673d6cd31ce5fe9c9034eb72ccdb125accd7ec9222",
+          "sourceAssetId": "dangle_pounce_front_right:3"
+        },
+        {
+          "id": "dangle_pounce_front_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "786c9a6736d3bd6f77c7486dc8f4638ad8e6e2fba836a58850a661d45730e503",
+          "sourceAssetId": "dangle_pounce_front_right:4"
+        }
+      ]
+    },
+    "action.dangle_play_front_right": {
+      "id": "action.dangle_play_front_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_front_right",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_front_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "8560c72ab09f7283946262f05b80cc4e6292a15f2faee9e8a49cec365e3c219c",
+          "sourceAssetId": "dangle_play_front_right:1"
+        },
+        {
+          "id": "dangle_play_front_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "8eed5d408c235e365e560dec0cb188fd4ecc2330dad53169e682835df429dfc6",
+          "sourceAssetId": "dangle_play_front_right:2"
+        },
+        {
+          "id": "dangle_play_front_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "0e7ccc79cdb603708a1a94a82c8939914dadd29c51d3f3ba775cab3ceb307840",
+          "sourceAssetId": "dangle_play_front_right:3"
+        },
+        {
+          "id": "dangle_play_front_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "d88b6723c10b09f103c765ee491045e17dd585640582866db435909d3383f506",
+          "sourceAssetId": "dangle_play_front_right:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_front_right": {
+      "id": "action.dangle_pursuit_run_front_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_front_right",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_front_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "b45e69125aa1d66b13dffecfac6515a9bf7bae1a5d5e1a1ad9ea31d0cc0cc96a",
+          "sourceAssetId": "dangle_pursuit_run_front_right:1"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "b94e033394b2e08ec903604d5aa4e4272b762c3ce6d1dfac08296fdecda3e216",
+          "sourceAssetId": "dangle_pursuit_run_front_right:2"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "a22732e4d579f58c9e3f493763da58cbdfa24089e4c2eb0df1f243655a9b487e",
+          "sourceAssetId": "dangle_pursuit_run_front_right:3"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "114ec072c6850537b9a0b4e6c3ec19e9be88080fd388d1fb4ad3ff807a96513d",
+          "sourceAssetId": "dangle_pursuit_run_front_right:4"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f30e80be0809b072ec91a09fe2b81032031485c64a3cc216bf701bd21030c17d",
+          "sourceAssetId": "dangle_pursuit_run_front_right:5"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f4486499752f60e0a0bb4407956dcd7e9941727508656e82fb4a2eed40d5421c",
+          "sourceAssetId": "dangle_pursuit_run_front_right:6"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "e5d8fd650c5a2ac20cb6c9fbf7d7a146d300f894109f167bd1da52425e9dc483",
+          "sourceAssetId": "dangle_pursuit_run_front_right:7"
+        },
+        {
+          "id": "dangle_pursuit_run_front_right-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_front_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f476e4c8f61b86036c4cf7025634ff52399e081814fe462f55e34fb3d08b2065",
+          "sourceAssetId": "dangle_pursuit_run_front_right:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_front_right": {
+      "id": "action.dangle_return_walk_front_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_front_right",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_front_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "9a4d4a15926596347f42d316f57e2a5aae4e849d97367b04c655e4f6fccc48a6",
+          "sourceAssetId": "dangle_return_walk_front_right:1"
+        },
+        {
+          "id": "dangle_return_walk_front_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "3469feb948a3f103f6fb2ae3382b19444e56f868df148050783ec738beb89f6a",
+          "sourceAssetId": "dangle_return_walk_front_right:2"
+        },
+        {
+          "id": "dangle_return_walk_front_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "96a05abd5322102c96075649c241675f39b5ffdbdcade1da5380411a35cec172",
+          "sourceAssetId": "dangle_return_walk_front_right:3"
+        },
+        {
+          "id": "dangle_return_walk_front_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "6f6dcb287cfeb4c0a3d07b9d1d0a6ae406cd19696f9af763fd6d1dbffca391f2",
+          "sourceAssetId": "dangle_return_walk_front_right:4"
+        },
+        {
+          "id": "dangle_return_walk_front_right-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "784e36f13cb044c88d6458dd932db1508fb99c49e91e8125920c1bc71eac91ff",
+          "sourceAssetId": "dangle_return_walk_front_right:5"
+        },
+        {
+          "id": "dangle_return_walk_front_right-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "b88bd862dd4db47cb0f47d6617a2843c28b247b9a72601e8ae6a1b1d4b0e08bf",
+          "sourceAssetId": "dangle_return_walk_front_right:6"
+        },
+        {
+          "id": "dangle_return_walk_front_right-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "8894b17cd7c7074a7933639251eac08cde8d9708febf90ecc3fdc93346097214",
+          "sourceAssetId": "dangle_return_walk_front_right:7"
+        },
+        {
+          "id": "dangle_return_walk_front_right-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_front_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "12b7b52e1087c874b4e9f3de59522b276bb39c9f198136bcc5eb6ff6fe9df6da",
+          "sourceAssetId": "dangle_return_walk_front_right:8"
+        }
+      ]
+    },
+    "action.dangle_pounce_back_left": {
+      "id": "action.dangle_pounce_back_left",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_back_left",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_back_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "f373689c639c5d9b7b467f555b735006d2489bff179a36a507430f24e730fbd1",
+          "sourceAssetId": "dangle_pounce_back_left:1"
+        },
+        {
+          "id": "dangle_pounce_back_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "ce6d3944b7ab846787a6c74109b407ac966bae13b11f6ebb16523bbb1caa5aa3",
+          "sourceAssetId": "dangle_pounce_back_left:2"
+        },
+        {
+          "id": "dangle_pounce_back_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "905e0ae09c86cb44c748fa6698f8ea86d5840f73d6448c2587baac1e3a964db1",
+          "sourceAssetId": "dangle_pounce_back_left:3"
+        },
+        {
+          "id": "dangle_pounce_back_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c3c7071a0683f00e118325a7c18a37d26b136359676d24dcf027a4b6f2ab3e1e",
+          "sourceAssetId": "dangle_pounce_back_left:4"
+        }
+      ]
+    },
+    "action.dangle_play_back_left": {
+      "id": "action.dangle_play_back_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_back_left",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_back_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "33279bbbb064acf3c41626c5753d55884e98cac30e90cc67cf4b8a8c48691de1",
+          "sourceAssetId": "dangle_play_back_left:1"
+        },
+        {
+          "id": "dangle_play_back_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "60a573f3fb33f1168a33bd60a20469922d2cbdf7972c2ad407890db2450499c2",
+          "sourceAssetId": "dangle_play_back_left:2"
+        },
+        {
+          "id": "dangle_play_back_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "9795413a750ca40e7bdda1e5198e0ca9c89bada469777a581d87d6a9bd5af107",
+          "sourceAssetId": "dangle_play_back_left:3"
+        },
+        {
+          "id": "dangle_play_back_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "dee4f0f3045ecbea46ca4f4978ea9d82004fc440c35c415504555e8f2b08c636",
+          "sourceAssetId": "dangle_play_back_left:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_back_left": {
+      "id": "action.dangle_pursuit_run_back_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_back_left",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_back_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f2f3cdab469b6773af88548f31e2877c8ee9f60fe031f9800c50a5f07456d97b",
+          "sourceAssetId": "dangle_pursuit_run_back_left:1"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "4731241d6c3f6c8dcd88ae3afdfc3498598970a8f091664bcafa0138f942a2fc",
+          "sourceAssetId": "dangle_pursuit_run_back_left:2"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "bbe77dd3c1f7d4cd7ca166fab40149fe981bc54f607e813f79de79077e2b7e1f",
+          "sourceAssetId": "dangle_pursuit_run_back_left:3"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "ed84c3b957e51aa5879b0a7a316d7abd4fb47a26da0c8df0efa7f0d191dd28c9",
+          "sourceAssetId": "dangle_pursuit_run_back_left:4"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "10630a426f31acf2081feacc1b64cd03a2021ecd73ecab3e630ecf4d7e03c4cb",
+          "sourceAssetId": "dangle_pursuit_run_back_left:5"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "7493030ed4d6f53af3c59b2181dbbc88e961727cf72d153807502a5abaf506c9",
+          "sourceAssetId": "dangle_pursuit_run_back_left:6"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "f478040356deb0f333860c740e7ee8dfd412f17543eab00be737922b3e511ab0",
+          "sourceAssetId": "dangle_pursuit_run_back_left:7"
+        },
+        {
+          "id": "dangle_pursuit_run_back_left-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "5a7496523fdd8be36c1e4a0796af3c952a8e038b6df909ac108ac5bb2f2fcc86",
+          "sourceAssetId": "dangle_pursuit_run_back_left:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_back_left": {
+      "id": "action.dangle_return_walk_back_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_back_left",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_back_left-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "8a032ca58ca372317317ffd97eef1dbd140d55654f2129b9237fb68860fadd3c",
+          "sourceAssetId": "dangle_return_walk_back_left:1"
+        },
+        {
+          "id": "dangle_return_walk_back_left-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "2099b9127b8b33508d134ccc14253c2f7d579d25959e366ce9af712975aead88",
+          "sourceAssetId": "dangle_return_walk_back_left:2"
+        },
+        {
+          "id": "dangle_return_walk_back_left-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "0ba79cb04b762ebf2a87039c55491d7b381171619a88f70e39d2afa6f9ff3af5",
+          "sourceAssetId": "dangle_return_walk_back_left:3"
+        },
+        {
+          "id": "dangle_return_walk_back_left-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "5e72d90c78c51367c039a29ede063274dbbc6c1ddf61ac0aa63b3d5c3d69c221",
+          "sourceAssetId": "dangle_return_walk_back_left:4"
+        },
+        {
+          "id": "dangle_return_walk_back_left-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "4c389ece12e3474c72cf5bd42af2c4e9760193d1c985c0c017cd6b37a7bad4f6",
+          "sourceAssetId": "dangle_return_walk_back_left:5"
+        },
+        {
+          "id": "dangle_return_walk_back_left-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "e07aea5c61bc3f5f1a21d477b9e29dc1d7e18cf98eae0f17d187427cca44651d",
+          "sourceAssetId": "dangle_return_walk_back_left:6"
+        },
+        {
+          "id": "dangle_return_walk_back_left-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "0a4673c8ab10d47d396bafded94b77fe6e00e2c4c253d01276ed2688f397c2f1",
+          "sourceAssetId": "dangle_return_walk_back_left:7"
+        },
+        {
+          "id": "dangle_return_walk_back_left-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "14e62545d8fbb682342ea1443512819c8a0f4e944cbd0b6ecc1b22b06f398f29",
+          "sourceAssetId": "dangle_return_walk_back_left:8"
+        }
+      ]
+    },
+    "action.dangle_pounce_back_right": {
+      "id": "action.dangle_pounce_back_right",
+      "kind": "oneShot",
+      "mood": "focused",
+      "motionState": "dangle_pounce_back_right",
+      "fps": 8,
+      "loop": false,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_play",
+      "frames": [
+        {
+          "id": "dangle_pounce_back_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "116756e22224ac9540fd8e79d32be4ce98b4cae0bde3270c00d5ecb24b10667a",
+          "sourceAssetId": "dangle_pounce_back_right:1"
+        },
+        {
+          "id": "dangle_pounce_back_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 135,
+          "sha256": "d052b720afe0ef442c45838d9ece061fc9f939f1225bd41ac5395172b08ee566",
+          "sourceAssetId": "dangle_pounce_back_right:2"
+        },
+        {
+          "id": "dangle_pounce_back_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 150,
+          "sha256": "0f4b8d6dd76b69d2852e02ee5461737fced2117d87b3cd545c36a8db468d5691",
+          "sourceAssetId": "dangle_pounce_back_right:3"
+        },
+        {
+          "id": "dangle_pounce_back_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_pounce_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "b5a268f80b5a2db07a7a74d38fd520c96777469b39e974ec304ff5af6698d00d",
+          "sourceAssetId": "dangle_pounce_back_right:4"
+        }
+      ]
+    },
+    "action.dangle_play_back_right": {
+      "id": "action.dangle_play_back_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_play_back_right",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "frames": [
+        {
+          "id": "dangle_play_back_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "9bff35bff91e5a504e9e40b8462599337b0a4dd4eb4f2501b0892811dedb1b0e",
+          "sourceAssetId": "dangle_play_back_right:1"
+        },
+        {
+          "id": "dangle_play_back_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 240,
+          "sha256": "a12107daaa523847984199e29ee492b5ab535aac7f3dcd4710a0d5c1afdd3e2b",
+          "sourceAssetId": "dangle_play_back_right:2"
+        },
+        {
+          "id": "dangle_play_back_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 280,
+          "sha256": "3ee305f55c1e232daee003a5b7407b41f3feb9d89c7c23c53691bd5df792d0a8",
+          "sourceAssetId": "dangle_play_back_right:3"
+        },
+        {
+          "id": "dangle_play_back_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_play_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 260,
+          "sha256": "008389be951f58288f5f5fd1b6c9437aa31663238d6df4dd977a0ce24aedb8c7",
+          "sourceAssetId": "dangle_play_back_right:4"
+        }
+      ]
+    },
+    "action.dangle_pursuit_run_back_right": {
+      "id": "action.dangle_pursuit_run_back_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_pursuit_run_back_right",
+      "fps": 12,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_crouch",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 26,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.36,
+          1,
+          1.36,
+          2,
+          2.36,
+          3,
+          3.36,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_pursuit_run_back_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "24b7e2b6d5a09a30d2c6004fc7b8c26711ac1785349388bd75748375f6b9a27e",
+          "sourceAssetId": "dangle_pursuit_run_back_right:1"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "0ea44dde2f3ed04040ffefcd5267fc8f941ad3e926ba09e9ab0e0b3b4598f073",
+          "sourceAssetId": "dangle_pursuit_run_back_right:2"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "e5f392f0bb50c0d3f5e3de9b66a0c2b558ff580fc23a43fe854436d9594b09bd",
+          "sourceAssetId": "dangle_pursuit_run_back_right:3"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "94fc53bd0be510cd779f6d62618f7e72cc5f40c9711503a3533b41a4db715a6a",
+          "sourceAssetId": "dangle_pursuit_run_back_right:4"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-5",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "aa4d90d1e620638bd1b422faad0b51926bbafea298502ddb640bb92cee6bc49b",
+          "sourceAssetId": "dangle_pursuit_run_back_right:5"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-6",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "2026a4f973aafead6edd1343bf412b2605b9f47f0f57f1a4e7fad86adf81f9ba",
+          "sourceAssetId": "dangle_pursuit_run_back_right:6"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-7",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "bacf2ebb64a798efc89408cd063d9ee11f23268f59be21e1a267d5677536a3f0",
+          "sourceAssetId": "dangle_pursuit_run_back_right:7"
+        },
+        {
+          "id": "dangle_pursuit_run_back_right-8",
+          "mood": "focused",
+          "src": "frames/dangle_pursuit_run_back_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 82,
+          "sha256": "3eb6daad2b70ca419f7f9196d7d408fdab9e58e8e9b2aad34059591b72a36bbb",
+          "sourceAssetId": "dangle_pursuit_run_back_right:8"
+        }
+      ]
+    },
+    "action.dangle_return_walk_back_right": {
+      "id": "action.dangle_return_walk_back_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "dangle_return_walk_back_right",
+      "fps": 8,
+      "loop": true,
+      "priority": 100,
+      "reducedMotionFallback": "dangle_settle",
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "near-hind-contact",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "near-hind-support",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "near-fore-contact",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "near-fore-support",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "far-hind-contact",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "far-hind-support",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "far-fore-contact",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "far-fore-support",
+            "contacts": [
+              "far-fore"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "dangle_return_walk_back_right-1",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "1c05259a46e1e0526f79c2eb56e627056050f2698e9dd7b03af160da3bf54c08",
+          "sourceAssetId": "dangle_return_walk_back_right:1"
+        },
+        {
+          "id": "dangle_return_walk_back_right-2",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "beb99add1208ebfacaecb619311c9c7826c45d0c7d7838cbf48ec9ed29a9ff59",
+          "sourceAssetId": "dangle_return_walk_back_right:2"
+        },
+        {
+          "id": "dangle_return_walk_back_right-3",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "2f4fe70eced1854f934444f9bd1cc9b5d3bccd765836a373e24d992215a7f560",
+          "sourceAssetId": "dangle_return_walk_back_right:3"
+        },
+        {
+          "id": "dangle_return_walk_back_right-4",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "2bf68adcba3bef3b48aae9f92a2f002bcd8d5380ca8e16035d7bb748cf2ea256",
+          "sourceAssetId": "dangle_return_walk_back_right:4"
+        },
+        {
+          "id": "dangle_return_walk_back_right-5",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "1cdd3182ab8f5f54fedda34e2c2ae6d83375b2976f76f00c677434cb34815a7c",
+          "sourceAssetId": "dangle_return_walk_back_right:5"
+        },
+        {
+          "id": "dangle_return_walk_back_right-6",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "039798e4bb469f778e3747c081e5d470a30ef071230272e9b31a6c3b78ef0ab5",
+          "sourceAssetId": "dangle_return_walk_back_right:6"
+        },
+        {
+          "id": "dangle_return_walk_back_right-7",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "ab2bea555246fe2b7ce6f2a68fbf9e901193229bd2fe22e441f61c3ac676d881",
+          "sourceAssetId": "dangle_return_walk_back_right:7"
+        },
+        {
+          "id": "dangle_return_walk_back_right-8",
+          "mood": "focused",
+          "src": "frames/dangle_return_walk_back_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 122,
+          "sha256": "e523600b977b2ead57b8c164f6122300f334f82ccf0a6a02afd9cd0a0bf095f9",
+          "sourceAssetId": "dangle_return_walk_back_right:8"
+        }
+      ]
+    },
     "sleepy.idle": {
       "id": "sleepy.idle",
       "kind": "loop",
@@ -3410,7 +7486,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.2.0-authored-root-motion",
-    "sourceSpecSha256": "1f98160316f4a7e43ba2c2ceff41d1ee594d534f7b197e0b278f347ae4efc6fe",
-    "inputSetSha256": "b98209d193f0b4386c8ae045b7100ad58d39d0ebad776bbaecd6b841c866815c"
+    "sourceSpecSha256": "dae6cdab54662ac5afb5b10e97c8349e889da16b1fa30e54c9e009c622eb15ed",
+    "inputSetSha256": "85c40e1081d0a502a3520dee0cdcd939ccc306f8f873d431745f3dc15ae34871"
   }
 }

@@ -3,6 +3,8 @@ import type { CSSProperties } from "react";
 import type { PetActorAnimation, PetActorFrameAsset, PetActorManifest } from "../../../../../packages/pet-asset-schema/src";
 import {
   createDistanceLockedWalkPlan,
+  DANGLE_PURSUIT_ROOT_MOTION,
+  DANGLE_RETURN_ROOT_MOTION,
   DEFAULT_WALK_ROOT_MOTION,
   distanceLockedWalkProgressAtTime,
   FEED_SNACK_RETURN_ROOT_MOTION,
@@ -113,11 +115,15 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
   },
   drag_dangle: {
     id: "drag_dangle", label: "Dangle toy", icon: `${iconRoot}/drag-dangle.png`, durationMs: 8_000,
-    contract: ">2 sec movement · click ends · return home", propLabel: "fish teaser", propMark: "🐟",
-    phaseLabels: ["Alert", "Stalk", "Swing", "Pounce", "Return"],
-    authoredPhaseActions: ["idle_breathe", "drag_dangle", "drag_dangle", "play_cursor", "idle_breathe"],
+    contract: ">1 sec shake · pounce/play/chase · click any time · exact return", propLabel: "fish teaser", propMark: "🐟",
+    phaseLabels: ["Alert", "Stalk", "Crouch", "Pounce", "Play", "Pursuit", "Return", "Settle"],
+    authoredPhaseActions: ["dangle_alert", "dangle_stalk", "dangle_crouch", "dangle_pounce", "dangle_play", "dangle_pursuit_run", "dangle_return_walk", "dangle_settle"],
     settings: [
-      { key: "fishToyStyle", label: "Fish-toy style", type: "choices", defaultValue: "mint", options: [{ value: "mint", label: "Mint fish", mark: "🐟" }, { value: "blue", label: "Blue fish", mark: "🐠" }, { value: "feather", label: "Feather fish", mark: "🪶" }] },
+      { key: "fishToyStyle", label: "Fish-toy style", type: "choices", defaultValue: "mint", options: [
+        { value: "mint", label: "Mint fish", asset: "pet-actors/golden-british/props/dangle-fish-mint.png" },
+        { value: "blue", label: "Blue fish", asset: "pet-actors/golden-british/props/dangle-fish-blue.png" },
+        { value: "feather", label: "Feather fish", asset: "pet-actors/golden-british/props/dangle-fish-feather.png" },
+      ] },
       { key: "swingResponse", label: "Swing response", type: "range", min: 20, max: 100, step: 5, defaultValue: 66, minMark: "Soft", maxMark: "Snappy", format: percent },
       { key: "pursuitPace", label: "Pursuit pace", type: "range", min: 70, max: 150, step: 5, defaultValue: 108, format: percent },
       { key: "toyTrailEffect", label: "Toy trail effect", type: "toggle", defaultValue: true, detail: "Preview-only motion trail" },
@@ -198,7 +204,7 @@ function buildPreviewFrames(
   authoredPhaseDurations?: number[],
 ): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
-  if (definition.id === "token_snack") {
+  if (definition.id === "token_snack" || definition.id === "drag_dangle") {
     let startMs = 0;
     return definition.authoredPhaseActions.map((actorActionId, index) => {
       const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
@@ -348,14 +354,22 @@ export function ActionsWorkbench(props: {
   const feedReturnPlan = createDistanceLockedWalkPlan(PET_PREVIEW_TRAVEL_DISTANCE_PX, feedReturnPace, 1, feedReturnRootMotion);
   const feedPhaseDurations = [900, feedWalkPlan.durationMs, 520, 1_080, 720, feedReturnPlan.durationMs, 280];
   const feedPreviewDurationMs = feedPhaseDurations.reduce((total, duration) => total + duration, 0);
+  const danglePursuitAnimation = manifest ? resolveAnimation(manifest, "dangle_pursuit_run") : undefined;
+  const dangleReturnAnimation = manifest ? resolveAnimation(manifest, "dangle_return_walk") : undefined;
+  const danglePursuitPlan = createDistanceLockedWalkPlan(220, Number(settings.pursuitPace ?? 108), 1, danglePursuitAnimation?.locomotion ?? DANGLE_PURSUIT_ROOT_MOTION);
+  const dangleReturnPlan = createDistanceLockedWalkPlan(220, 100, 1, dangleReturnAnimation?.locomotion ?? DANGLE_RETURN_ROOT_MOTION);
+  const danglePhaseDurations = [390, 460, 1_100, 620, 850, danglePursuitPlan.durationMs, dangleReturnPlan.durationMs, 280];
+  const danglePreviewDurationMs = danglePhaseDurations.reduce((total, duration) => total + duration, 0);
   const previewDurationMs = selectedAction === "walk_round_trip"
     ? walkPreviewPlan.durationMs
     : selectedAction === "token_snack"
       ? feedPreviewDurationMs
+      : selectedAction === "drag_dangle"
+        ? danglePreviewDurationMs
       : definition.durationMs;
   const frames = useMemo(
-    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs, selectedAction === "token_snack" ? feedPhaseDurations : undefined),
-    [definition, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction],
+    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs, selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : undefined),
+    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -384,7 +398,16 @@ export function ActionsWorkbench(props: {
             ? sampledPhaseElapsedMs % Math.max(1, sampledAnimationDurationMs)
             : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
     }
-    : sampledBase;
+    : selectedAction === "drag_dangle"
+      ? {
+        ...sampledBase,
+        actorTimeMs: sampledBase.frame.actorActionId === "dangle_pursuit_run"
+          ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, danglePursuitPlan.cycleDurationMs)
+          : sampledBase.frame.actorActionId === "dangle_return_walk"
+            ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, dangleReturnPlan.cycleDurationMs)
+            : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
+      }
+      : sampledBase;
   const walkRootProgress = selectedAction === "walk_round_trip" ? distanceLockedWalkProgressAtTime(walkPreviewPlan, elapsedMs) : progress;
   const baseStage = stageSample(selectedAction, progress, walkRootProgress);
   const feedActorAction = sampled.frame.actorActionId;
@@ -406,7 +429,21 @@ export function ActionsWorkbench(props: {
       cursorX: 70,
       cursorY: 73,
     }
-    : baseStage;
+    : selectedAction === "drag_dangle"
+      ? (() => {
+        const action = sampled.frame.actorActionId;
+        const homeX = -24;
+        const catchX = 5;
+        const chaseX = 26;
+        const pounceProgress = action === "dangle_pounce" ? sampled.phaseProgress : ["dangle_play", "dangle_pursuit_run", "dangle_return_walk", "dangle_settle"].includes(action) ? 1 : 0;
+        const pursuitProgress = action === "dangle_pursuit_run" ? distanceLockedWalkProgressAtTime(danglePursuitPlan, sampledPhaseElapsedMs) : action === "dangle_return_walk" || action === "dangle_settle" ? 1 : 0;
+        const returnProgress = action === "dangle_return_walk" ? distanceLockedWalkProgressAtTime(dangleReturnPlan, sampledPhaseElapsedMs) : action === "dangle_settle" ? 1 : 0;
+        const actorX = action === "dangle_return_walk" || action === "dangle_settle"
+          ? chaseX + (homeX - chaseX) * returnProgress
+          : homeX + (catchX - homeX) * pounceProgress + (chaseX - catchX) * pursuitProgress;
+        return { ...baseStage, actorX, actorY: action === "dangle_pounce" ? -Math.sin(sampled.phaseProgress * Math.PI) * 6 : 0 };
+      })()
+      : baseStage;
   const actorPreviewAppearance = {
     ...props.appearance,
     size: selectedAction === "walk_round_trip" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
@@ -519,6 +556,8 @@ export function ActionsWorkbench(props: {
             data-preview-feed-phase={selectedAction === "token_snack" ? sampled.frame.actorActionId : undefined}
             data-preview-feed-root-progress={selectedAction === "token_snack" ? feedTravelProgress.toFixed(4) : undefined}
             data-preview-cursor-contract={selectedAction === "play_cursor" ? "offline-eyes-head-ears" : undefined}
+            data-preview-dangle-phase={selectedAction === "drag_dangle" ? sampled.frame.actorActionId : undefined}
+            data-preview-dangle-contract={selectedAction === "drag_dangle" ? "offline-phases-distance-locked" : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
               <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
@@ -526,16 +565,24 @@ export function ActionsWorkbench(props: {
             <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale } as CSSProperties} aria-label={definition.propLabel}>
                 {selectedAction === "token_snack"
                   ? <img src={`pet-actors/golden-british/props/snack-${String(settings.snackStyle ?? "paw")}.png`} alt="" draggable={false} />
+                  : selectedAction === "drag_dangle"
+                    ? <img src={`pet-actors/golden-british/props/dangle-fish-${String(settings.fishToyStyle ?? "mint")}.png`} alt="" draggable={false} />
                   : definition.propMark}
               </span>
             ) : null}
-            {["play_cursor", "drag_dangle", "summon_to_pointer"].includes(selectedAction) ? <span className="action-virtual-pointer" data-virtual-pointer style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">➤</span> : null}
+            {selectedAction === "drag_dangle" ? (
+              <>
+                <svg className="action-preview-dangle-cord" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d={`M ${stage.cursorX - 8.1} ${stage.cursorY - 11.7} Q ${(stage.cursorX + stage.propX) / 2 - 4} ${(stage.cursorY + stage.propY) / 2 + 7} ${stage.propX} ${stage.propY}`} /></svg>
+                <span className="action-preview-dangle-wand" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true"><img src="pet-actors/golden-british/props/dangle-wand.png" alt="" draggable={false} /></span>
+              </>
+            ) : null}
+            {["play_cursor", "summon_to_pointer"].includes(selectedAction) ? <span className="action-virtual-pointer" data-virtual-pointer style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">➤</span> : null}
             <span className="action-preview-coordinate-readout">sandbox x {Math.round(stage.actorX + 50)} · y {Math.round(stage.actorY + 50)}</span>
             {!previewAvailable ? <div className="action-preview-unavailable"><strong>Approved still only</strong><small>{capability.reason}</small></div> : null}
           </div>

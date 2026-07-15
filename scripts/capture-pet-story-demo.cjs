@@ -16,6 +16,19 @@ const sequencePath = join(outputDir, "demo-sequence.json");
 const settings = structuredClone(fixtureSettings);
 let usage = launchUsage();
 let window;
+const emptyQuickPlaySession = {
+  activeAction: null,
+  startedAt: null,
+  phase: "idle",
+  phaseStartedAt: null,
+  startBounds: null,
+  startDirectorState: null,
+  targetPoint: null,
+  walkMotion: null,
+  pointerMode: "none",
+  resting: false,
+  failure: null,
+};
 
 const steps = [
   { id: "launch", caption: "Launch · local-first companion", event: null },
@@ -77,6 +90,7 @@ function registerBridge() {
     return clone(settings);
   });
   ipcMain.handle("qa:get-state", () => ({ settings: clone(settings), usage: clone(usage) }));
+  ipcMain.handle("qa:get-quick-play-session", () => clone(emptyQuickPlaySession));
   ipcMain.handle("qa:dispatch-action", (_event, action) => {
     window?.webContents.send("qa:director-event", { type: "quickPlay.action", action });
     return { accepted: true };

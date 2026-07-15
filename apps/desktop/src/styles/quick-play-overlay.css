@@ -98,24 +98,24 @@ body:has(.quick-play-overlay),
 .quick-overlay-yarn-prop.yarn-orange .quick-overlay-yarn-image { color: #df8a21; }
 .quick-overlay-yarn-prop.yarn-blue .quick-overlay-yarn-image { color: #4f89cf; }
 .quick-overlay-yarn-prop.yarn-violet .quick-overlay-yarn-image { color: #8066c9; }
-.quick-overlay-dangle-prop { z-index: 3; width: 126px; height: 112px; transform: translate(-50%, -50%) rotate(var(--toy-angle)); transform-origin: center; }
-.quick-overlay-dangle-image { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 6px 5px rgba(29, 59, 95, .16)); }
-.quick-overlay-wand, .quick-overlay-cord { fill: none; stroke: #68758a; stroke-width: 4; stroke-linecap: round; }
-.quick-overlay-cord { stroke-width: 2.5; }
-.quick-overlay-fish { fill: #51b88d; stroke: #267859; stroke-width: 3; stroke-linejoin: round; }
-.quick-overlay-dangle-prop.fish-blue .quick-overlay-fish { fill: #5c9bd2; stroke: #2b6497; }
-.quick-overlay-feather { fill: #d7a763; stroke: #8e6130; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-.quick-overlay-dangle-prop.has-trail::after {
-  content: "";
+.quick-overlay-dangle-rig { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.quick-overlay-dangle-cord-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.quick-overlay-dangle-cord-layer path { fill: none; stroke: #3f82b6; stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 2px 2px rgba(27, 63, 91, .2)); }
+.quick-overlay-dangle-wand {
   position: absolute;
-  left: 74px;
-  top: 76px;
-  width: 27px;
-  height: 14px;
-  border-bottom: 3px solid rgba(72, 177, 145, .32);
-  border-radius: 50%;
-  transform: translate(-24px, 12px) rotate(-18deg);
+  z-index: 4;
+  width: 166px;
+  height: 166px;
+  object-fit: contain;
+  transform: scale(var(--wand-flip-x), var(--wand-flip-y));
+  transform-origin: 77% 61%;
+  filter: drop-shadow(0 7px 8px rgba(29, 59, 95, .16));
 }
+.quick-overlay-dangle-connector { position: absolute; z-index: 5; width: 22px; height: 22px; object-fit: contain; transform: translate(-50%, -50%); }
+.quick-overlay-dangle-fish { position: absolute; z-index: 6; width: 64px; height: 64px; transform: translate(-50%, -50%); }
+.quick-overlay-dangle-fish-image { position: relative; z-index: 2; display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 7px 7px rgba(29, 59, 95, .2)); }
+.quick-overlay-dangle-trail { position: absolute; z-index: 1; left: -52px; top: 23px; width: 77px; height: 37px; object-fit: contain; opacity: .72; }
+.quick-play-overlay-dangle .quick-overlay-focus-ring { display: none; }
 
 .quick-overlay-hint {
   z-index: 10;
@@ -134,7 +134,7 @@ body:has(.quick-play-overlay),
 
 .quick-play-overlay-dangle .quick-overlay-hint {
   max-width: none;
-  transform: translate(-50%, 154px);
+  transform: translate(-50%, 112px);
 }
 
 .quick-play-overlay.is-submitted .quick-overlay-focus-ring,

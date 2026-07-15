@@ -3,7 +3,7 @@ import type { Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayPhase, QuickPlaySession, UsageSnapshot } from "./types.js";
+import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayActorDirection, QuickPlayPhase, QuickPlaySession, UsageSnapshot } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
@@ -24,9 +24,12 @@ import {
   createDistanceLockedWalkPlan,
   createCursorTrackingState,
   createDangleMovementState,
+  dangleActorDirection,
   createQuickPlayActionTimeline,
   createPointToPointPath,
   createYarnRollPlan,
+  DANGLE_PURSUIT_ROOT_MOTION,
+  DANGLE_RETURN_ROOT_MOTION,
   DEFAULT_WALK_ROOT_MOTION,
   FEED_SNACK_RETURN_ROOT_MOTION,
   FEED_SNACK_WALK_ROOT_MOTION,
@@ -80,6 +83,7 @@ let quickPlaySession: QuickPlaySession = {
   startDirectorState: null,
   targetPoint: null,
   walkMotion: null,
+  actorDirection: null,
   pointerMode: "none",
   resting: false,
   failure: null,
@@ -96,6 +100,11 @@ type QuickPlayRuntime = {
   overlayTimer: NodeJS.Timeout | null;
   resolveOverlay: ((point: { x: number; y: number; velocityX: number; velocityY: number } | null) => void) | null;
   dangleState: DangleMovementState;
+  dangleTargetPoint: { x: number; y: number } | null;
+  dangleSequenceStarted: boolean;
+  dangleReleased: boolean;
+  dangleMotionPromise: Promise<void> | null;
+  dangleLastPublishAt: number;
   overlayClosing: boolean;
   failing: boolean;
 };
@@ -105,12 +114,19 @@ let quickPlayTimeScale = 1;
 let quickPlayCursorTrackingState: CursorTrackingState = createCursorTrackingState();
 const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null }> = [];
 let petVisibleCaptureBounds: Rectangle | null = null;
-type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId;
+type DangleLocomotionId =
+  | "dangle_pursuit_run" | "dangle_pursuit_run_front" | "dangle_pursuit_run_back"
+  | "dangle_pursuit_run_front_left" | "dangle_pursuit_run_front_right" | "dangle_pursuit_run_back_left" | "dangle_pursuit_run_back_right"
+  | "dangle_return_walk" | "dangle_return_walk_front" | "dangle_return_walk_back"
+  | "dangle_return_walk_front_left" | "dangle_return_walk_front_right" | "dangle_return_walk_back_left" | "dangle_return_walk_back_right";
+type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId | DangleLocomotionId;
 const cachedLocomotionRootMotion = new Map<GoldenLocomotionActionId, WalkRootMotionProfile>();
 
 function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
   if (actionId === "feed_snack_walk_slow") return FEED_SNACK_WALK_ROOT_MOTION;
   if (actionId === "feed_snack_return_run") return FEED_SNACK_RETURN_ROOT_MOTION;
+  if (actionId.startsWith("dangle_pursuit_run")) return DANGLE_PURSUIT_ROOT_MOTION;
+  if (actionId.startsWith("dangle_return_walk")) return DANGLE_RETURN_ROOT_MOTION;
   return DEFAULT_WALK_ROOT_MOTION;
 }
 
@@ -863,6 +879,7 @@ function currentQuickPlaySession(): QuickPlaySession {
   return {
     ...quickPlaySession,
     startBounds: quickPlaySession.startBounds ? { ...quickPlaySession.startBounds } : null,
+    currentBounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null,
     walkMotion: quickPlaySession.walkMotion ? { ...quickPlaySession.walkMotion } : null,
   };
 }
@@ -884,6 +901,7 @@ function emptyQuickPlaySession(): QuickPlaySession {
     startDirectorState: null,
     targetPoint: null,
     walkMotion: null,
+    actorDirection: null,
     pointerMode: "none",
     resting: reportedPetDirectorState.resting,
     failure: null,
@@ -891,14 +909,14 @@ function emptyQuickPlaySession(): QuickPlaySession {
 }
 
 function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySession.targetPoint) {
-  const keepsWalkMotion = phase === "outbound" || phase === "return";
+  const keepsWalkMotion = phase === "outbound" || phase === "pursuit" || phase === "return";
   quickPlaySession = { ...quickPlaySession, phase, phaseStartedAt: Date.now(), targetPoint, walkMotion: keepsWalkMotion ? quickPlaySession.walkMotion : null };
   quickPlayTrace.push({ at: Date.now(), action: quickPlaySession.activeAction, phase, bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint });
   publishQuickPlaySession();
 }
 
 function beginAuthoredWalkPhase(
-  phase: "outbound" | "return",
+  phase: "outbound" | "pursuit" | "return",
   from: Rectangle,
   to: Rectangle,
   pacePercent: number,
@@ -1015,7 +1033,7 @@ function quickPlayDelay(runtime: QuickPlayRuntime, durationMs: number) {
   });
 }
 
-function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, durationMs: number, persist = false, routeCurve: "straight" | "gentle" | "curved" = "straight", motionProfile: "smooth" | "walk" = "smooth", walkPlan: DistanceLockedWalkPlan | null = null, motionStartedAtMs: number | null = null) {
+function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, durationMs: number, persist = false, routeCurve: "straight" | "gentle" | "curved" = "straight", motionProfile: "smooth" | "walk" = "smooth", walkPlan: DistanceLockedWalkPlan | null = null, motionStartedAtMs: number | null = null, abortWhen: (() => boolean) | null = null) {
   if (!isUsableWindow(petWindow) || quickPlayRuntime !== runtime) return Promise.resolve(false);
   const actorWindow = petWindow;
   const start = actorWindow.getBounds();
@@ -1043,7 +1061,7 @@ function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, du
       finish(false);
     };
     const step = () => {
-      if (quickPlayRuntime !== runtime || !isUsableWindow(actorWindow) || petWindow !== actorWindow || !settings.petVisible || dragState) {
+      if (quickPlayRuntime !== runtime || !isUsableWindow(actorWindow) || petWindow !== actorWindow || !settings.petVisible || dragState || abortWhen?.()) {
         clearInterval(timer);
         runtime.timers.delete(timer);
         finish(false);
@@ -1081,6 +1099,139 @@ function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, du
     runtime.cancelers.add(cancel);
     step();
   });
+}
+
+function dangleTargetBounds(runtime: QuickPlayRuntime, point: { x: number; y: number }) {
+  const workArea = screen.getDisplayNearestPoint(point).workArea;
+  return clampBoundsToWorkArea({
+    ...runtime.startBounds,
+    x: Math.round(point.x - runtime.startBounds.width / 2),
+    y: Math.round(point.y + 26 - runtime.startBounds.height * .56),
+  }, workArea);
+}
+
+function setDangleActorDirection(from: Rectangle, to: Rectangle) {
+  const actorDirection = dangleActorDirection(from, to);
+  quickPlaySession = { ...quickPlaySession, actorDirection };
+  return actorDirection;
+}
+
+function danglePursuitAction(direction: QuickPlayActorDirection): DangleLocomotionId {
+  if (direction === "front") return "dangle_pursuit_run_front";
+  if (direction === "back") return "dangle_pursuit_run_back";
+  if (direction === "front-left") return "dangle_pursuit_run_front_left";
+  if (direction === "front-right") return "dangle_pursuit_run_front_right";
+  if (direction === "back-left") return "dangle_pursuit_run_back_left";
+  if (direction === "back-right") return "dangle_pursuit_run_back_right";
+  return "dangle_pursuit_run";
+}
+
+function dangleReturnAction(direction: QuickPlayActorDirection): DangleLocomotionId {
+  if (direction === "front") return "dangle_return_walk_front";
+  if (direction === "back") return "dangle_return_walk_back";
+  if (direction === "front-left") return "dangle_return_walk_front_left";
+  if (direction === "front-right") return "dangle_return_walk_front_right";
+  if (direction === "back-left") return "dangle_return_walk_back_left";
+  if (direction === "back-right") return "dangle_return_walk_back_right";
+  return "dangle_return_walk";
+}
+
+function dangleTargetCrossedTravelDirection(runtime: QuickPlayRuntime, plannedTarget: Rectangle) {
+  if (!runtime.dangleTargetPoint || !isUsableWindow(petWindow)) return false;
+  const current = petWindow.getBounds();
+  const liveTarget = dangleTargetBounds(runtime, runtime.dangleTargetPoint);
+  const plannedVector = { x: plannedTarget.x - current.x, y: plannedTarget.y - current.y };
+  const liveVector = { x: liveTarget.x - current.x, y: liveTarget.y - current.y };
+  const plannedDistance = Math.hypot(plannedVector.x, plannedVector.y);
+  const liveDistance = Math.hypot(liveVector.x, liveVector.y);
+  if (plannedDistance < 8 || liveDistance < 48) return false;
+  return plannedVector.x * liveVector.x + plannedVector.y * liveVector.y <= 0
+    || dangleActorDirection(current, plannedTarget) !== dangleActorDirection(current, liveTarget);
+}
+
+async function runDanglePounceAndPursuit(runtime: QuickPlayRuntime) {
+  const firstPoint = runtime.dangleTargetPoint;
+  if (!firstPoint || runtime.dangleReleased || quickPlayRuntime !== runtime || !isUsableWindow(petWindow)) return;
+  const firstTarget = dangleTargetBounds(runtime, firstPoint);
+  runtime.targetBounds = firstTarget;
+  setDangleActorDirection(petWindow.getBounds(), firstTarget);
+  updateQuickPlayPhase("pounce", firstPoint);
+  publishQuickPlayOverlayState({ hint: "Pounce! Keep moving the fish, or click to release." });
+  let pounceRetargeted = false;
+  const pounced = await animateQuickPlayBounds(
+    runtime,
+    firstTarget,
+    620,
+    false,
+    "curved",
+    "smooth",
+    null,
+    null,
+    () => {
+      if (runtime.dangleReleased) return true;
+      pounceRetargeted = dangleTargetCrossedTravelDirection(runtime, firstTarget);
+      return pounceRetargeted;
+    },
+  );
+  if ((!pounced && !pounceRetargeted) || runtime.dangleReleased || quickPlayRuntime !== runtime) return;
+
+  updateQuickPlayPhase("play", runtime.dangleTargetPoint ?? firstPoint);
+  publishQuickPlayOverlayState({ hint: "Caught! Move the fish elsewhere to make your cat chase." });
+  while (!runtime.dangleReleased && quickPlayRuntime === runtime && isUsableWindow(petWindow)) {
+    const point = runtime.dangleTargetPoint;
+    if (!point) {
+      if (!await quickPlayDelay(runtime, 90)) return;
+      continue;
+    }
+    const current = petWindow.getBounds();
+    const target = dangleTargetBounds(runtime, point);
+    const distance = Math.hypot(target.x - current.x, target.y - current.y);
+    if (distance <= 72) {
+      if (quickPlaySession.phase !== "play") updateQuickPlayPhase("play", point);
+      if (!await quickPlayDelay(runtime, 110)) return;
+      continue;
+    }
+
+    runtime.targetBounds = target;
+    const config = actionConfig("drag_dangle");
+    const direction = setDangleActorDirection(current, target);
+    const authored = beginAuthoredWalkPhase("pursuit", current, target, config.pursuitPace, point, danglePursuitAction(direction));
+    publishQuickPlayOverlayState({ hint: "Chasing the fish… click at any time to release." });
+    if (!await quickPlayDelay(runtime, 90) || runtime.dangleReleased) return;
+    let pursuitRetargeted = false;
+    const moved = await animateQuickPlayBounds(
+      runtime,
+      target,
+      authored.authoredPlan.durationMs,
+      false,
+      "straight",
+      "walk",
+      authored.wallClockPlan,
+      authored.startedAt,
+      () => {
+        if (runtime.dangleReleased) return true;
+        pursuitRetargeted = dangleTargetCrossedTravelDirection(runtime, target);
+        return pursuitRetargeted;
+      },
+    );
+    if (runtime.dangleReleased) return;
+    if (!moved && pursuitRetargeted) continue;
+    if (!moved) return;
+    updateQuickPlayPhase("play", point);
+  }
+}
+
+function startDanglePounceAndPursuit(runtime: QuickPlayRuntime) {
+  if (runtime.dangleSequenceStarted || runtime.dangleReleased || quickPlayRuntime !== runtime) return;
+  runtime.dangleSequenceStarted = true;
+  const promise = runDanglePounceAndPursuit(runtime)
+    .catch((error) => {
+      if (!runtime.dangleReleased && quickPlayRuntime === runtime) void failQuickPlayRuntime(runtime, error);
+    })
+    .finally(() => {
+      if (runtime.dangleMotionPromise === promise) runtime.dangleMotionPromise = null;
+    });
+  runtime.dangleMotionPromise = promise;
 }
 
 function createQuickPlayOverlay(runtime: QuickPlayRuntime, mode: Exclude<QuickPlaySession["pointerMode"], "none">) {
@@ -1143,16 +1294,6 @@ function createQuickPlayOverlay(runtime: QuickPlayRuntime, mode: Exclude<QuickPl
     }
     publishQuickPlayOverlayState({ pointerScreenX: cursor.x, pointerScreenY: cursor.y });
     if (mode !== "dangle") return;
-    const now = Date.now();
-    runtime.dangleState = accumulateDangleMovement(runtime.dangleState, cursor, now);
-    if (runtime.dangleState.armed && quickPlaySession.phase !== "interact") updateQuickPlayPhase("interact", cursor);
-    if (!runtime.dangleState.armed || !isUsableWindow(petWindow)) return;
-    const workArea = screen.getDisplayNearestPoint(cursor).workArea;
-    const current = petWindow.getBounds();
-    const desired = clampBoundsToWorkArea({ ...current, x: Math.round(cursor.x - current.width / 2), y: Math.round(cursor.y + 18 - current.height / 2) }, workArea);
-    const pursuitFactor = clampValue(.05 + actionConfig("drag_dangle").pursuitPace / 1_000, .1, .2);
-    petWindow.setPosition(Math.round(current.x + (desired.x - current.x) * pursuitFactor), Math.round(current.y + (desired.y - current.y) * pursuitFactor), false);
-    positionAccessoryWindows();
   }, 32);
   runtime.overlayTimer.unref();
 }
@@ -1312,11 +1453,30 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
         runtime.resolveOverlay = null;
         return point;
       },
-      isInteractionActive: () => quickPlaySession.phase === "interact",
       closePropOverlay: closeQuickPlayOverlay,
+      stopPursuit: async () => {
+        runtime.dangleReleased = true;
+        await runtime.dangleMotionPromise;
+      },
       returnHome: async () => {
-        const moved = await animateQuickPlayBounds(runtime, runtime.startBounds, 1_250);
-        if (!moved) throw new Error("Dangle return was interrupted");
+        if (!isUsableWindow(petWindow)) return false;
+        const current = petWindow.getBounds();
+        if (JSON.stringify(current) !== JSON.stringify(runtime.startBounds)) {
+          const direction = setDangleActorDirection(current, runtime.startBounds);
+          const moved = await runAuthoredLocomotionLeg(
+            runtime,
+            "return",
+            current,
+            runtime.startBounds,
+            100,
+            dangleReturnAction(direction),
+            "Dangle return was interrupted",
+            runtime.dangleTargetPoint,
+          );
+          if (!moved) return false;
+        }
+        petWindow.setBounds(runtime.startBounds, false);
+        positionAccessoryWindows();
         return true;
       },
       complete: () => completeQuickPlayRuntime(runtime),
@@ -1404,7 +1564,9 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
   const runtime: QuickPlayRuntime = {
     id: nextQuickPlayRuntimeId++, action, startBounds: { ...startBounds }, targetBounds: null,
     timers: new Set(), cancelers: new Set(), overlayTimer: null, resolveOverlay: null,
-    dangleState: createDangleMovementState(), overlayClosing: false, failing: false,
+    dangleState: createDangleMovementState(), dangleTargetPoint: null, dangleSequenceStarted: false,
+    dangleReleased: false, dangleMotionPromise: null, dangleLastPublishAt: 0,
+    overlayClosing: false, failing: false,
   };
   quickPlayRuntime = runtime;
   if (action === "play_cursor") quickPlayCursorTrackingState = createCursorTrackingState();
@@ -1418,6 +1580,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
     startDirectorState: reportedPetDirectorState.action,
     targetPoint,
     walkMotion: null,
+    actorDirection: null,
     pointerMode,
     resting: reportedPetDirectorState.resting,
     failure: null,
@@ -1865,6 +2028,10 @@ export const mainProcessQa = {
     const resolver = runtime?.resolveOverlay;
     if (!runtime || !resolver) return false;
     runtime.resolveOverlay = null;
+    if (runtime.action === "drag_dangle") {
+      runtime.dangleReleased = true;
+      closeQuickPlayOverlay();
+    }
     if (point) releaseFeedSnackPlacementPointer(runtime, point);
     resolver(point ? { ...point, velocityX: 0, velocityY: 0 } : null);
     return true;
@@ -1966,21 +2133,36 @@ ipcMain.on("quick-play:overlay-input", (event, input: { type?: string; screenX?:
     togglePopover();
     return;
   }
+  if (input.type === "move" && runtime.action === "drag_dangle" && Number.isFinite(input.screenX) && Number.isFinite(input.screenY)) {
+    const now = Date.now();
+    const point = { x: Number(input.screenX), y: Number(input.screenY) };
+    runtime.dangleTargetPoint = point;
+    runtime.dangleState = accumulateDangleMovement(runtime.dangleState, point, now);
+    if (now - runtime.dangleLastPublishAt >= 80) {
+      runtime.dangleLastPublishAt = now;
+      quickPlaySession = { ...quickPlaySession, targetPoint: { ...point } };
+      publishQuickPlaySession();
+    }
+    if (runtime.dangleState.armed) startDanglePounceAndPursuit(runtime);
+    return;
+  }
   if (!runtime.resolveOverlay) return;
   if (input.type === "cancel") {
     const resolve = runtime.resolveOverlay;
     runtime.resolveOverlay = null;
+    if (runtime.action === "drag_dangle") runtime.dangleReleased = true;
+    closeQuickPlayOverlay();
     resolve(null);
     return;
   }
   if (input.type !== "click" || !Number.isFinite(input.screenX) || !Number.isFinite(input.screenY)) return;
-  if (runtime.action === "drag_dangle" && !runtime.dangleState.armed) {
-    publishQuickPlayOverlayState({ enabled: true, hint: "Keep the toy moving for two seconds, then click to release." });
-    return;
-  }
   const resolve = runtime.resolveOverlay;
   runtime.resolveOverlay = null;
   const point = { x: Number(input.screenX), y: Number(input.screenY) };
+  if (runtime.action === "drag_dangle") {
+    runtime.dangleReleased = true;
+    closeQuickPlayOverlay();
+  }
   releaseFeedSnackPlacementPointer(runtime, point);
   resolve({
     ...point,

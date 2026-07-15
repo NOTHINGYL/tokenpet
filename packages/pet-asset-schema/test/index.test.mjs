@@ -119,6 +119,61 @@ test("Play Cursor owns a complete directional whole-frame pose bundle", async ()
   assert.equal(sourceIssueCodes(fixture).length, 0);
 });
 
+test("Dangle Toy owns complete eight-direction offline phases and locomotion clips", async () => {
+  const fixture = await readSourceFixture();
+  const expectedCounts = {
+    dangle_alert: 2,
+    dangle_stalk: 2,
+    dangle_crouch: 2,
+    dangle_pounce: 4,
+    dangle_pounce_front: 4,
+    dangle_pounce_back: 4,
+    dangle_pounce_front_left: 4,
+    dangle_pounce_front_right: 4,
+    dangle_pounce_back_left: 4,
+    dangle_pounce_back_right: 4,
+    dangle_play: 4,
+    dangle_play_front: 4,
+    dangle_play_back: 4,
+    dangle_play_front_left: 4,
+    dangle_play_front_right: 4,
+    dangle_play_back_left: 4,
+    dangle_play_back_right: 4,
+    dangle_pursuit_run: 8,
+    dangle_pursuit_run_front: 8,
+    dangle_pursuit_run_back: 8,
+    dangle_pursuit_run_front_left: 8,
+    dangle_pursuit_run_front_right: 8,
+    dangle_pursuit_run_back_left: 8,
+    dangle_pursuit_run_back_right: 8,
+    dangle_return_walk: 8,
+    dangle_return_walk_front: 8,
+    dangle_return_walk_back: 8,
+    dangle_return_walk_front_left: 8,
+    dangle_return_walk_front_right: 8,
+    dangle_return_walk_back_left: 8,
+    dangle_return_walk_back_right: 8,
+    dangle_settle: 2,
+  };
+  for (const [id, count] of Object.entries(expectedCounts)) {
+    const action = fixture.actions[id];
+    assert.equal(action.sourceFrames.length, count, `${id} must own its complete offline sequence`);
+    assert.ok(action.sourceFrames.every((frame) => frame.src.includes(`/frames/${id}_`) && frame.kind === "approved-raster"));
+    assert.equal(action.bodyTransform, undefined, `${id} cannot warp a flat cat at runtime`);
+  }
+  for (const id of ["dangle_pursuit_run", "dangle_pursuit_run_front", "dangle_pursuit_run_back", "dangle_pursuit_run_front_left", "dangle_pursuit_run_front_right", "dangle_pursuit_run_back_left", "dangle_pursuit_run_back_right"]) {
+    assert.deepEqual(fixture.actions[id].locomotion.rootStepKeyframes, [0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4]);
+    assert.equal(fixture.actions[id].locomotion.nominalStepDistancePx, 26);
+  }
+  for (const id of ["dangle_return_walk", "dangle_return_walk_front", "dangle_return_walk_back", "dangle_return_walk_front_left", "dangle_return_walk_front_right", "dangle_return_walk_back_left", "dangle_return_walk_back_right"]) {
+    assert.deepEqual(fixture.actions[id].locomotion.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+    assert.equal(fixture.actions[id].locomotion.nominalStepDistancePx, 18);
+  }
+  assert.equal(fixture.actions.drag_dangle.bodyTransform, undefined);
+  assert.ok(fixture.actions.drag_dangle.sourceFrames.every((frame) => !frame.src.endsWith("/drag_dangle.png")));
+  assert.equal(sourceIssueCodes(fixture).length, 0);
+});
+
 test("every Quick Play action must be represented", async () => {
   const fixture = await readFixture();
   fixture.capabilities = fixture.capabilities.filter((capability) => capability.id !== "capture_moment");

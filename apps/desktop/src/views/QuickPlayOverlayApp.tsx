@@ -1,5 +1,5 @@
 import type { CSSProperties, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type OverlayMode = "snack" | "dangle" | "yarn";
 type OverlayPhase = "placing" | "playing" | "rolling" | "finishing";
@@ -23,7 +23,7 @@ type OverlayState = {
 };
 
 type OverlayInput = {
-  type: "click" | "cancel" | "reopen";
+  type: "click" | "cancel" | "reopen" | "move";
   screenX: number;
   screenY: number;
   timestamp: number;
@@ -68,7 +68,7 @@ function defaultHint(mode: OverlayMode, phase: OverlayPhase) {
   if (phase === "finishing") return "Returning to your companion’s home…";
   if (phase === "rolling") return "Here it comes!";
   if (mode === "snack") return "Click to place the snack · Esc to cancel";
-  if (mode === "dangle") return "Move the toy, then click to release · Esc to cancel";
+  if (mode === "dangle") return "Wiggle for 1 sec to pounce · Click any time to release";
   return "Click to toss the yarn · Esc to cancel";
 }
 
@@ -86,27 +86,6 @@ function YarnIcon() {
     <svg className="quick-overlay-yarn-image" viewBox="0 0 82 68" aria-hidden="true">
       <circle className="quick-overlay-yarn-ball" cx="32" cy="30" r="23" />
       <path className="quick-overlay-yarn-thread" d="M13 19c15 7 29 19 39 34M16 45c17-12 28-23 36-36M10 33c16 1 31 6 43 14M26 8c2 18 10 34 25 47M52 49c12 2 15 13 26 10" />
-    </svg>
-  );
-}
-
-function DangleIcon({ style }: { style: NonNullable<OverlayState["fishToyStyle"]> }) {
-  const feather = style === "feather";
-  return (
-    <svg className="quick-overlay-dangle-image" viewBox="0 0 128 114" aria-hidden="true">
-      <path className="quick-overlay-wand" d="M10 15h72" />
-      <path className="quick-overlay-cord" d="M80 15c4 21-1 34 8 52" />
-      {feather ? (
-        <g className="quick-overlay-feather">
-          <path d="M88 64c21-4 31 10 19 30-20 4-31-9-19-30Z" />
-          <path d="m90 89 18-19M93 83l-9-4M99 78l9 5" />
-        </g>
-      ) : (
-        <g className="quick-overlay-fish">
-          <path d="M75 84c13-18 31-18 45-2-13 18-31 19-45 2Z" />
-          <path d="m76 84-15-12v24Z" /><circle className="quick-overlay-cutout" cx="110" cy="79" r="2.7" />
-        </g>
-      )}
     </svg>
   );
 }
@@ -139,15 +118,26 @@ function YarnProp({ pointer, rolling, state }: { pointer: PointerPosition; rolli
   );
 }
 
-function DangleProp({ pointer, state }: { pointer: PointerPosition; state: OverlayState }) {
-  const desiredRef = useRef({ x: pointer.clientX - 88, y: pointer.clientY + 108 });
+function DangleProp({ pointer, state, onFishPosition }: { pointer: PointerPosition; state: OverlayState; onFishPosition: (point: { x: number; y: number }) => void }) {
+  const horizontalDirection = pointer.clientX < 190 ? 1 : -1;
+  const verticalDirection = pointer.clientY < 170 ? 1 : -1;
+  const wandSize = 166;
+  const wandAnchor = { x: .77, y: .61 };
+  const wandTip = { x: .08, y: .07 };
+  const wandFlip = { x: -horizontalDirection, y: -verticalDirection };
+  const rodTip = {
+    x: pointer.clientX + (wandTip.x - wandAnchor.x) * wandSize * wandFlip.x,
+    y: pointer.clientY + (wandTip.y - wandAnchor.y) * wandSize * wandFlip.y,
+  };
+  const desiredRef = useRef({ x: rodTip.x + horizontalDirection * 12, y: rodTip.y + 110 });
   const positionRef = useRef({ ...desiredRef.current });
   const velocityRef = useRef({ x: 0, y: 0 });
   const [fish, setFish] = useState(positionRef.current);
+  const [wandFlexed, setWandFlexed] = useState(false);
 
   useEffect(() => {
-    desiredRef.current = { x: pointer.clientX - 114, y: pointer.clientY + 98 };
-  }, [pointer.clientX, pointer.clientY]);
+    desiredRef.current = { x: rodTip.x + horizontalDirection * 12, y: rodTip.y + 110 };
+  }, [horizontalDirection, rodTip.x, rodTip.y]);
 
   useEffect(() => {
     let frame = 0;
@@ -164,22 +154,37 @@ function DangleProp({ pointer, state }: { pointer: PointerPosition; state: Overl
       position.x += velocity.x * delta;
       position.y += velocity.y * delta;
       setFish({ ...position });
+      setWandFlexed(Math.hypot(velocity.x, velocity.y) > 5.5);
       frame = window.requestAnimationFrame(tick);
     };
     frame = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(frame);
   }, [state.swingResponse]);
 
-  const angle = Math.atan2(fish.y - pointer.clientY, fish.x - pointer.clientX) * 180 / Math.PI;
-  const style = {
-    left: fish.x,
-    top: fish.y,
-    "--toy-angle": `${angle + 128}deg`,
+  useEffect(() => {
+    onFishPosition({ x: window.screenX + fish.x, y: window.screenY + fish.y });
+  }, [fish.x, fish.y, onFishPosition]);
+
+  const controlX = (rodTip.x + fish.x) / 2 - velocityRef.current.x * 1.8;
+  const controlY = (rodTip.y + fish.y) / 2 + 22;
+  const wandStyle = {
+    left: pointer.clientX - wandSize * wandAnchor.x,
+    top: pointer.clientY - wandSize * wandAnchor.y,
+    "--wand-flip-x": wandFlip.x,
+    "--wand-flip-y": wandFlip.y,
   } as CSSProperties;
+  const fishStyle = { left: fish.x, top: fish.y } as CSSProperties;
 
   return (
-    <div className={`quick-overlay-dangle-prop fish-${state.fishToyStyle ?? "mint"} ${state.toyTrailEffect ? "has-trail" : ""}`} style={style} aria-hidden="true">
-      <DangleIcon style={state.fishToyStyle ?? "mint"} />
+    <div className={`quick-overlay-dangle-rig fish-${state.fishToyStyle ?? "mint"} ${state.toyTrailEffect ? "has-trail" : ""}`} aria-hidden="true">
+      <svg className="quick-overlay-dangle-cord-layer" viewBox={`0 0 ${window.innerWidth} ${window.innerHeight}`} preserveAspectRatio="none">
+        <path d={`M ${rodTip.x} ${rodTip.y} Q ${controlX} ${controlY} ${fish.x} ${fish.y - 25}`} />
+      </svg>
+      <img className="quick-overlay-dangle-wand" src={`pet-actors/golden-british/props/dangle-wand${wandFlexed ? "-flex" : ""}.png`} style={wandStyle} alt="" draggable={false} />
+      <span className="quick-overlay-dangle-fish" style={fishStyle}>
+        {state.toyTrailEffect ? <img className="quick-overlay-dangle-trail" src="pet-actors/golden-british/props/dangle-trail.png" alt="" draggable={false} /> : null}
+        <img className="quick-overlay-dangle-fish-image" src={`pet-actors/golden-british/props/dangle-fish-${state.fishToyStyle ?? "mint"}.png`} alt="" draggable={false} />
+      </span>
     </div>
   );
 }
@@ -198,6 +203,14 @@ export function QuickPlayOverlayApp() {
   const priorPointerRef = useRef({ ...pointer, timestamp: performance.now() });
   const velocityRef = useRef({ x: 0, y: 0 });
   const clickTimerRef = useRef<number | null>(null);
+  const lastFishPublishRef = useRef(0);
+
+  const publishFishPosition = useCallback((point: { x: number; y: number }) => {
+    const now = performance.now();
+    if (now - lastFishPublishRef.current < 32) return;
+    lastFishPublishRef.current = now;
+    void sendInput({ type: "move", screenX: point.x, screenY: point.y, timestamp: Date.now() });
+  }, []);
 
   useEffect(() => {
     pointerRef.current = pointer;
@@ -260,6 +273,19 @@ export function QuickPlayOverlayApp() {
       screenY: window.screenY + event.clientY,
     };
     setPointer(nextPointer);
+    if (state.mode === "dangle") {
+      setSubmitted(true);
+      const velocity = { ...velocityRef.current };
+      void sendInput({
+        type: "click",
+        screenX: nextPointer.screenX,
+        screenY: nextPointer.screenY,
+        velocityX: velocity.x,
+        velocityY: velocity.y,
+        timestamp: Date.now(),
+      });
+      return;
+    }
     if (event.detail >= 2) {
       if (clickTimerRef.current !== null) window.clearTimeout(clickTimerRef.current);
       clickTimerRef.current = null;
@@ -289,7 +315,7 @@ export function QuickPlayOverlayApp() {
   const pointerReleased = state.mode === "snack" && (released || submitted || state.enabled === false || phase === "finishing");
   const horizontalMargin = state.mode === "dangle" ? 180 : state.mode === "snack" ? 58 : 150;
   const bottomMargin = state.mode === "dangle" ? 210 : state.mode === "snack" ? 52 : 120;
-  const visualPointer = {
+  const visualPointer = state.mode === "dangle" ? pointer : {
     ...pointer,
     clientX: Math.min(Math.max(pointer.clientX, horizontalMargin), Math.max(horizontalMargin, window.innerWidth - horizontalMargin)),
     clientY: Math.min(Math.max(pointer.clientY, 52), Math.max(52, window.innerHeight - bottomMargin)),
@@ -307,7 +333,7 @@ export function QuickPlayOverlayApp() {
     >
       <div className="quick-overlay-focus-ring" style={{ left: visualPointer.clientX, top: visualPointer.clientY }} aria-hidden="true" />
       {state.mode === "snack" ? <SnackProp pointer={visualPointer} released={pointerReleased} state={state} /> : null}
-      {state.mode === "dangle" ? <DangleProp pointer={visualPointer} state={state} /> : null}
+      {state.mode === "dangle" ? <DangleProp pointer={visualPointer} state={state} onFishPosition={publishFishPosition} /> : null}
       {state.mode === "yarn" ? <YarnProp pointer={visualPointer} rolling={phase === "rolling"} state={state} /> : null}
       <div className="quick-overlay-hint" style={{ left: visualPointer.clientX, top: visualPointer.clientY }} role="status">{hint}</div>
     </main>

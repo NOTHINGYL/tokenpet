@@ -1194,6 +1194,46 @@ async function verifyActions(window, desktopPet) {
   );
   await capture(window, "console-actions-play-cursor.png", "Console / Actions / Play Cursor preview");
 
+  await click(window, "[data-action-id=drag_dangle]", "select Dangle toy preview");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "drag_dangle", [], "Dangle toy settings");
+  await click(window, "[data-action-filmstrip] [data-action-keyframe]:nth-child(6)", "show Dangle pursuit frame");
+  await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.dangle_pursuit_run", [], "Dangle pursuit actor");
+  await delay(160);
+  const danglePreview = await evaluate(window, () => {
+    const stage = document.querySelector("[data-action-preview-stage]");
+    const shell = stage?.querySelector(".pet-generated-actor-shell");
+    const images = [...(stage?.querySelectorAll(".action-preview-dangle-wand img, .action-preview-prop-drag_dangle img") ?? [])];
+    const filmstrip = document.querySelector("[data-action-filmstrip]");
+    const keyframes = [...(filmstrip?.querySelectorAll("[data-action-keyframe]") ?? [])];
+    return {
+      contract: stage?.dataset.previewDangleContract,
+      phase: stage?.dataset.previewDanglePhase,
+      animation: stage?.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+      keyframes: keyframes.length,
+      filmstripRows: new Set(keyframes.map((frame) => Math.round(frame.getBoundingClientRect().top))).size,
+      filmstripFits: Boolean(filmstrip && filmstrip.scrollHeight <= filmstrip.clientHeight + 1),
+      propImages: images.length,
+      propsReady: images.every((image) => image.complete && image.naturalWidth > 0),
+      cord: stage?.querySelector(".action-preview-dangle-cord path")?.getAttribute("d"),
+      tokenHidden: shell?.classList.contains("pet-token-hidden") ?? false,
+    };
+  });
+  verify(
+    "Actions Dangle preview shares the complete offline pursuit rig",
+    danglePreview.contract === "offline-phases-distance-locked"
+      && danglePreview.phase === "dangle_pursuit_run"
+      && danglePreview.animation === "action.dangle_pursuit_run"
+      && danglePreview.keyframes === 8
+      && danglePreview.filmstripRows === 1
+      && danglePreview.filmstripFits
+      && danglePreview.propImages === 2
+      && danglePreview.propsReady
+      && danglePreview.cord?.startsWith("M ")
+      && danglePreview.tokenHidden,
+    `eight Dangle phases, dedicated pursuit actor, clean wand/fish assets, connected cord, and chrome-free preview: ${JSON.stringify(danglePreview)}`,
+  );
+  await capture(window, "console-actions-dangle.png", "Console / Actions / Dangle Toy preview");
+
   await click(window, "[data-action-id=walk_round_trip]", "select Pet locomotion preview");
   await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip", [], "Pet preview walk actor");
   const samplePetPreviewAt = async (ratio) => {

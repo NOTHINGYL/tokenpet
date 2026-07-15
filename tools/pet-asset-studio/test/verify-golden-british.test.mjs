@@ -17,6 +17,8 @@ const feedClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/
 const feedAssetReportPath = resolve(feedClipRoot, "asset-report.json");
 const cursorClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/play-cursor-v2");
 const cursorAssetReportPath = resolve(cursorClipRoot, "asset-report.json");
+const dangleClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dangle-toy-v2");
+const dangleAssetReportPath = resolve(dangleClipRoot, "asset-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -165,6 +167,106 @@ test("Play Cursor ships registered eyes-head-ears whole-cat poses", async () => 
   assert.ok(outputs.every((entry) => Math.abs((entry.alphaBounds[0] + entry.alphaBounds[2]) / 2 - 512) <= 1));
   for (const artifact of ["play-cursor-contact-sheet.png", "play-cursor-direction-preview.gif"]) {
     assert.ok((await stat(resolve(cursorClipRoot, artifact))).size > 0, `${artifact} must remain available for directional visual review`);
+  }
+});
+
+test("Dangle Toy ships complete eight-direction cat packs and dedicated root motion", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const expectedCounts = {
+    dangle_alert: 2,
+    dangle_stalk: 2,
+    dangle_crouch: 2,
+    dangle_pounce: 4,
+    dangle_pounce_front: 4,
+    dangle_pounce_back: 4,
+    dangle_pounce_front_left: 4,
+    dangle_pounce_front_right: 4,
+    dangle_pounce_back_left: 4,
+    dangle_pounce_back_right: 4,
+    dangle_play: 4,
+    dangle_play_front: 4,
+    dangle_play_back: 4,
+    dangle_play_front_left: 4,
+    dangle_play_front_right: 4,
+    dangle_play_back_left: 4,
+    dangle_play_back_right: 4,
+    dangle_pursuit_run: 8,
+    dangle_pursuit_run_front: 8,
+    dangle_pursuit_run_back: 8,
+    dangle_pursuit_run_front_left: 8,
+    dangle_pursuit_run_front_right: 8,
+    dangle_pursuit_run_back_left: 8,
+    dangle_pursuit_run_back_right: 8,
+    dangle_return_walk: 8,
+    dangle_return_walk_front: 8,
+    dangle_return_walk_back: 8,
+    dangle_return_walk_front_left: 8,
+    dangle_return_walk_front_right: 8,
+    dangle_return_walk_back_left: 8,
+    dangle_return_walk_back_right: 8,
+    dangle_settle: 2,
+  };
+  for (const [id, count] of Object.entries(expectedCounts)) {
+    const animation = manifest.animations[`action.${id}`];
+    assert.equal(animation.frames.length, count, `${id} must include all approved offline poses`);
+    assert.equal(animation.frames.some((frame) => frame.bodyTransform), false, `${id} cannot warp a flat raster`);
+  }
+  const locomotionFrames = [];
+  for (const id of ["dangle_pursuit_run", "dangle_pursuit_run_front", "dangle_pursuit_run_back", "dangle_pursuit_run_front_left", "dangle_pursuit_run_front_right", "dangle_pursuit_run_back_left", "dangle_pursuit_run_back_right"]) {
+    const pursuit = manifest.animations[`action.${id}`];
+    assert.deepEqual(pursuit.locomotion.rootStepKeyframes, [0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4]);
+    assert.equal(pursuit.locomotion.nominalStepDistancePx, 26);
+    locomotionFrames.push(...pursuit.frames);
+  }
+  for (const id of ["dangle_return_walk", "dangle_return_walk_front", "dangle_return_walk_back", "dangle_return_walk_front_left", "dangle_return_walk_front_right", "dangle_return_walk_back_left", "dangle_return_walk_back_right"]) {
+    const returning = manifest.animations[`action.${id}`];
+    assert.deepEqual(returning.locomotion.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+    assert.equal(returning.locomotion.nominalStepDistancePx, 18);
+    locomotionFrames.push(...returning.frames);
+  }
+  assert.equal(new Set(locomotionFrames.map((frame) => frame.sha256)).size, 112);
+
+  const report = JSON.parse(await readFile(dangleAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-dangle-toy-assets/v4");
+  assert.equal(report.offlineMirrors.runtimeTransform, "none");
+  assert.match(report.generationMode, /built-in imagegen/);
+  const frameOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/dangle_"));
+  const propOutputs = report.outputs.filter((entry) => entry.path.includes("/props/dangle-"));
+  assert.equal(frameOutputs.length, 176);
+  assert.equal(new Set(frameOutputs.map((entry) => entry.sha256)).size, 176);
+  assert.equal(propOutputs.length, 8);
+  assert.ok([...frameOutputs, ...propOutputs].every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  assert.ok(
+    propOutputs
+      .filter((entry) => !entry.path.endsWith("dangle-catch-spark.png") && !entry.path.endsWith("dangle-trail.png"))
+      .every((entry) => entry.alphaComponentSizes.length === 1),
+    "each coherent wand, fish, and connector prop must be one clean component without adjacent-cell bleed",
+  );
+  assert.ok(frameOutputs.every((entry) => entry.alphaBounds[3] === 818));
+  for (const artifact of [
+    "dangle-toy-contact-sheet.png",
+    "dangle-alert-pounce-play-preview.gif",
+    "dangle-pursuit-run-preview.gif",
+    "dangle-pursuit-run-front-preview.gif",
+    "dangle-pursuit-run-back-preview.gif",
+    "dangle-pursuit-run-front-right-preview.gif",
+    "dangle-pursuit-run-front-left-preview.gif",
+    "dangle-pursuit-run-back-right-preview.gif",
+    "dangle-pursuit-run-back-left-preview.gif",
+    "dangle-return-walk-preview.gif",
+    "dangle-return-walk-front-preview.gif",
+    "dangle-return-walk-back-preview.gif",
+    "dangle-return-walk-front-right-preview.gif",
+    "dangle-return-walk-front-left-preview.gif",
+    "dangle-return-walk-back-right-preview.gif",
+    "dangle-return-walk-back-left-preview.gif",
+  ]) {
+    assert.ok((await stat(resolve(dangleClipRoot, artifact))).size > 0, `${artifact} must remain available for Dangle visual review`);
+  }
+  for (const prop of ["dangle-wand.png", "dangle-wand-flex.png", "dangle-fish-mint.png", "dangle-fish-blue.png", "dangle-fish-feather.png", "dangle-connector.png", "dangle-catch-spark.png", "dangle-trail.png"]) {
+    const png = inspectPng(await readFile(resolve(bundleDir, "props", prop)));
+    assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
+    assert.ok([4, 6].includes(png.colorType));
   }
 });
 
