@@ -170,7 +170,8 @@ async function captureStep(step) {
   }));
   assert.equal(renderer.generatedCanvases, 1, `${step.id} must render exactly one generated actor canvas`);
   assert.equal(renderer.fallbackCanvases, 0, `${step.id} must not show the static fallback`);
-  assert.equal(renderer.tokenMode, "pet-token-embedded", `${step.id} must retain the embedded token frame`);
+  const expectedTokenMode = step.id === "wake" ? "pet-token-hidden" : "pet-token-embedded";
+  assert.equal(renderer.tokenMode, expectedTokenMode, step.id === "wake" ? "wake must show the dedicated chrome-free whole-cat sequence" : `${step.id} must retain the embedded token frame`);
   return {
     ...step,
     file: `docs/screenshots/pet-story/demo-frames/${file}`,

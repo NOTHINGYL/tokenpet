@@ -203,6 +203,29 @@ test("Toss Yarn owns eight-direction chase, pickup, mouth-carry, drop, and colou
   assert.equal(sourceIssueCodes(fixture).length, 0);
 });
 
+test("Wake Up owns one dedicated five-second offline sequence split into four phases", async () => {
+  const fixture = await readSourceFixture();
+  const expectedCounts = {
+    wake_up_blink: 4,
+    wake_up_roll: 4,
+    wake_up_stretch: 8,
+    wake_up_gather: 8,
+  };
+  for (const [id, count] of Object.entries(expectedCounts)) {
+    const action = fixture.actions[id];
+    assert.equal(action.sourceFrames.length, count, `${id} must own its complete offline sequence`);
+    assert.equal(action.bodyTransform, undefined, `${id} cannot scale or warp cat anatomy`);
+    assert.ok(action.sourceFrames.every((frame) => frame.src.includes(`/frames/${id}_`) && frame.kind === "approved-raster"));
+  }
+  const stable = fixture.actions.wake_up;
+  assert.equal(stable.sourceFrames.length, 24);
+  assert.equal(stable.sourceFrames.reduce((total, frame) => total + frame.durationMs, 0), 5_000);
+  assert.equal(new Set(stable.sourceFrames.map((frame) => frame.expectedSha256)).size, 24);
+  assert.ok(stable.sourceFrames.every((frame) => !/(?:sleep_loop|drag_dangle|\/wake_up\.png)$/.test(frame.src)));
+  assert.equal(stable.bodyTransform, undefined);
+  assert.equal(sourceIssueCodes(fixture).length, 0);
+});
+
 test("every Quick Play action must be represented", async () => {
   const fixture = await readFixture();
   fixture.capabilities = fixture.capabilities.filter((capability) => capability.id !== "capture_moment");

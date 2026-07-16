@@ -179,7 +179,9 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     || animation.id === "action.play_cursor"
     || animation.id.startsWith("action.feed_snack_")
     || animation.id.startsWith("action.dangle_")
-    || animation.id.startsWith("action.toss_yarn_");
+    || animation.id.startsWith("action.toss_yarn_")
+    || animation.id === "action.wake_up"
+    || animation.id.startsWith("action.wake_up_");
   const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);

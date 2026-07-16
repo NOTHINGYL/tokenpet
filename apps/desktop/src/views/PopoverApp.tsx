@@ -18,7 +18,7 @@ const actions: QuickPlayAction[] = [
   { label: "Dangle toy", id: "drag_dangle", closesPanel: true, movesPet: true },
   { label: "Toss yarn", id: "toss_yarn", closesPanel: true, movesPet: true },
   { label: "Nap here", id: "nap_here", closesPanel: false },
-  { label: "Wake up", id: "wake_up", closesPanel: false },
+  { label: "Wake up", id: "wake_up", closesPanel: true },
   { label: "Summon", id: "summon_to_pointer", closesPanel: true, movesPet: true },
   { label: "Capture", id: "capture_moment", closesPanel: false },
 ];

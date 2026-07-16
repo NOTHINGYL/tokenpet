@@ -27,6 +27,40 @@ const cueProfile: Record<PetSoundCueId, { start: number; end: number; duration: 
   rest: { start: 260, end: 180, duration: 0.3 },
 };
 
+type WakeMeowVoice = "soft" | "cozy" | "playful";
+const wakeMeowCache: Partial<Record<WakeMeowVoice, HTMLAudioElement>> = {};
+
+function wakeMeow(voice: WakeMeowVoice) {
+  if (typeof Audio === "undefined") return null;
+  if (!wakeMeowCache[voice]) {
+    const audio = new Audio(`./pet-audio/wake-meow-${voice}.wav`);
+    audio.preload = "auto";
+    audio.load();
+    wakeMeowCache[voice] = audio;
+  }
+  return wakeMeowCache[voice] ?? null;
+}
+
+export function preloadWakeUpMeows() {
+  for (const voice of ["soft", "cozy", "playful"] as const) wakeMeow(voice);
+}
+
+async function playWakeUpMeow(story: PetStorySettings) {
+  if (!canPlayPetSoundCue("wake", story)) return false;
+  const voice: WakeMeowVoice = ["soft", "cozy", "playful"].includes(story.soundStyle) ? story.soundStyle : "cozy";
+  const audio = wakeMeow(voice);
+  if (!audio) return false;
+  try {
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = Math.min(1, Math.max(0, story.volume / 100 * story.cueVolumes.wake / 100));
+    await audio.play();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function minutesSinceMidnight(value: string) {
   const [hours, minutes] = value.split(":").map(Number);
   return Number.isFinite(hours) && Number.isFinite(minutes) ? hours * 60 + minutes : null;
@@ -89,6 +123,7 @@ export async function playPetSoundCue(
 }
 
 export function playPetActionSound(action: PetActionId, story: PetStorySettings) {
+  if (action === "wake_up") return playWakeUpMeow(story);
   const cue = cueForPetAction[action];
   return cue ? playPetSoundCue(cue, story) : Promise.resolve(false);
 }

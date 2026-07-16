@@ -16,6 +16,14 @@ export const TOSS_YARN_DIRECTIONAL_ACTION_IDS = TOSS_YARN_ACTOR_PHASES.flatMap((
   TOSS_YARN_ACTOR_DIRECTIONS.map((direction) => `toss_yarn_${phase}_${direction}` as TossYarnDirectionalActionId),
 ) as readonly TossYarnDirectionalActionId[];
 
+export const WAKE_UP_PHASE_ACTION_IDS = [
+  "wake_up_blink",
+  "wake_up_roll",
+  "wake_up_stretch",
+  "wake_up_gather",
+] as const;
+export type WakeUpPhaseActionId = (typeof WAKE_UP_PHASE_ACTION_IDS)[number];
+
 export const PET_ACTOR_LIFE_STAGES = ["egg", "newKitten", "deskBuddy", "flowCompanion", "guardianCompanion"] as const;
 export type PetActorLifeStage = (typeof PET_ACTOR_LIFE_STAGES)[number];
 
@@ -78,6 +86,7 @@ export const PET_ACTOR_ACTION_IDS = [
   ...TOSS_YARN_DIRECTIONAL_ACTION_IDS,
   "nap_here",
   "wake_up",
+  ...WAKE_UP_PHASE_ACTION_IDS,
   "summon_to_screen",
   "summon_to_pointer",
   "capture_moment",

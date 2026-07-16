@@ -14,7 +14,7 @@ import {
   thresholdCrossingEvent,
   type PetDirectorState,
 } from "../features/pet-story/PetDirector";
-import { playPetActionSound } from "../features/pet-story/soundCueEngine";
+import { playPetActionSound, preloadWakeUpMeows } from "../features/pet-story/soundCueEngine";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import type { CursorTrackingVisual, PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
@@ -120,6 +120,10 @@ export function PetApp() {
     lastWakeDate: null as string | null,
     lastRestAttemptAt: 0,
   });
+
+  useEffect(() => {
+    preloadWakeUpMeows();
+  }, []);
 
   const clearCompletionTimer = useCallback(() => {
     if (completionTimerRef.current !== null) {
@@ -507,16 +511,21 @@ export function PetApp() {
       if (phase === "drop" || phase === "settle" || phase === "complete") return tossYarnDirectionalAction("drop", direction);
       return null;
     }
+    if (action === "wake_up") {
+      if (phase === "stand") return "wake_up_blink";
+      if (phase === "outbound") return "wake_up_roll";
+      if (phase === "interact") return "wake_up_stretch";
+      return "wake_up_gather";
+    }
     if (action === "summon_to_pointer" && phase === "outbound") return "summon_to_pointer";
     if (phase === "return" || phase === "outbound") return "run_across";
     if (action === "play_cursor") return "play_cursor";
     if (action === "nap_here") {
       const pose = story.actionSettings.byAction.nap_here?.settlePose;
-      if (phase === "settle" && pose === "side") return "wake_up";
+      if (phase === "settle" && pose === "side") return "nap_here";
       if (phase === "settle" && pose === "paws") return "sleep_loop";
       return phase === "settle" ? "nap_here" : "sleep_loop";
     }
-    if (action === "wake_up") return "wake_up";
     if (action === "summon_to_pointer" && phase === "stand") return "summon_to_screen";
     if (action === "summon_to_pointer") return phase === "settle" ? "focus_loop" : "run_across";
     return action;

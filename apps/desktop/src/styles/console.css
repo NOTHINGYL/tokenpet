@@ -4006,6 +4006,13 @@
   --pet-visual-cat-width: clamp(350px, 27vw, 410px);
   --pet-visual-cat-y: -8px;
 }
+.action-preview-wake_up .pet-generated-actor-shell {
+  /* Wake Up changes from a compact curl to a very long side stretch. Keep one
+     fixed 1024px artboard scale for every phase so the full key pose remains
+     visible and the body never appears to resize at runtime. */
+  --pet-visual-cat-width: clamp(420px, 32vw, 490px);
+  --pet-visual-cat-y: -18px;
+}
 .action-preview-stage .pet-appearance-visual-preview {
   width: 100%;
   height: 100%;

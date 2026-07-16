@@ -162,8 +162,8 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
   wake_up: {
     id: "wake_up", label: "Wake up", icon: `${iconRoot}/wake-up.png`, durationMs: 5_000,
     contract: "≈5 sec · full-body stretch · restore state", propLabel: "wake sparkle", propMark: "✦",
-    phaseLabels: ["Blink", "Roll", "Long stretch", "Hold", "Gather"],
-    authoredPhaseActions: ["sleep_loop", "wake_up", "wake_up", "wake_up", "focus_loop"],
+    phaseLabels: ["Blink", "Roll", "Long stretch", "Gather"],
+    authoredPhaseActions: ["wake_up_blink", "wake_up_roll", "wake_up_stretch", "wake_up_gather"],
     settings: [
       { key: "meowVoice", label: "Meow voice", type: "choices", defaultValue: "cozy", options: [{ value: "soft", label: "Soft" }, { value: "cozy", label: "Cozy" }, { value: "playful", label: "Playful" }] },
       { key: "meowCue", label: "Meow cue", type: "toggle", defaultValue: true, detail: "Preview the approved local cue" },
@@ -211,7 +211,7 @@ function buildPreviewFrames(
   actorVariant?: string,
 ): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
-  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn") {
+  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn" || definition.id === "wake_up") {
     let startMs = 0;
     return definition.authoredPhaseActions.map((actorActionId, index) => {
       const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
@@ -378,6 +378,18 @@ export function ActionsWorkbench(props: {
   const tossRollDurationMs = Math.min(1_800, Math.max(280, Math.round(Number(settings.rollDistance ?? 120) / (190 * Number(settings.rollSpeed ?? 100) / 100) * 1_000)));
   const tossPhaseDurations = [tossRollDurationMs + 350, tossChasePlan.durationMs, 670, tossCarryPlan.durationMs, 1_000, 280];
   const tossPreviewDurationMs = tossPhaseDurations.reduce((total, duration) => total + duration, 0);
+  const wakeStretchDurationMs = Number(settings.stretchHold ?? 3) * 1_000;
+  const wakePhaseDurations = useMemo(() => {
+    const wakeRemainderMs = 5_000 - wakeStretchDurationMs;
+    const wakeBlinkDurationMs = Math.round(wakeRemainderMs * .27);
+    const wakeRollDurationMs = Math.round(wakeRemainderMs * .33);
+    return [
+      wakeBlinkDurationMs,
+      wakeRollDurationMs,
+      wakeStretchDurationMs,
+      5_000 - wakeStretchDurationMs - wakeBlinkDurationMs - wakeRollDurationMs,
+    ];
+  }, [wakeStretchDurationMs]);
   const previewDurationMs = selectedAction === "walk_round_trip"
     ? walkPreviewPlan.durationMs
     : selectedAction === "token_snack"
@@ -393,10 +405,10 @@ export function ActionsWorkbench(props: {
       manifest,
       fallbackImage,
       previewDurationMs,
-      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : undefined,
+      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : selectedAction === "wake_up" ? wakePhaseDurations : undefined,
       selectedAction === "toss_yarn" ? yarnColor : undefined,
     ),
-    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction, tossPreviewDurationMs, yarnColor],
+    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction, tossPreviewDurationMs, wakePhaseDurations, yarnColor],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -623,6 +635,8 @@ export function ActionsWorkbench(props: {
             data-preview-dangle-contract={selectedAction === "drag_dangle" ? "offline-phases-distance-locked" : undefined}
             data-preview-toss-yarn-phase={selectedAction === "toss_yarn" ? sampled.frame.actorActionId : undefined}
             data-preview-toss-yarn-contract={selectedAction === "toss_yarn" ? "offline-eight-direction-mouth-carry-exact-return" : undefined}
+            data-preview-wake-up-phase={selectedAction === "wake_up" ? sampled.frame.actorActionId : undefined}
+            data-preview-wake-up-contract={selectedAction === "wake_up" ? "offline-five-second-whole-frame-stretch" : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
               <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />

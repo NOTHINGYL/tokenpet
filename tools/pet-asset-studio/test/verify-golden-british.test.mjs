@@ -21,6 +21,8 @@ const dangleClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-britis
 const dangleAssetReportPath = resolve(dangleClipRoot, "asset-report.json");
 const tossYarnClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2");
 const tossYarnAssetReportPath = resolve(tossYarnClipRoot, "asset-report.json");
+const wakeUpClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/wake-up-v2");
+const wakeUpAssetReportPath = resolve(wakeUpClipRoot, "asset-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -319,6 +321,44 @@ test("Toss Yarn ships eight-direction chase and baked three-colour mouth-carry p
       const png = inspectPng(await readFile(resolve(bundleDir, "props", `toss-yarn-${color}${suffix}.png`)));
       assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
     }
+  }
+});
+
+test("Wake Up ships 24 registered whole-cat frames, review media, and local meow cues", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const expectedCounts = {
+    wake_up_blink: 4,
+    wake_up_roll: 4,
+    wake_up_stretch: 8,
+    wake_up_gather: 8,
+  };
+  for (const [id, count] of Object.entries(expectedCounts)) {
+    const animation = manifest.animations[`action.${id}`];
+    assert.equal(animation.frames.length, count);
+    assert.equal(animation.frames.some((frame) => frame.bodyTransform), false);
+    assert.ok(animation.frames.every((frame) => frame.src.includes(`/wake_up_${id.replace("wake_up_", "")}_`)));
+  }
+  const stable = manifest.animations["action.wake_up"];
+  assert.equal(stable.frames.length, 24);
+  assert.equal(stable.frames.reduce((total, frame) => total + frame.durationMs, 0), 5_000);
+  assert.equal(new Set(stable.frames.map((frame) => frame.sha256)).size, 24);
+
+  const report = JSON.parse(await readFile(wakeUpAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-wake-up-assets/v2");
+  assert.equal(report.frameCount, 24);
+  assert.equal(report.durationMs, 5_000);
+  assert.equal(report.registration.runtimeBodyTransform, "forbidden");
+  assert.match(report.generationMode, /built-in imagegen/);
+  const frameOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/wake_up_"));
+  assert.equal(frameOutputs.length, 24);
+  assert.ok(frameOutputs.every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  assert.ok(frameOutputs.every((entry) => entry.alphaBounds[3] === 818));
+  assert.equal(report.audio.length, 3);
+  for (const artifact of ["wake-up-contact-sheet.png", "wake-up-preview.gif"]) {
+    assert.ok((await stat(resolve(wakeUpClipRoot, artifact))).size > 0, `${artifact} must remain available for Wake Up visual review`);
+  }
+  for (const voice of ["soft", "cozy", "playful"]) {
+    assert.ok((await stat(resolve(repoRoot, `apps/desktop/public/pet-audio/wake-meow-${voice}.wav`))).size > 1_000);
   }
 });
 

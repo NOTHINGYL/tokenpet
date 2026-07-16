@@ -198,6 +198,7 @@ function verifyReachableUi() {
   verify("Quick Play no duplicate actor preview", !/PetAppearanceVisual|PetRenderer|GeneratedPetActorCanvas/u.test(popoverSource), "Quick Play contains no repeated cat preview");
   verify("Quick Play v18 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v18 controller modules");
   verify("Quick Play cursor helper copy", popoverSource.includes("Tracks your cursor for 10 seconds."), "the required 10-second helper is visible in source");
+  verify("Wake Up closes Quick Play immediately", popoverSource.includes('{ label: "Wake up", id: "wake_up", closesPanel: true }'), "Wake Up follows the accepted-action panel-close contract");
   verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
   verify("Menu Bar Console entries target Overview", menuBarSource.match(/openConsole\("overview"\)/gu)?.length === 2, "both the settings icon and Open Console footer explicitly request Overview");
   verify("Quick Play Console entry targets Pet", popoverSource.includes('openConsole("pet")'), "the double-click panel explicitly requests the Pet console");
@@ -223,6 +224,7 @@ function verifyReachableUi() {
   const desktop = read("apps/desktop/src/views/PetApp.tsx");
   const story = read("apps/desktop/src/features/pet-story/PetStoryPanel.tsx");
   const actions = read("apps/desktop/src/features/pet-story/ActionsWorkbench.tsx");
+  const soundEngine = read("apps/desktop/src/features/pet-story/soundCueEngine.ts");
   const consoleStyles = read("apps/desktop/src/styles/console.css");
   const fallbackState = read("apps/desktop/src/state/fallbacks.ts");
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
@@ -259,6 +261,22 @@ function verifyReachableUi() {
       && consoleStyles.includes(".action-preview-toss_yarn .pet-generated-actor-shell")
       && consoleStyles.includes("--filmstrip-columns"),
     "desktop and Console Preview share chase/pickup/carry/drop actions, baked yarn-colour variants, authored props, and distance-locked root motion",
+  );
+  const wakePhaseCounts = { wake_up_blink: 4, wake_up_roll: 4, wake_up_stretch: 8, wake_up_gather: 8 };
+  verify(
+    "Wake Up uses one dedicated five-second offline sequence",
+    Object.entries(wakePhaseCounts).every(([id, count]) => manifest.animations[`action.${id}`]?.frames.length === count)
+      && manifest.animations["action.wake_up"]?.frames.length === 24
+      && manifest.animations["action.wake_up"]?.frames.reduce((total, frame) => total + frame.durationMs, 0) === 5_000
+      && Object.keys(wakePhaseCounts).every((id) => manifest.animations[`action.${id}`].frames.every((frame) => !frame.bodyTransform))
+      && desktop.includes('return "wake_up_blink"')
+      && desktop.includes('return "wake_up_roll"')
+      && desktop.includes('return "wake_up_stretch"')
+      && desktop.includes('return "wake_up_gather"')
+      && actions.includes("offline-five-second-whole-frame-stretch")
+      && soundEngine.includes("preloadWakeUpMeows")
+      && ["soft", "cozy", "playful"].every((voice) => fileIsNonEmpty(join(root, `apps/desktop/public/pet-audio/wake-meow-${voice}.wav`))),
+    "desktop and Console Preview share 24 registered blink/roll/stretch/gather frames with three preloaded local meow voices and no runtime anatomy transform",
   );
   verify("Actions v19 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
   verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePose", "breathingIntensity", "zEffect", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)) && !actions.includes('key: "attentionRadius"'), "all action-specific v19 setting keys are modeled without a generic Save form or a misleading local-only cursor radius");

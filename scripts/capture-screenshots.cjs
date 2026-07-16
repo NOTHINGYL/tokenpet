@@ -813,7 +813,7 @@ async function verifyQuickPlay() {
 
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
   await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "clear active action fixture");
-  const closeActions = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "summon_to_pointer"]);
+  const closeActions = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "wake_up", "summon_to_pointer"]);
   for (const actionId of quickPlayIds) {
     await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
     await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], `reset before ${actionId}`);
@@ -1233,6 +1233,92 @@ async function verifyActions(window, desktopPet) {
     `eight Dangle phases, dedicated pursuit actor, clean wand/fish assets, connected cord, and chrome-free preview: ${JSON.stringify(danglePreview)}`,
   );
   await capture(window, "console-actions-dangle.png", "Console / Actions / Dangle Toy preview");
+
+  await click(window, "[data-action-id=wake_up]", "select Wake Up preview");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "wake_up", [], "Wake Up settings");
+  const wakePhaseAnimations = [];
+  for (let index = 1; index <= 4; index += 1) {
+    await click(window, `[data-action-filmstrip] [data-action-keyframe]:nth-child(${index})`, `show Wake Up phase ${index}`);
+    await delay(120);
+    wakePhaseAnimations.push(await evaluate(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation));
+  }
+  const wakePreviewPlaying = await evaluate(window, () => document.querySelector("[data-action-play]")?.getAttribute("aria-label") === "Pause preview");
+  if (wakePreviewPlaying) await click(window, "[data-action-play]", "pause Wake Up preview for key-pose review");
+  await evaluate(window, () => {
+    const scrubber = document.querySelector("[data-action-scrubber]");
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(scrubber, "2700");
+    scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+    scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await delay(160);
+  const wakePreview = await evaluate(window, () => {
+    const stage = document.querySelector("[data-action-preview-stage]");
+    const shell = stage?.querySelector(".pet-generated-actor-shell");
+    const actor = stage?.querySelector(".action-preview-actor");
+    const canvas = stage?.querySelector(".pet-generated-actor-canvas");
+    const context = canvas?.getContext("2d", { willReadFrequently: true });
+    const stageRect = stage?.getBoundingClientRect();
+    const canvasRect = canvas?.getBoundingClientRect();
+    const keyframes = [...document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]")];
+    let alphaBounds = null;
+    if (canvas && context && stageRect && canvasRect) {
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let y = 0; y < canvas.height; y += 2) {
+        for (let x = 0; x < canvas.width; x += 2) {
+          if (pixels[(y * canvas.width + x) * 4 + 3] <= 8) continue;
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x);
+          maxY = Math.max(maxY, y);
+        }
+      }
+      if (maxX >= minX && maxY >= minY) {
+        alphaBounds = {
+          left: canvasRect.left + minX / canvas.width * canvasRect.width,
+          top: canvasRect.top + minY / canvas.height * canvasRect.height,
+          right: canvasRect.left + (maxX + 2) / canvas.width * canvasRect.width,
+          bottom: canvasRect.top + (maxY + 2) / canvas.height * canvasRect.height,
+        };
+      }
+    }
+    return {
+      contract: stage?.dataset.previewWakeUpContract,
+      phase: stage?.dataset.previewWakeUpPhase,
+      animation: stage?.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+      frame: canvas?.dataset.actorFrame,
+      keyframes: keyframes.length,
+      filmstripRows: new Set(keyframes.map((frame) => Math.round(frame.getBoundingClientRect().top))).size,
+      actorX: actor?.style.getPropertyValue("--actor-preview-x"),
+      actorY: actor?.style.getPropertyValue("--actor-preview-y"),
+      tokenHidden: shell?.classList.contains("pet-token-hidden") ?? false,
+      alphaFitsStage: Boolean(stageRect && alphaBounds
+        && alphaBounds.left >= stageRect.left - 1
+        && alphaBounds.top >= stageRect.top - 1
+        && alphaBounds.right <= stageRect.right + 1
+        && alphaBounds.bottom <= stageRect.bottom + 1),
+    };
+  });
+  verify(
+    "Actions Wake Up preview shares the dedicated five-second offline sequence",
+    JSON.stringify(wakePhaseAnimations) === JSON.stringify(["action.wake_up_blink", "action.wake_up_roll", "action.wake_up_stretch", "action.wake_up_gather"])
+      && wakePreview.contract === "offline-five-second-whole-frame-stretch"
+      && wakePreview.phase === "wake_up_stretch"
+      && wakePreview.animation === "action.wake_up_stretch"
+      && /^wake_up_stretch-[4-5]$/.test(wakePreview.frame ?? "")
+      && wakePreview.keyframes === 4
+      && wakePreview.filmstripRows === 1
+      && wakePreview.actorX === "0%"
+      && wakePreview.actorY === "0%"
+      && wakePreview.tokenHidden
+      && wakePreview.alphaFitsStage,
+    `blink/roll/stretch/gather use the same registered chrome-free whole-cat manifests and remain contained: ${JSON.stringify({ wakePhaseAnimations, wakePreview })}`,
+  );
+  await capture(window, "console-actions-wake-up.png", "Console / Actions / Wake Up maximum stretch");
 
   await click(window, "[data-action-id=walk_round_trip]", "select Pet locomotion preview");
   await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip", [], "Pet preview walk actor");

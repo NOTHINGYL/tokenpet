@@ -965,7 +965,8 @@ async function run() {
 
   qa.resetQuickPlayTrace();
   await click(panel, "[data-action-id=wake_up]");
-  verify("Wake up keeps Quick Play open", safeWindow(qa, "popover")?.id === panel.id, "the panel remains visible during the five-second authored sequence");
+  await waitForClosed(qa, "popover");
+  verify("Wake up closes Quick Play immediately", !safeWindow(qa, "popover"), "the panel closes as soon as the five-second authored sequence is accepted");
   await waitForQuickPlayEnd("wake_up");
   await waitFor(() => qa.getQuickPlaySession().resting === false, "wake restored director state");
   const wakeTrace = qa.getQuickPlayTrace();
@@ -976,8 +977,6 @@ async function run() {
     "production timeline remains exactly five seconds while the configured stretch hold redistributes the authored blink/roll/stretch/gather phases; QA uses an accelerated clock",
   );
   quickPlaySummaries.push({ action: "wake_up", startBounds: napBounds, endBounds: pet.getBounds(), trace: wakeTrace, resting: false });
-  await click(panel, "button[aria-label='Close Quick Play']");
-  await waitForClosed(qa, "popover");
 
   qa.resetQuickPlayTrace();
   const summonStart = pet.getBounds();
