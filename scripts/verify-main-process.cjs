@@ -436,11 +436,17 @@ async function run() {
     let arrivalScreenshot = null;
     let eatScreenshot = null;
     let eatOverlayScreenshot = null;
+    let pickupVisual = null;
+    let dropVisual = null;
+    let pickupScreenshot = null;
+    let dropScreenshot = null;
     const captureAuthoredWalkVisual = async (phase, screenshotName = null) => {
       await waitFor(() => qa.getQuickPlaySession().phase === phase, `${action} authored ${phase} phase`);
       const expectedAnimation = action === "token_snack"
         ? phase === "outbound" ? "action.feed_snack_walk_slow" : "action.feed_snack_return_run"
-        : "action.walk_round_trip";
+        : action === "toss_yarn"
+          ? `action.toss_yarn_${phase === "outbound" ? "chase" : "carry"}_${String(qa.getQuickPlaySession().actorDirection ?? "right").replaceAll("-", "_")}`
+          : "action.walk_round_trip";
       const expectedFramePrefix = expectedAnimation.slice("action.".length);
       await waitFor(() => execute(pet, `document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === '${expectedAnimation}'`), `${action} ${phase} actor frames`);
       await waitFor(() => execute(pet, `(() => {
@@ -456,6 +462,7 @@ async function run() {
         const close = document.querySelector('.pet-close');
         return {
           animation: actor?.dataset.actorAnimation ?? null,
+          variant: actor?.dataset.actorVariant ?? null,
           facing: actor?.dataset.actorFacing ?? null,
           frame: canvas?.dataset.actorFrame ?? null,
           timelineMs: Number(canvas?.dataset.actorTimelineMs ?? NaN),
@@ -493,11 +500,11 @@ async function run() {
         `${placement.mode} overlay covers the active display work area ${JSON.stringify(overlayBounds)}`,
       );
       const acceptedOnce = qa.submitQuickPlayOverlayInput(placement.point) === true && qa.submitQuickPlayOverlayInput(placement.point) === false;
-      const pointerRestored = action !== "token_snack" || await waitFor(
+      const pointerRestored = !["token_snack", "toss_yarn"].includes(action) || await waitFor(
         () => execute(overlay, "getComputedStyle(document.querySelector('.quick-play-overlay')).cursor === 'default'"),
-        "Feed Snack system pointer restoration",
+        `${action} system pointer restoration`,
       );
-      verify(`${action} accepts exactly one placement`, acceptedOnce && pointerRestored, "the first placement resolves the native pointer promise, restores the system pointer for Feed, and a second placement cannot queue");
+      verify(`${action} accepts exactly one placement`, acceptedOnce && pointerRestored, "the first placement resolves the native pointer promise, restores the system pointer for Feed/Toss Yarn, and a second placement cannot queue");
       if (action === "token_snack") {
         const capture = await captureAuthoredWalkVisual("outbound", "quick-play-feed-walk.png");
         activeVisual = capture.visual;
@@ -512,14 +519,64 @@ async function run() {
         writeFileSync(eatOverlayScreenshot, (await overlay.webContents.capturePage()).toPNG());
         returnVisual = (await captureAuthoredWalkVisual("return")).visual;
       }
+      if (action === "toss_yarn") {
+        await waitFor(
+          () => !["awaiting-placement", "rolling"].includes(qa.getQuickPlaySession().phase),
+          "Toss Yarn reaches its pinned roll endpoint",
+        );
+        const yarnEndpoint = qa.getQuickPlaySession().targetPoint;
+        const endpointPinned = yarnEndpoint && await execute(overlay, `(() => {
+          const prop = document.querySelector('.quick-overlay-yarn-prop');
+          if (!prop?.classList.contains('is-resting')) return false;
+          const style = getComputedStyle(prop);
+          return Math.abs(parseFloat(style.left) - (${Number(yarnEndpoint?.x ?? 0)} - window.screenX)) < 1
+            && Math.abs(parseFloat(style.top) - (${Number(yarnEndpoint?.y ?? 0)} - window.screenY)) < 1
+            && style.animationName === 'none';
+        })()`);
+        verify(
+          "Toss yarn remains at the computed straight-roll endpoint",
+          endpointPinned === true,
+          "the released overlay prop rests at the same X/Y target used by native cat locomotion instead of snapping back to the click origin",
+        );
+        const capture = await captureAuthoredWalkVisual("outbound", "quick-play-yarn-chase.png");
+        activeVisual = capture.visual;
+        activeVisualScreenshot = capture.screenshot;
+        await waitFor(() => qa.getQuickPlaySession().phase === "pickup", "Toss Yarn pickup phase");
+        const pickupOverlayClosed = await waitFor(
+          () => safeWindow(qa, "quickplayOverlay") === null,
+          "Toss Yarn single-prop pickup handoff",
+        );
+        verify(
+          "Toss yarn hands one ball from overlay to pickup frames",
+          pickupOverlayClosed,
+          "the loose endpoint prop is removed before the baked pickup yarn becomes visible, preventing a duplicate desktop ball",
+        );
+        pickupVisual = await execute(pet, `(() => {
+          const actor = document.querySelector('[data-actor-animation]');
+          const canvas = document.querySelector('.pet-generated-actor-canvas');
+          return { animation: actor?.dataset.actorAnimation ?? null, variant: actor?.dataset.actorVariant ?? null, frame: canvas?.dataset.actorFrame ?? null };
+        })()`);
+        pickupScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-yarn-pickup.png");
+        writeFileSync(pickupScreenshot, (await pet.webContents.capturePage()).toPNG());
+        returnVisual = (await captureAuthoredWalkVisual("carry", "quick-play-yarn-carry.png")).visual;
+        await waitFor(() => qa.getQuickPlaySession().phase === "drop", "Toss Yarn drop phase");
+        await waitFor(() => execute(pet, `/^toss_yarn_drop_.+-orange-[5-6]$/.test(document.querySelector('.pet-generated-actor-canvas')?.dataset.actorFrame ?? '')`), "Toss Yarn late drop keyframe");
+        dropVisual = await execute(pet, `(() => {
+          const actor = document.querySelector('[data-actor-animation]');
+          const canvas = document.querySelector('.pet-generated-actor-canvas');
+          return { animation: actor?.dataset.actorAnimation ?? null, variant: actor?.dataset.actorVariant ?? null, frame: canvas?.dataset.actorFrame ?? null };
+        })()`);
+        dropScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-yarn-drop.png");
+        writeFileSync(dropScreenshot, (await pet.webContents.capturePage()).toPNG());
+      }
     }
     await waitForQuickPlayEnd(action);
     await delay(120);
     const endBounds = pet.getBounds();
     const endAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
     const trace = qa.getQuickPlayTrace();
-    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, activeVisualScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, overlayBounds, overlayScreenshot, trace });
-    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, activeVisualScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, trace };
+    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, overlayBounds, overlayScreenshot, trace });
+    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, trace };
   };
 
   qa.setQuickPlayTimeScale(1);
@@ -802,20 +859,27 @@ async function run() {
   };
   qa.setCursorPoint(dangleDownPoint);
   await delay(700);
-  for (let index = 0; index < 110; index += 1) {
-    qa.setCursorPoint({
-      x: dangleDownPoint.x + ((index % 12) - 6) * 14,
-      y: dangleDownPoint.y + (index % 3) * 10,
-    });
-    await delay(20);
-  }
-  await waitFor(() => qa.getQuickPlayTrace().some((entry) => entry.phase === "pounce"), "dangle meaningful movement pounce gate");
-  await waitFor(async () => {
-    const session = qa.getQuickPlaySession();
-    return session.actorDirection === "front"
-      && await execute(pet, "/^action\\.dangle_(pounce|play|pursuit_run)_front$/.test(document.querySelector('[data-actor-animation]')?.dataset.actorAnimation || '')");
-  }, "dangle straight-down route uses authored front-facing frames");
-  verify("Dangle straight-down pursuit uses authored front-facing frames", true, "the live session and rendered actor both selected the front bundle");
+  // Drive the same rendered-fish IPC used by DangleProp. Merely changing the
+  // QA cursor can be starved by macOS/GPU frame scheduling during the full
+  // screenshot suite, producing >180ms gaps that correctly reset the product
+  // gate. These samples remain >1,000ms of meaningful non-jitter movement.
+  await execute(dangleOverlay, `(async () => {
+    for (let index = 0; index < 56; index += 1) {
+      window.tokenpet.quickPlayOverlayInput({
+        type: 'move',
+        screenX: ${dangleDownPoint.x},
+        screenY: ${dangleDownPoint.y} + (index % 2 === 0 ? -16 : 16),
+        timestamp: Date.now(),
+      });
+      await new Promise((resolve) => setTimeout(resolve, 24));
+    }
+    return true;
+  })()`);
+  const frontPounce = await waitFor(
+    () => qa.getQuickPlayTrace().find((entry) => entry.phase === "pounce" && entry.actorDirection === "front") ?? null,
+    "dangle meaningful movement pounce gate with authored front direction",
+  );
+  verify("Dangle straight-down pursuit uses authored front-facing frames", Boolean(frontPounce), "the pounce trace captured the front bundle before later live-fish pursuit retargeting");
   const pursuedBounds = pet.getBounds();
   const chasePoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .88), y: placementWorkArea.y + Math.round(placementWorkArea.height * .48) };
   qa.setCursorPoint(chasePoint);
@@ -861,12 +925,31 @@ async function run() {
   quickPlaySummaries.push({ action: "drag_dangle", startBounds: dangleStart, earlyReleaseTrace: earlyDangleTrace, pursuedBounds, chasePoint, reversePoint: sideReversePoint, reversedBounds, endBounds: pet.getBounds(), overlayScreenshot: dangleOverlayScreenshot, trace: dangleTrace });
 
   const yarnPoint = { x: placementWorkArea.x + Math.round(placementWorkArea.width * .61), y: placementWorkArea.y + Math.round(placementWorkArea.height * .62) };
+  qa.setQuickPlayTimeScale(1);
   const yarn = await runClosedQuickPlayAction("toss_yarn", { mode: "yarn", point: yarnPoint });
+  qa.setQuickPlayTimeScale(20);
+  const yarnOutboundBounds = yarn.trace.filter((entry) => entry.phase === "outbound" && entry.bounds).map((entry) => entry.bounds);
   verify(
-    "Toss yarn retrieves, carries, drops, and returns exactly",
-    ["stand", "outbound", "interact", "return", "settle"].every((phase) => yarn.trace.some((entry) => entry.phase === phase))
-      && JSON.stringify(yarn.endBounds) === JSON.stringify(yarn.startBounds),
-    `native phases ${yarn.trace.map((entry) => entry.phase).join(" → ")}`,
+    "Toss yarn uses eight-direction chase, baked mouth carry, drop, and exact return",
+    ["stand", "outbound", "pickup", "carry", "drop", "settle"].every((phase) => yarn.trace.some((entry) => entry.phase === phase))
+      && JSON.stringify(yarn.endBounds) === JSON.stringify(yarn.startBounds)
+      && /^action\.toss_yarn_chase_(right|left|front|back|front_right|front_left|back_right|back_left)$/.test(yarn.activeVisual?.animation ?? "")
+      && /^action\.toss_yarn_carry_(right|left|front|back|front_right|front_left|back_right|back_left)$/.test(yarn.returnVisual?.animation ?? "")
+      && /^action\.toss_yarn_pickup_(right|left|front|back|front_right|front_left|back_right|back_left)$/.test(yarn.pickupVisual?.animation ?? "")
+      && /^action\.toss_yarn_drop_(right|left|front|back|front_right|front_left|back_right|back_left)$/.test(yarn.dropVisual?.animation ?? "")
+      && [yarn.activeVisual, yarn.returnVisual, yarn.pickupVisual, yarn.dropVisual].every((visual) => visual?.variant === "orange")
+      && yarn.activeVisual?.walkMotion?.stepDistancePx > 0
+      && yarn.activeVisual?.walkMotion?.stepDistancePx <= 26
+      && yarn.returnVisual?.walkMotion?.stepDistancePx > 0
+      && yarn.returnVisual?.walkMotion?.stepDistancePx <= 18
+      && JSON.stringify(yarn.activeVisual?.walkMotion?.rootStepKeyframes) === JSON.stringify([0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4])
+      && JSON.stringify(yarn.returnVisual?.walkMotion?.rootStepKeyframes) === JSON.stringify([0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4])
+      && yarn.activeVisual?.closeOpacity === "0"
+      && yarn.returnVisual?.closeOpacity === "0"
+      && new Set(yarnOutboundBounds.map((bounds) => `${bounds.x}:${bounds.y}`)).size >= 3
+      && yarnOutboundBounds.some((bounds) => bounds.y !== yarn.startBounds.y)
+      && [yarn.activeVisualScreenshot, yarn.pickupScreenshot, yarn.dropScreenshot].every((path) => path && existsSync(path)),
+    `native phases ${yarn.trace.map((entry) => entry.phase).join(" → ")}; chase ${JSON.stringify(yarn.activeVisual)}; carry ${JSON.stringify(yarn.returnVisual)}`,
   );
 
   qa.resetQuickPlayTrace();
@@ -979,6 +1062,51 @@ async function run() {
       && actionWorkbench.actorId === "golden-british"
       && actionWorkbench.captureCount === 0,
     `the exact eight-action isolated workbench uses the shared generated actor: ${JSON.stringify(actionWorkbench)}`,
+  );
+
+  await click(consoleWindow, "[data-action-id=toss_yarn]");
+  await waitForDom(consoleWindow, "[data-action-settings-for=toss_yarn]");
+  await execute(consoleWindow, `(() => {
+    const blue = [...document.querySelectorAll('[data-action-setting=yarnColor] button')].find((button) => button.textContent?.includes('Blue'));
+    blue?.click();
+  })()`);
+  await waitFor(() => execute(consoleWindow, "document.querySelector('.action-preview-prop-toss_yarn img')?.getAttribute('src')?.includes('toss-yarn-blue')"), "Toss Yarn Console blue prop");
+  const tossPreviewProp = await execute(consoleWindow, "document.querySelector('.action-preview-prop-toss_yarn img')?.getAttribute('src') ?? null");
+  await click(consoleWindow, '[data-phase-id*="toss_yarn_chase_right"]');
+  await waitFor(() => execute(consoleWindow, "document.querySelector('[data-action-preview] [data-actor-animation]')?.dataset.actorAnimation === 'action.toss_yarn_chase_right'"), "Toss Yarn Console chase phase");
+  const tossPreviewChase = await execute(consoleWindow, `(() => {
+    const actor = document.querySelector('[data-action-preview] [data-actor-animation]');
+    const stage = document.querySelector('[data-action-preview-stage]');
+    return { animation: actor?.dataset.actorAnimation ?? null, variant: actor?.dataset.actorVariant ?? null, contract: stage?.dataset.previewTossYarnContract ?? null };
+  })()`);
+  await click(consoleWindow, '[data-phase-id*="toss_yarn_carry_left"]');
+  await waitFor(() => execute(consoleWindow, "document.querySelector('[data-action-preview] [data-actor-animation]')?.dataset.actorAnimation === 'action.toss_yarn_carry_left'"), "Toss Yarn Console mouth-carry phase");
+  const tossPreviewCarry = await execute(consoleWindow, `(() => {
+    const actor = document.querySelector('[data-action-preview] [data-actor-animation]');
+    const stage = document.querySelector('[data-action-preview-stage]')?.getBoundingClientRect();
+    const shell = document.querySelector('[data-action-preview] .pet-generated-actor-shell')?.getBoundingClientRect();
+    const filmstripRows = new Set([...document.querySelectorAll('[data-action-filmstrip] > button')].map((button) => Math.round(button.getBoundingClientRect().top))).size;
+    return {
+      animation: actor?.dataset.actorAnimation ?? null,
+      variant: actor?.dataset.actorVariant ?? null,
+      actorContained: Boolean(stage && shell && shell.width <= stage.width && shell.height <= stage.height),
+      filmstripRows,
+    };
+  })()`);
+  const tossPreviewScreenshot = join(root, "docs", "screenshots", "pet-story", "console-actions-toss-yarn.png");
+  writeFileSync(tossPreviewScreenshot, (await consoleWindow.webContents.capturePage()).toPNG());
+  verify(
+    "Console Toss Yarn Preview shares desktop assets and colour variants",
+    tossPreviewProp?.includes("toss-yarn-blue")
+      && tossPreviewChase.animation === "action.toss_yarn_chase_right"
+      && tossPreviewChase.variant === "blue"
+      && tossPreviewChase.contract === "offline-eight-direction-mouth-carry-exact-return"
+      && tossPreviewCarry.animation === "action.toss_yarn_carry_left"
+      && tossPreviewCarry.variant === "blue"
+      && tossPreviewCarry.actorContained === true
+      && tossPreviewCarry.filmstripRows === 1
+      && existsSync(tossPreviewScreenshot),
+    `shared preview ${JSON.stringify({ tossPreviewProp, tossPreviewChase, tossPreviewCarry, tossPreviewScreenshot })}`,
   );
 
   qa.setSetting("petVisible", true);

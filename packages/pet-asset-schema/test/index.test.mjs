@@ -20,6 +20,13 @@ async function readSourceFixture() {
   return JSON.parse(await readFile(resolve(packageDir, "../../assets/source/pet-actors/golden-british/source.json"), "utf8"));
 }
 
+async function readTossYarnSourceFixture() {
+  const fixture = await readSourceFixture();
+  const fragment = JSON.parse(await readFile(resolve(packageDir, "../../assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2/source-actions.json"), "utf8"));
+  fixture.actions = { ...fixture.actions, ...fragment.actions };
+  return fixture;
+}
+
 function issueCodes(value) {
   const result = validatePetActorManifest(value);
   return result.success ? [] : result.issues.map((issue) => issue.code);
@@ -171,6 +178,28 @@ test("Dangle Toy owns complete eight-direction offline phases and locomotion cli
   }
   assert.equal(fixture.actions.drag_dangle.bodyTransform, undefined);
   assert.ok(fixture.actions.drag_dangle.sourceFrames.every((frame) => !frame.src.endsWith("/drag_dangle.png")));
+  assert.equal(sourceIssueCodes(fixture).length, 0);
+});
+
+test("Toss Yarn owns eight-direction chase, pickup, mouth-carry, drop, and colour variants", async () => {
+  const fixture = await readTossYarnSourceFixture();
+  const directions = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  const phaseCounts = { chase: 8, carry: 8, pickup: 4, drop: 6 };
+  for (const direction of directions) {
+    for (const [phase, count] of Object.entries(phaseCounts)) {
+      const id = `toss_yarn_${phase}_${direction}`;
+      const action = fixture.actions[id];
+      assert.equal(action.sourceFrames.length, count, `${id} must own a complete offline sequence`);
+      assert.equal(action.bodyTransform, undefined, `${id} cannot warp a side-view raster at runtime`);
+      assert.ok(action.sourceFrames.every((frame) => frame.src.includes(`/frames/toss_yarn_${phase}_${direction}_`)));
+      if (phase !== "chase") {
+        assert.deepEqual(Object.keys(action.variants).sort(), ["blue", "orange", "violet"]);
+        assert.ok(Object.values(action.variants).every((frames) => frames.length === count));
+      }
+    }
+    assert.equal(fixture.actions[`toss_yarn_chase_${direction}`].locomotion.nominalStepDistancePx, 26);
+    assert.equal(fixture.actions[`toss_yarn_carry_${direction}`].locomotion.nominalStepDistancePx, 18);
+  }
   assert.equal(sourceIssueCodes(fixture).length, 0);
 });
 

@@ -18,7 +18,9 @@ body:has(.quick-play-overlay),
 }
 
 .quick-play-overlay-snack.is-released,
-.quick-play-overlay-snack.phase-finishing {
+.quick-play-overlay-snack.phase-finishing,
+.quick-play-overlay-yarn.is-released,
+.quick-play-overlay-yarn.phase-finishing {
   cursor: default;
 }
 
@@ -76,28 +78,23 @@ body:has(.quick-play-overlay),
 
 .quick-overlay-yarn-image {
   display: block;
-  width: 82px;
+  width: 68px;
   height: 68px;
-  overflow: visible;
-  color: #df8a21;
+  object-fit: contain;
   filter: drop-shadow(0 6px 5px rgba(32, 49, 76, .17));
   transform-origin: center;
 }
-
-.quick-overlay-yarn-ball { fill: currentColor; stroke: color-mix(in srgb, currentColor 62%, #173052); stroke-width: 3; }
-.quick-overlay-yarn-thread { fill: none; stroke: color-mix(in srgb, currentColor 50%, #173052); stroke-width: 2.8; stroke-linecap: round; }
 
 .quick-overlay-yarn-prop.is-rolling .quick-overlay-yarn-image {
   animation: quick-overlay-yarn-roll .48s linear infinite;
 }
 
 .quick-overlay-yarn-prop.is-rolling {
-  animation: quick-overlay-yarn-travel var(--roll-duration, 900ms) cubic-bezier(.16, .78, .22, 1) both;
+  /* One translation vector and a linear timing function guarantee a straight
+     floor path. Rotation is isolated on the centered child image. */
+  animation: quick-overlay-yarn-travel var(--roll-duration, 900ms) linear both;
 }
 
-.quick-overlay-yarn-prop.yarn-orange .quick-overlay-yarn-image { color: #df8a21; }
-.quick-overlay-yarn-prop.yarn-blue .quick-overlay-yarn-image { color: #4f89cf; }
-.quick-overlay-yarn-prop.yarn-violet .quick-overlay-yarn-image { color: #8066c9; }
 .quick-overlay-dangle-rig { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
 .quick-overlay-dangle-cord-layer { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .quick-overlay-dangle-cord-layer path { fill: none; stroke: #3f82b6; stroke-width: 2.4; stroke-linecap: round; filter: drop-shadow(0 2px 2px rgba(27, 63, 91, .2)); }

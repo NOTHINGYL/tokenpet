@@ -9,6 +9,8 @@ import {
   distanceLockedWalkProgressAtTime,
   FEED_SNACK_RETURN_ROOT_MOTION,
   FEED_SNACK_WALK_ROOT_MOTION,
+  TOSS_YARN_CARRY_ROOT_MOTION,
+  TOSS_YARN_CHASE_ROOT_MOTION,
 } from "../../../electron/quick-play-choreography";
 import type {
   CursorTrackingVisual,
@@ -130,12 +132,16 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
     ],
   },
   toss_yarn: {
-    id: "toss_yarn", label: "Toss yarn", icon: `${iconRoot}/toss-yarn.png`, durationMs: 5_500,
-    contract: "one placement · mouth carry · return home", propLabel: "yarn ball", propMark: "🧶",
-    phaseLabels: ["Place", "Roll", "Chase", "Carry", "Settle"],
-    authoredPhaseActions: ["idle_breathe", "toss_yarn", "play_cursor", "toss_yarn", "idle_breathe"],
+    id: "toss_yarn", label: "Toss yarn", icon: `${iconRoot}/toss-yarn.png`, durationMs: 6_500,
+    contract: "one placement · 8-way chase · mouth carry · exact return", propLabel: "yarn ball", propMark: "🧶",
+    phaseLabels: ["Roll", "Chase", "Pick up", "Carry", "Drop", "Settle"],
+    authoredPhaseActions: ["idle_breathe", "toss_yarn_chase_right", "toss_yarn_pickup_right", "toss_yarn_carry_left", "toss_yarn_drop_left", "idle_breathe"],
     settings: [
-      { key: "yarnColor", label: "Yarn color", type: "choices", defaultValue: "orange", options: [{ value: "orange", label: "Orange", mark: "●" }, { value: "blue", label: "Blue", mark: "●" }, { value: "violet", label: "Violet", mark: "●" }] },
+      { key: "yarnColor", label: "Yarn color", type: "choices", defaultValue: "orange", options: [
+        { value: "orange", label: "Orange", asset: "pet-actors/golden-british/props/toss-yarn-orange.png" },
+        { value: "blue", label: "Blue", asset: "pet-actors/golden-british/props/toss-yarn-blue.png" },
+        { value: "violet", label: "Violet", asset: "pet-actors/golden-british/props/toss-yarn-violet.png" },
+      ] },
       { key: "rollDistance", label: "Roll distance", type: "range", min: 60, max: 180, step: 10, defaultValue: 120, format: (value) => `${value}px` },
       { key: "rollSpeed", label: "Roll speed", type: "range", min: 60, max: 150, step: 5, defaultValue: 100, format: percent },
       { key: "returnPace", label: "Return pace", type: "choices", defaultValue: "quick", options: [{ value: "run", label: "Run", mark: "🐈" }, { value: "quick", label: "Quick walk", mark: "🐈" }] },
@@ -202,19 +208,21 @@ function buildPreviewFrames(
   fallbackImage: string,
   previewDurationMs = definition.durationMs,
   authoredPhaseDurations?: number[],
+  actorVariant?: string,
 ): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
-  if (definition.id === "token_snack" || definition.id === "drag_dangle") {
+  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn") {
     let startMs = 0;
     return definition.authoredPhaseActions.map((actorActionId, index) => {
       const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
-      const sourceDurationMs = animation.frames.reduce((total, frame) => total + Math.max(1, frame.durationMs), 0);
+      const animationFrames = actorVariant && animation.variants?.[actorVariant] ? animation.variants[actorVariant] : animation.frames;
+      const sourceDurationMs = animationFrames.reduce((total, frame) => total + Math.max(1, frame.durationMs), 0);
       const durationMs = authoredPhaseDurations?.[index] ?? previewDurationMs / definition.authoredPhaseActions.length;
       const frame: PreviewFrame = {
         id: `${definition.id}-${actorActionId}-${index}`,
         label: definition.phaseLabels[index],
         actorActionId,
-        src: frameUrl(manifest, animation.frames[0]),
+        src: frameUrl(manifest, animationFrames[0]),
         startMs,
         durationMs,
         sourceStartMs: 0,
@@ -336,6 +344,7 @@ export function ActionsWorkbench(props: {
   const previewAvailable = capability.status === "ready" || capability.status === "fallback";
   const savedSettings = props.story.actionSettings?.byAction[selectedAction] ?? {};
   const settings = { ...defaultSettingsFor(definition), ...savedSettings };
+  const yarnColor = String(settings.yarnColor ?? "orange");
   const walkAnimation = manifest ? resolveAnimation(manifest, "walk_round_trip") : undefined;
   const walkRootMotion = walkAnimation?.locomotion
     ? {
@@ -360,16 +369,34 @@ export function ActionsWorkbench(props: {
   const dangleReturnPlan = createDistanceLockedWalkPlan(220, 100, 1, dangleReturnAnimation?.locomotion ?? DANGLE_RETURN_ROOT_MOTION);
   const danglePhaseDurations = [390, 460, 1_100, 620, 850, danglePursuitPlan.durationMs, dangleReturnPlan.durationMs, 280];
   const danglePreviewDurationMs = danglePhaseDurations.reduce((total, duration) => total + duration, 0);
+  const tossPreviewTravelDistancePx = Math.round(180 + Number(settings.rollDistance ?? 120) * .5);
+  const tossChaseAnimation = manifest ? resolveAnimation(manifest, "toss_yarn_chase_right") : undefined;
+  const tossCarryAnimation = manifest ? resolveAnimation(manifest, "toss_yarn_carry_left") : undefined;
+  const tossChasePlan = createDistanceLockedWalkPlan(tossPreviewTravelDistancePx, 132, 1, tossChaseAnimation?.locomotion ?? TOSS_YARN_CHASE_ROOT_MOTION);
+  const tossCarryPace = String(settings.returnPace ?? "quick") === "run" ? 140 : 118;
+  const tossCarryPlan = createDistanceLockedWalkPlan(tossPreviewTravelDistancePx, tossCarryPace, 1, tossCarryAnimation?.locomotion ?? TOSS_YARN_CARRY_ROOT_MOTION);
+  const tossRollDurationMs = Math.min(1_800, Math.max(280, Math.round(Number(settings.rollDistance ?? 120) / (190 * Number(settings.rollSpeed ?? 100) / 100) * 1_000)));
+  const tossPhaseDurations = [tossRollDurationMs + 350, tossChasePlan.durationMs, 670, tossCarryPlan.durationMs, 1_000, 280];
+  const tossPreviewDurationMs = tossPhaseDurations.reduce((total, duration) => total + duration, 0);
   const previewDurationMs = selectedAction === "walk_round_trip"
     ? walkPreviewPlan.durationMs
     : selectedAction === "token_snack"
       ? feedPreviewDurationMs
       : selectedAction === "drag_dangle"
         ? danglePreviewDurationMs
-      : definition.durationMs;
+        : selectedAction === "toss_yarn"
+          ? tossPreviewDurationMs
+          : definition.durationMs;
   const frames = useMemo(
-    () => buildPreviewFrames(definition, manifest, fallbackImage, previewDurationMs, selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : undefined),
-    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction],
+    () => buildPreviewFrames(
+      definition,
+      manifest,
+      fallbackImage,
+      previewDurationMs,
+      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : undefined,
+      selectedAction === "toss_yarn" ? yarnColor : undefined,
+    ),
+    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction, tossPreviewDurationMs, yarnColor],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -407,7 +434,16 @@ export function ActionsWorkbench(props: {
             ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, dangleReturnPlan.cycleDurationMs)
             : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
       }
-      : sampledBase;
+      : selectedAction === "toss_yarn"
+        ? {
+          ...sampledBase,
+          actorTimeMs: sampledBase.frame.actorActionId === "toss_yarn_chase_right"
+            ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, tossChasePlan.cycleDurationMs)
+            : sampledBase.frame.actorActionId === "toss_yarn_carry_left"
+              ? sampledPhaseElapsedMs * sampledAnimationDurationMs / Math.max(1, tossCarryPlan.cycleDurationMs)
+              : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
+        }
+        : sampledBase;
   const walkRootProgress = selectedAction === "walk_round_trip" ? distanceLockedWalkProgressAtTime(walkPreviewPlan, elapsedMs) : progress;
   const baseStage = stageSample(selectedAction, progress, walkRootProgress);
   const feedActorAction = sampled.frame.actorActionId;
@@ -443,7 +479,34 @@ export function ActionsWorkbench(props: {
           : homeX + (catchX - homeX) * pounceProgress + (chaseX - catchX) * pursuitProgress;
         return { ...baseStage, actorX, actorY: action === "dangle_pounce" ? -Math.sin(sampled.phaseProgress * Math.PI) * 6 : 0 };
       })()
-      : baseStage;
+      : selectedAction === "toss_yarn"
+        ? (() => {
+          const action = sampled.frame.actorActionId;
+          const homeX = -25;
+          const travelPercent = 34 + (Number(settings.rollDistance ?? 120) - 60) / 120 * 14;
+          const targetX = homeX + travelPercent;
+          const chaseProgress = action === "toss_yarn_chase_right"
+            ? distanceLockedWalkProgressAtTime(tossChasePlan, sampledPhaseElapsedMs)
+            : ["toss_yarn_pickup_right", "toss_yarn_carry_left", "toss_yarn_drop_left"].includes(action) ? 1 : 0;
+          const carryProgress = action === "toss_yarn_carry_left"
+            ? distanceLockedWalkProgressAtTime(tossCarryPlan, sampledPhaseElapsedMs)
+            : action === "toss_yarn_drop_left" ? 1 : 0;
+          const actorX = action === "toss_yarn_carry_left" || action === "toss_yarn_drop_left"
+            ? targetX + (homeX - targetX) * carryProgress
+            : homeX + (targetX - homeX) * chaseProgress;
+          const isRollPhase = sampled.frame.label === "Roll";
+          const rollProgress = isRollPhase ? Math.min(1, sampledPhaseElapsedMs / Math.max(1, tossRollDurationMs)) : 1;
+          return {
+            ...baseStage,
+            actorX,
+            actorY: 0,
+            propX: 36 + (70 - 36) * (1 - (1 - rollProgress) ** 3),
+            propY: 73,
+            cursorX: 70,
+            cursorY: 73,
+          };
+        })()
+        : baseStage;
   const actorPreviewAppearance = {
     ...props.appearance,
     size: selectedAction === "walk_round_trip" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
@@ -517,10 +580,10 @@ export function ActionsWorkbench(props: {
   };
 
   const propScale = selectedAction === "token_snack" ? Number(settings.snackSize ?? 100) / 100 : 1;
-  const yarnColor = String(settings.yarnColor ?? "orange");
   const showProp = selectedAction !== "walk_round_trip"
     && !(selectedAction === "nap_here" && settings.zEffect === false)
-    && !(selectedAction === "wake_up" && settings.wakeSparkle === false);
+    && !(selectedAction === "wake_up" && settings.wakeSparkle === false)
+    && !(selectedAction === "toss_yarn" && sampled.frame.label !== "Roll" && sampled.frame.label !== "Chase");
 
   return (
     <div className="story-page actions-workbench-page" data-pet-page="actions" data-selected-action={selectedAction}>
@@ -558,6 +621,8 @@ export function ActionsWorkbench(props: {
             data-preview-cursor-contract={selectedAction === "play_cursor" ? "offline-eyes-head-ears" : undefined}
             data-preview-dangle-phase={selectedAction === "drag_dangle" ? sampled.frame.actorActionId : undefined}
             data-preview-dangle-contract={selectedAction === "drag_dangle" ? "offline-phases-distance-locked" : undefined}
+            data-preview-toss-yarn-phase={selectedAction === "toss_yarn" ? sampled.frame.actorActionId : undefined}
+            data-preview-toss-yarn-contract={selectedAction === "toss_yarn" ? "offline-eight-direction-mouth-carry-exact-return" : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
               <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
@@ -565,7 +630,7 @@ export function ActionsWorkbench(props: {
             <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "token_snack" && feedActorAction === "feed_snack_return_run" ? "left" : selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale } as CSSProperties} aria-label={definition.propLabel}>
@@ -573,7 +638,9 @@ export function ActionsWorkbench(props: {
                   ? <img src={`pet-actors/golden-british/props/snack-${String(settings.snackStyle ?? "paw")}.png`} alt="" draggable={false} />
                   : selectedAction === "drag_dangle"
                     ? <img src={`pet-actors/golden-british/props/dangle-fish-${String(settings.fishToyStyle ?? "mint")}.png`} alt="" draggable={false} />
-                  : definition.propMark}
+                    : selectedAction === "toss_yarn"
+                      ? <img src={`pet-actors/golden-british/props/toss-yarn-${yarnColor}${sampled.frame.label === "Roll" && sampledPhaseElapsedMs < tossRollDurationMs ? "-roll" : ""}.png`} alt="" draggable={false} />
+                      : definition.propMark}
               </span>
             ) : null}
             {selectedAction === "drag_dangle" ? (
@@ -587,7 +654,7 @@ export function ActionsWorkbench(props: {
             {!previewAvailable ? <div className="action-preview-unavailable"><strong>Approved still only</strong><small>{capability.reason}</small></div> : null}
           </div>
 
-          <div className="action-filmstrip" data-action-filmstrip>
+          <div className="action-filmstrip" data-action-filmstrip style={{ "--filmstrip-columns": frames.length } as CSSProperties}>
             {frames.map((frame, index) => (
               <button key={frame.id} className={sampled.frame.id === frame.id ? "active" : ""} type="button" data-action-keyframe data-phase-id={frame.id} onClick={() => {
                 const seekMs = selectedAction === "walk_round_trip"

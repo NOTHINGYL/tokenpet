@@ -359,6 +359,20 @@ export const DANGLE_RETURN_ROOT_MOTION: WalkRootMotionProfile = {
   rootStepKeyframes: [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4],
 };
 
+/** Toss Yarn owns a dedicated fast chase cycle in every camera sector. */
+export const TOSS_YARN_CHASE_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 26,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4],
+};
+
+/** Mouth-carry return is steadier and shorter-strided than the chase. */
+export const TOSS_YARN_CARRY_ROOT_MOTION: WalkRootMotionProfile = {
+  nominalStepDistancePx: 18,
+  footfallsPerCycle: 4,
+  rootStepKeyframes: [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4],
+};
+
 const NATURAL_WALK_STEP_DURATION_MS = 220;
 
 export function createDistanceLockedWalkPlan(distancePx: number, pacePercent = 100, actorScale = 1, rootMotion: WalkRootMotionProfile = DEFAULT_WALK_ROOT_MOTION): DistanceLockedWalkPlan {
@@ -766,10 +780,10 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
       const returnPercent = options.returnPace === "run" ? 145 : 118;
       return createPhaseTimeline([
         { id: "roll", durationMs: clamp(1_050 * 100 / options.rollSpeed, 500, 1_600) },
-        { id: "run_to_yarn", durationMs: travelDuration(travelDistancePx, 132) },
-        { id: "pick_up_yarn", durationMs: 420 },
-        { id: "carry_yarn", durationMs: travelDuration(travelDistancePx, returnPercent, 180) },
-        { id: "drop_yarn", durationMs: 360 },
+        { id: "run_to_yarn", durationMs: createDistanceLockedWalkPlan(travelDistancePx, 132, 1, TOSS_YARN_CHASE_ROOT_MOTION).durationMs },
+        { id: "pick_up_yarn", durationMs: 670 },
+        { id: "carry_yarn", durationMs: createDistanceLockedWalkPlan(travelDistancePx, returnPercent, 1, TOSS_YARN_CARRY_ROOT_MOTION).durationMs },
+        { id: "drop_yarn", durationMs: 1_000 },
         { id: "restore", durationMs: 280 },
       ]);
     }

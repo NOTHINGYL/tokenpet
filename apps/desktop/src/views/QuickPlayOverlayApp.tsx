@@ -81,13 +81,8 @@ function SnackIcon({ style }: { style: NonNullable<OverlayState["snackStyle"]> }
   return <img className="quick-overlay-snack-image" src={`pet-actors/golden-british/props/snack-${style}.png`} alt="" draggable={false} aria-hidden="true" />;
 }
 
-function YarnIcon() {
-  return (
-    <svg className="quick-overlay-yarn-image" viewBox="0 0 82 68" aria-hidden="true">
-      <circle className="quick-overlay-yarn-ball" cx="32" cy="30" r="23" />
-      <path className="quick-overlay-yarn-thread" d="M13 19c15 7 29 19 39 34M16 45c17-12 28-23 36-36M10 33c16 1 31 6 43 14M26 8c2 18 10 34 25 47M52 49c12 2 15 13 26 10" />
-    </svg>
-  );
+function YarnIcon({ color }: { color: NonNullable<OverlayState["yarnColor"]> }) {
+  return <img className="quick-overlay-yarn-image" src={`pet-actors/golden-british/props/toss-yarn-${color}.png`} alt="" draggable={false} aria-hidden="true" />;
 }
 
 function SnackProp({ pointer, released, state }: { pointer: PointerPosition; released: boolean; state: OverlayState }) {
@@ -101,19 +96,21 @@ function SnackProp({ pointer, released, state }: { pointer: PointerPosition; rel
   );
 }
 
-function YarnProp({ pointer, rolling, state }: { pointer: PointerPosition; rolling: boolean; state: OverlayState }) {
-  const targetClientX = typeof state.targetScreenX === "number" ? state.targetScreenX - window.screenX : pointer.clientX;
-  const targetClientY = typeof state.targetScreenY === "number" ? state.targetScreenY - window.screenY : pointer.clientY;
+function YarnProp({ pointer, released, rolling, state }: { pointer: PointerPosition; released: boolean; rolling: boolean; state: OverlayState }) {
+  const hasTarget = typeof state.targetScreenX === "number" && typeof state.targetScreenY === "number";
+  const targetClientX = hasTarget ? state.targetScreenX! - window.screenX : pointer.clientX;
+  const targetClientY = hasTarget ? state.targetScreenY! - window.screenY : pointer.clientY;
+  const restingAtTarget = released && hasTarget && !rolling;
   const style = {
-    left: pointer.clientX,
-    top: pointer.clientY,
+    left: restingAtTarget ? targetClientX : pointer.clientX,
+    top: restingAtTarget ? targetClientY : pointer.clientY,
     "--roll-x": `${targetClientX - pointer.clientX}px`,
     "--roll-y": `${targetClientY - pointer.clientY}px`,
     "--roll-duration": `${Math.max(80, state.durationMs ?? 900)}ms`,
   } as CSSProperties;
   return (
-    <div className={`quick-overlay-yarn-prop yarn-${state.yarnColor ?? "orange"} ${rolling ? "is-rolling" : ""}`} style={style} aria-hidden="true">
-      <YarnIcon />
+    <div className={`quick-overlay-yarn-prop yarn-${state.yarnColor ?? "orange"} ${released ? "is-released" : ""} ${rolling ? "is-rolling" : "is-resting"}`} style={style} aria-hidden="true">
+      <YarnIcon color={state.yarnColor ?? "orange"} />
     </div>
   );
 }
@@ -193,6 +190,8 @@ export function QuickPlayOverlayApp() {
   const [state, setState] = useState(initialOverlayState);
   const [submitted, setSubmitted] = useState(false);
   const [released, setReleased] = useState(false);
+  const releasedRef = useRef(false);
+  const modeRef = useRef(state.mode);
   const [pointer, setPointer] = useState<PointerPosition>(() => ({
     clientX: window.innerWidth / 2,
     clientY: window.innerHeight / 2,
@@ -219,8 +218,13 @@ export function QuickPlayOverlayApp() {
   useEffect(() => {
     const bridge = window.tokenpet as typeof window.tokenpet & OverlayBridge;
     const unsubscribe = bridge.onQuickPlayOverlayState?.((next) => {
+      modeRef.current = next.mode ?? modeRef.current;
       setState((current) => ({ ...current, ...next }));
-      if (typeof next.pointerScreenX === "number" && typeof next.pointerScreenY === "number") {
+      if (
+        typeof next.pointerScreenX === "number"
+        && typeof next.pointerScreenY === "number"
+        && (modeRef.current === "dangle" || !releasedRef.current)
+      ) {
         const globalPointer = {
           clientX: next.pointerScreenX - window.screenX,
           clientY: next.pointerScreenY - window.screenY,
@@ -231,6 +235,7 @@ export function QuickPlayOverlayApp() {
         setPointer(globalPointer);
       }
       if (next.enabled === true && next.phase !== "finishing") {
+        releasedRef.current = false;
         setSubmitted(false);
         setReleased(false);
       }
@@ -253,7 +258,7 @@ export function QuickPlayOverlayApp() {
   }, []);
 
   function trackPointer(event: ReactPointerEvent<HTMLElement>) {
-    if (submitted && state.mode !== "dangle") return;
+    if ((submitted || releasedRef.current) && state.mode !== "dangle") return;
     const now = performance.now();
     const previous = priorPointerRef.current;
     const elapsedSeconds = Math.max((now - previous.timestamp) / 1_000, 1 / 240);
@@ -272,8 +277,27 @@ export function QuickPlayOverlayApp() {
       screenX: window.screenX + event.clientX,
       screenY: window.screenY + event.clientY,
     };
+    pointerRef.current = nextPointer;
     setPointer(nextPointer);
     if (state.mode === "dangle") {
+      setSubmitted(true);
+      const velocity = { ...velocityRef.current };
+      void sendInput({
+        type: "click",
+        screenX: nextPointer.screenX,
+        screenY: nextPointer.screenY,
+        velocityX: velocity.x,
+        velocityY: velocity.y,
+        timestamp: Date.now(),
+      });
+      return;
+    }
+    if (state.mode === "yarn") {
+      // Toss Yarn has a strict one-click handoff: freeze the throw origin and
+      // restore the ordinary system pointer before the cat starts retrieving.
+      // It intentionally skips the snack overlay's double-click grace period.
+      releasedRef.current = true;
+      setReleased(true);
       setSubmitted(true);
       const velocity = { ...velocityRef.current };
       void sendInput({
@@ -293,7 +317,10 @@ export function QuickPlayOverlayApp() {
       void sendInput({ type: "reopen", screenX: nextPointer.screenX, screenY: nextPointer.screenY, timestamp: Date.now() });
       return;
     }
-    if (state.mode === "snack") setReleased(true);
+    if (state.mode === "snack") {
+      releasedRef.current = true;
+      setReleased(true);
+    }
     const velocity = { ...velocityRef.current };
     if (clickTimerRef.current !== null) window.clearTimeout(clickTimerRef.current);
     clickTimerRef.current = window.setTimeout(() => {
@@ -312,7 +339,7 @@ export function QuickPlayOverlayApp() {
 
   const phase = state.phase ?? (state.mode === "dangle" ? "playing" : "placing");
   const hint = state.hint ?? defaultHint(state.mode, phase);
-  const pointerReleased = state.mode === "snack" && (released || submitted || state.enabled === false || phase === "finishing");
+  const pointerReleased = state.mode !== "dangle" && (released || submitted || state.enabled === false || phase === "rolling" || phase === "finishing");
   const horizontalMargin = state.mode === "dangle" ? 180 : state.mode === "snack" ? 58 : 150;
   const bottomMargin = state.mode === "dangle" ? 210 : state.mode === "snack" ? 52 : 120;
   const visualPointer = state.mode === "dangle" ? pointer : {
@@ -334,7 +361,7 @@ export function QuickPlayOverlayApp() {
       <div className="quick-overlay-focus-ring" style={{ left: visualPointer.clientX, top: visualPointer.clientY }} aria-hidden="true" />
       {state.mode === "snack" ? <SnackProp pointer={visualPointer} released={pointerReleased} state={state} /> : null}
       {state.mode === "dangle" ? <DangleProp pointer={visualPointer} state={state} onFishPosition={publishFishPosition} /> : null}
-      {state.mode === "yarn" ? <YarnProp pointer={visualPointer} rolling={phase === "rolling"} state={state} /> : null}
+      {state.mode === "yarn" ? <YarnProp pointer={visualPointer} released={pointerReleased} rolling={phase === "rolling"} state={state} /> : null}
       <div className="quick-overlay-hint" style={{ left: visualPointer.clientX, top: visualPointer.clientY }} role="status">{hint}</div>
     </main>
   );

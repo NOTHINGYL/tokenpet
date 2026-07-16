@@ -1138,7 +1138,8 @@
    keep the detached close chrome out of the walk as well. */
 .pet-stage[data-quick-play-action="walk_round_trip"] .pet-close,
 .pet-stage[data-quick-play-action="token_snack"] .pet-close,
-.pet-stage[data-quick-play-action="play_cursor"] .pet-close {
+.pet-stage[data-quick-play-action="play_cursor"] .pet-close,
+.pet-stage[data-quick-play-action="toss_yarn"] .pet-close {
   opacity: 0;
   pointer-events: none;
 }

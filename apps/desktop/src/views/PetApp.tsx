@@ -79,6 +79,14 @@ function dangleDirectionalAction(
   return dangleDirectionalActions[phase][direction ?? "right"];
 }
 
+function tossYarnDirectionalAction(
+  phase: "chase" | "pickup" | "carry" | "drop",
+  direction: QuickPlaySession["actorDirection"],
+): PetActionId {
+  const directionId = (direction ?? "right").replaceAll("-", "_");
+  return `toss_yarn_${phase}_${directionId}` as PetActionId;
+}
+
 export function PetApp() {
   const { usage } = useUsage();
   const { settings } = useAppSettings();
@@ -89,7 +97,7 @@ export function PetApp() {
   const [cursorTracking, setCursorTracking] = useState<CursorTrackingVisual | null>(null);
   const [quickPlaySession, setQuickPlaySession] = useState<QuickPlaySession>({
     activeAction: null, startedAt: null, phase: "idle", phaseStartedAt: null, startBounds: null,
-    startDirectorState: null, targetPoint: null, walkMotion: null, actorDirection: null, pointerMode: "none", resting: false, failure: null,
+    startDirectorState: null, targetPoint: null, walkMotion: null, actorDirection: null, actorVariant: null, pointerMode: "none", resting: false, failure: null,
   });
   const appearance = normalizePetAppearance(settings);
   const story = settings.petStory ?? defaultPetStory;
@@ -491,10 +499,16 @@ export function PetApp() {
       if (phase === "return") return dangleDirectionalAction("return", direction);
       if (phase === "release" || phase === "settle" || phase === "complete") return "dangle_settle";
     }
+    if (action === "toss_yarn") {
+      const direction = quickPlaySession.actorDirection;
+      if (phase === "outbound") return tossYarnDirectionalAction("chase", direction);
+      if (phase === "pickup") return tossYarnDirectionalAction("pickup", direction);
+      if (phase === "carry") return tossYarnDirectionalAction("carry", direction);
+      if (phase === "drop" || phase === "settle" || phase === "complete") return tossYarnDirectionalAction("drop", direction);
+      return null;
+    }
     if (action === "summon_to_pointer" && phase === "outbound") return "summon_to_pointer";
-    if (action === "toss_yarn" && phase === "return") return "toss_yarn";
     if (phase === "return" || phase === "outbound") return "run_across";
-    if (action === "toss_yarn" && phase === "interact") return "toss_yarn";
     if (action === "play_cursor") return "play_cursor";
     if (action === "nap_here") {
       const pose = story.actionSettings.byAction.nap_here?.settlePose;
@@ -542,7 +556,8 @@ export function PetApp() {
     quickPlaySession.activeAction === "walk_round_trip"
     || quickPlaySession.activeAction === "token_snack"
     || quickPlaySession.activeAction === "drag_dangle"
-  ) && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "pursuit" || quickPlaySession.phase === "return");
+    || quickPlaySession.activeAction === "toss_yarn"
+  ) && (quickPlaySession.phase === "outbound" || quickPlaySession.phase === "pursuit" || quickPlaySession.phase === "return" || quickPlaySession.phase === "carry");
   const authoredLocomotionFrozen = quickPlaySession.activeAction === "walk_round_trip" && (
     quickPlaySession.phase === "stand"
     || quickPlaySession.phase === "settle"
@@ -582,11 +597,14 @@ export function PetApp() {
           moodId={mood}
           storyActionId={quickPlayActorAction ?? directorAction}
           facing={quickPlayFacing}
+          actorVariant={quickPlaySession.actorVariant ?? undefined}
           animationNonce={authoredLocomotionActive
             ? quickPlaySession.walkMotion?.startedAt
             : quickPlaySession.activeAction === "token_snack" && ["stand", "arrive", "lick", "eat", "settle"].includes(quickPlaySession.phase)
               ? quickPlaySession.phaseStartedAt ?? undefined
               : quickPlaySession.activeAction === "drag_dangle"
+                ? quickPlaySession.phaseStartedAt ?? undefined
+              : quickPlaySession.activeAction === "toss_yarn" && ["pickup", "drop", "settle"].includes(quickPlaySession.phase)
                 ? quickPlaySession.phaseStartedAt ?? undefined
               : undefined}
           animationStartedAtMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.startedAt : undefined}

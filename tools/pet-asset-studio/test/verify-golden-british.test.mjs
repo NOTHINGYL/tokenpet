@@ -19,6 +19,8 @@ const cursorClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-britis
 const cursorAssetReportPath = resolve(cursorClipRoot, "asset-report.json");
 const dangleClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dangle-toy-v2");
 const dangleAssetReportPath = resolve(dangleClipRoot, "asset-report.json");
+const tossYarnClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2");
+const tossYarnAssetReportPath = resolve(tossYarnClipRoot, "asset-report.json");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -267,6 +269,56 @@ test("Dangle Toy ships complete eight-direction cat packs and dedicated root mot
     const png = inspectPng(await readFile(resolve(bundleDir, "props", prop)));
     assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
     assert.ok([4, 6].includes(png.colorType));
+  }
+});
+
+test("Toss Yarn ships eight-direction chase and baked three-colour mouth-carry packs", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const directions = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  const phaseCounts = { chase: 8, carry: 8, pickup: 4, drop: 6 };
+  for (const direction of directions) {
+    for (const [phase, count] of Object.entries(phaseCounts)) {
+      const animation = manifest.animations[`action.toss_yarn_${phase}_${direction}`];
+      assert.equal(animation.frames.length, count);
+      assert.equal(animation.frames.some((frame) => frame.bodyTransform), false);
+      if (phase !== "chase") {
+        assert.deepEqual(Object.keys(animation.variants).sort(), ["blue", "orange", "violet"]);
+        assert.ok(Object.values(animation.variants).every((frames) => frames.length === count));
+      }
+    }
+    const chase = manifest.animations[`action.toss_yarn_chase_${direction}`];
+    const carry = manifest.animations[`action.toss_yarn_carry_${direction}`];
+    assert.deepEqual(chase.locomotion.rootStepKeyframes, [0, .36, 1, 1.36, 2, 2.36, 3, 3.36, 4]);
+    assert.equal(chase.locomotion.nominalStepDistancePx, 26);
+    assert.deepEqual(carry.locomotion.rootStepKeyframes, [0, .18, 1, 1.18, 2, 2.18, 3, 3.18, 4]);
+    assert.equal(carry.locomotion.nominalStepDistancePx, 18);
+  }
+
+  const report = JSON.parse(await readFile(tossYarnAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-toss-yarn-assets/v2");
+  assert.equal(report.catFrames, 496);
+  assert.equal(report.offlineMirrors.runtimeTransform, "none");
+  assert.match(report.gridExtraction, /cross-cell clipping and neighbour bleed forbidden/);
+  assert.match(report.generationMode, /built-in imagegen/);
+  const frameOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/toss_yarn_"));
+  const propOutputs = report.outputs.filter((entry) => entry.path.includes("/props/toss-yarn-"));
+  assert.equal(frameOutputs.length, 496);
+  assert.equal(propOutputs.length, 8);
+  assert.ok([...frameOutputs, ...propOutputs].every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  assert.ok(frameOutputs.every((entry) => entry.alphaBounds[3] === 818));
+  for (const artifact of [
+    "toss-yarn-contact-sheet.png",
+    ...directions.map((direction) => `toss-yarn-chase-${direction.replaceAll("_", "-")}-preview.gif`),
+    ...directions.map((direction) => `toss-yarn-carry-${direction.replaceAll("_", "-")}-preview.gif`),
+    "toss-yarn-pickup-carry-drop-preview.gif",
+  ]) {
+    assert.ok((await stat(resolve(tossYarnClipRoot, artifact))).size > 0, `${artifact} must remain available for Toss Yarn visual review`);
+  }
+  for (const color of ["orange", "blue", "violet"]) {
+    for (const suffix of ["", "-roll"]) {
+      const png = inspectPng(await readFile(resolve(bundleDir, "props", `toss-yarn-${color}${suffix}.png`)));
+      assert.deepEqual({ width: png.width, height: png.height }, { width: 512, height: 512 });
+    }
   }
 });
 

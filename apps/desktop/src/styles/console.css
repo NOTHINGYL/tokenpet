@@ -4000,6 +4000,12 @@
   --pet-visual-cat-width: clamp(350px, 27vw, 410px);
   --pet-visual-cat-y: -8px;
 }
+.action-preview-toss_yarn .pet-generated-actor-shell {
+  /* Toss Yarn uses the same registered 1024px action artboard. Keep the full
+     eight-direction cat and its baked mouth yarn inside the sandbox. */
+  --pet-visual-cat-width: clamp(350px, 27vw, 410px);
+  --pet-visual-cat-y: -8px;
+}
 .action-preview-stage .pet-appearance-visual-preview {
   width: 100%;
   height: 100%;
@@ -4036,14 +4042,14 @@
 }
 .action-preview-prop-drag_dangle { width: 40px; height: 40px; }
 .action-preview-prop-drag_dangle img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.action-preview-prop-toss_yarn { width: 46px; height: 46px; }
+.action-preview-prop-toss_yarn img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .action-preview-dangle-cord { position: absolute; z-index: 4; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .action-preview-dangle-cord path { fill: none; stroke: #3f82b6; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 .action-preview-dangle-wand { position: absolute; z-index: 5; width: 78px; height: 78px; transform: translate(-77%, -61%); pointer-events: none; }
 .action-preview-dangle-wand img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(29,59,95,.16)); }
 .action-preview-prop-nap_here { color: #7f59cd; font-size: 24px; font-weight: 850; letter-spacing: -2px; }
 .action-preview-prop-wake_up { color: #e6a51f; font-size: 33px; }
-.action-preview-prop-toss_yarn.yarn-blue { filter: hue-rotate(165deg) drop-shadow(0 2px 3px rgba(16,24,40,.15)); }
-.action-preview-prop-toss_yarn.yarn-violet { filter: hue-rotate(230deg) drop-shadow(0 2px 3px rgba(16,24,40,.15)); }
 .action-virtual-pointer { margin: -15px 0 0 14px; color: #1f4078; font-size: 25px; text-shadow: 0 1px 1px #fff; }
 .action-preview-coordinate-readout {
   position: absolute;
@@ -4072,7 +4078,7 @@
 .action-filmstrip {
   z-index: 8;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--filmstrip-columns, 5), minmax(0, 1fr));
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--action-line);

@@ -18,6 +18,8 @@ export type PetActorProps = {
   cursorTracking?: CursorTrackingVisual;
   /** Direction for authored side-profile locomotion frames. */
   facing?: "left" | "right";
+  /** Selects an approved manifest raster variant (for example yarn colour). */
+  actorVariant?: string;
   /** Explicitly restart a same-id authored animation, for example each snack lick cycle. */
   animationNonce?: number;
   /** Controlled sandbox clock. When present, the actor renders exactly this timeline position and does not start its own RAF clock. */

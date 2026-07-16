@@ -33,6 +33,8 @@ import {
   DEFAULT_WALK_ROOT_MOTION,
   FEED_SNACK_RETURN_ROOT_MOTION,
   FEED_SNACK_WALK_ROOT_MOTION,
+  TOSS_YARN_CARRY_ROOT_MOTION,
+  TOSS_YARN_CHASE_ROOT_MOTION,
   interpolateQuickPlayBounds,
   normalizeQuickPlayActionConfig,
   sampleSafeRandomTarget,
@@ -84,6 +86,7 @@ let quickPlaySession: QuickPlaySession = {
   targetPoint: null,
   walkMotion: null,
   actorDirection: null,
+  actorVariant: null,
   pointerMode: "none",
   resting: false,
   failure: null,
@@ -112,14 +115,16 @@ let quickPlayRuntime: QuickPlayRuntime | null = null;
 let nextQuickPlayRuntimeId = 1;
 let quickPlayTimeScale = 1;
 let quickPlayCursorTrackingState: CursorTrackingState = createCursorTrackingState();
-const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null }> = [];
+const quickPlayTrace: Array<{ at: number; action: QuickPlayActionId | null; phase: QuickPlayPhase; bounds: Rectangle | null; targetPoint: { x: number; y: number } | null; actorDirection: QuickPlayActorDirection | null }> = [];
 let petVisibleCaptureBounds: Rectangle | null = null;
 type DangleLocomotionId =
   | "dangle_pursuit_run" | "dangle_pursuit_run_front" | "dangle_pursuit_run_back"
   | "dangle_pursuit_run_front_left" | "dangle_pursuit_run_front_right" | "dangle_pursuit_run_back_left" | "dangle_pursuit_run_back_right"
   | "dangle_return_walk" | "dangle_return_walk_front" | "dangle_return_walk_back"
   | "dangle_return_walk_front_left" | "dangle_return_walk_front_right" | "dangle_return_walk_back_left" | "dangle_return_walk_back_right";
-type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId | DangleLocomotionId;
+type TossYarnDirectionId = "right" | "left" | "front" | "back" | "front_right" | "front_left" | "back_right" | "back_left";
+type TossYarnLocomotionId = `toss_yarn_chase_${TossYarnDirectionId}` | `toss_yarn_carry_${TossYarnDirectionId}`;
+type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId | DangleLocomotionId | TossYarnLocomotionId;
 const cachedLocomotionRootMotion = new Map<GoldenLocomotionActionId, WalkRootMotionProfile>();
 
 function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
@@ -127,6 +132,8 @@ function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
   if (actionId === "feed_snack_return_run") return FEED_SNACK_RETURN_ROOT_MOTION;
   if (actionId.startsWith("dangle_pursuit_run")) return DANGLE_PURSUIT_ROOT_MOTION;
   if (actionId.startsWith("dangle_return_walk")) return DANGLE_RETURN_ROOT_MOTION;
+  if (actionId.startsWith("toss_yarn_chase_")) return TOSS_YARN_CHASE_ROOT_MOTION;
+  if (actionId.startsWith("toss_yarn_carry_")) return TOSS_YARN_CARRY_ROOT_MOTION;
   return DEFAULT_WALK_ROOT_MOTION;
 }
 
@@ -902,6 +909,7 @@ function emptyQuickPlaySession(): QuickPlaySession {
     targetPoint: null,
     walkMotion: null,
     actorDirection: null,
+    actorVariant: null,
     pointerMode: "none",
     resting: reportedPetDirectorState.resting,
     failure: null,
@@ -909,14 +917,14 @@ function emptyQuickPlaySession(): QuickPlaySession {
 }
 
 function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySession.targetPoint) {
-  const keepsWalkMotion = phase === "outbound" || phase === "pursuit" || phase === "return";
+  const keepsWalkMotion = phase === "outbound" || phase === "pursuit" || phase === "return" || phase === "carry";
   quickPlaySession = { ...quickPlaySession, phase, phaseStartedAt: Date.now(), targetPoint, walkMotion: keepsWalkMotion ? quickPlaySession.walkMotion : null };
-  quickPlayTrace.push({ at: Date.now(), action: quickPlaySession.activeAction, phase, bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint });
+  quickPlayTrace.push({ at: Date.now(), action: quickPlaySession.activeAction, phase, bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint, actorDirection: quickPlaySession.actorDirection });
   publishQuickPlaySession();
 }
 
 function beginAuthoredWalkPhase(
-  phase: "outbound" | "pursuit" | "return",
+  phase: "outbound" | "pursuit" | "return" | "carry",
   from: Rectangle,
   to: Rectangle,
   pacePercent: number,
@@ -948,7 +956,7 @@ function beginAuthoredWalkPhase(
 
 async function runAuthoredLocomotionLeg(
   runtime: QuickPlayRuntime,
-  phase: "outbound" | "return",
+  phase: "outbound" | "return" | "carry",
   from: Rectangle,
   to: Rectangle,
   pacePercent: number,
@@ -983,12 +991,16 @@ function publishQuickPlayOverlayState(state: { phase?: "placing" | "playing" | "
   if (isUsableWindow(quickPlayOverlayWindow)) quickPlayOverlayWindow.webContents.send("quick-play:overlay-state", state);
 }
 
-function releaseFeedSnackPlacementPointer(runtime: QuickPlayRuntime, point: { x: number; y: number }) {
-  if (runtime.action !== "token_snack" || !isUsableWindow(quickPlayOverlayWindow)) return;
-  // Keep the placed prop visible through the eat keyframe, while returning
-  // pointer ownership and click handling to the desktop immediately.
-  quickPlayOverlayWindow.setIgnoreMouseEvents(true);
+function releasePlacementPointer(runtime: QuickPlayRuntime, point: { x: number; y: number }) {
+  if (!["token_snack", "toss_yarn"].includes(runtime.action) || !isUsableWindow(quickPlayOverlayWindow)) return;
+  // Keep the placed prop visible through Feed eating or Toss rolling, while
+  // returning pointer ownership and click handling to the desktop immediately.
   publishQuickPlayOverlayState({ enabled: false, targetScreenX: point.x, targetScreenY: point.y });
+  quickPlayOverlayWindow.setIgnoreMouseEvents(true);
+  // Once released, the prop's throw/place origin must no longer follow the
+  // live system pointer. The overlay remains visible only as scenery.
+  if (runtime.overlayTimer) clearInterval(runtime.overlayTimer);
+  runtime.overlayTimer = null;
 }
 
 function finishQuickPlaySession(action?: Exclude<QuickPlayActionId, "capture_moment">, restoreStart = false) {
@@ -1081,7 +1093,7 @@ function animateQuickPlayBounds(runtime: QuickPlayRuntime, target: Rectangle, du
       if (isMainProcessQa) {
         const previousTraceBounds = quickPlayTrace.at(-1)?.bounds;
         if (!previousTraceBounds || previousTraceBounds.x !== next.x || previousTraceBounds.y !== next.y) {
-          quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: quickPlaySession.phase, bounds: { ...next }, targetPoint: quickPlaySession.targetPoint });
+          quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: quickPlaySession.phase, bounds: { ...next }, targetPoint: quickPlaySession.targetPoint, actorDirection: quickPlaySession.actorDirection });
         }
       }
       positionAccessoryWindows();
@@ -1134,6 +1146,24 @@ function dangleReturnAction(direction: QuickPlayActorDirection): DangleLocomotio
   if (direction === "back-left") return "dangle_return_walk_back_left";
   if (direction === "back-right") return "dangle_return_walk_back_right";
   return "dangle_return_walk";
+}
+
+function tossYarnDirectionId(direction: QuickPlayActorDirection): TossYarnDirectionId {
+  return direction.replaceAll("-", "_") as TossYarnDirectionId;
+}
+
+function setTossYarnActorDirection(from: Rectangle, to: Rectangle) {
+  const actorDirection = dangleActorDirection(from, to);
+  quickPlaySession = { ...quickPlaySession, actorDirection };
+  return actorDirection;
+}
+
+function tossYarnChaseAction(direction: QuickPlayActorDirection): TossYarnLocomotionId {
+  return `toss_yarn_chase_${tossYarnDirectionId(direction)}`;
+}
+
+function tossYarnCarryAction(direction: QuickPlayActorDirection): TossYarnLocomotionId {
+  return `toss_yarn_carry_${tossYarnDirectionId(direction)}`;
 }
 
 function dangleTargetCrossedTravelDirection(runtime: QuickPlayRuntime, plannedTarget: Rectangle) {
@@ -1315,7 +1345,7 @@ async function failQuickPlayRuntime(runtime: QuickPlayRuntime, reason: unknown) 
   if (quickPlayRuntime !== runtime || runtime.failing) return;
   runtime.failing = true;
   quickPlaySession = { ...quickPlaySession, phase: "failed", phaseStartedAt: Date.now(), failure: reason instanceof Error ? reason.message : String(reason) };
-  quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: "failed", bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint: quickPlaySession.targetPoint });
+  quickPlayTrace.push({ at: Date.now(), action: runtime.action, phase: "failed", bounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null, targetPoint: quickPlaySession.targetPoint, actorDirection: quickPlaySession.actorDirection });
   publishQuickPlaySession();
   if (isUsableWindow(petWindow)) {
     petWindow.setBounds(runtime.startBounds, false);
@@ -1408,8 +1438,11 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     if (!point) throw new Error("yarn placement canceled");
     const workArea = screen.getDisplayNearestPoint(point).workArea;
     const yarnConfig = actionConfig("toss_yarn");
+    quickPlaySession = { ...quickPlaySession, actorVariant: yarnConfig.yarnColor };
+    publishQuickPlaySession();
     const roll = createYarnRollPlan(point, { x: point.velocityX, y: point.velocityY }, workArea, yarnConfig);
     const interactionPoint = roll.target;
+    updateQuickPlayPhase("rolling", interactionPoint);
     publishQuickPlayOverlayState({
       enabled: false,
       phase: "rolling",
@@ -1423,19 +1456,34 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     const target = clampBoundsToWorkArea({ ...runtime.startBounds, x: Math.round(interactionPoint.x - runtime.startBounds.width / 2), y: Math.round(interactionPoint.y - runtime.startBounds.height * .68) }, workArea);
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: interactionPoint };
-    const returnMs = yarnConfig.returnPace === "run" ? 820 : 1_150;
+    const chaseDirection = setTossYarnActorDirection(runtime.startBounds, target);
+    const carryPace = yarnConfig.returnPace === "run" ? 140 : 118;
     await executeTossYarn({
       phase: (phase) => updateQuickPlayPhase(phase, interactionPoint),
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      approach: async () => {
-        const moved = await animateQuickPlayBounds(runtime, target, Math.round(1_250 * 100 / yarnConfig.rollSpeed));
-        if (!moved) throw new Error("Toy approach was interrupted");
-        return true;
-      },
-      returnHome: async () => {
-        const moved = await animateQuickPlayBounds(runtime, runtime.startBounds, returnMs);
-        if (!moved) throw new Error("Toy return was interrupted");
-        return true;
+      approach: () => runAuthoredLocomotionLeg(
+        runtime,
+        "outbound",
+        runtime.startBounds,
+        target,
+        132,
+        tossYarnChaseAction(chaseDirection),
+        "Toss Yarn chase was interrupted",
+        interactionPoint,
+      ),
+      carryHome: () => {
+        const current = isUsableWindow(petWindow) ? petWindow.getBounds() : target;
+        const carryDirection = setTossYarnActorDirection(current, runtime.startBounds);
+        return runAuthoredLocomotionLeg(
+          runtime,
+          "carry",
+          current,
+          runtime.startBounds,
+          carryPace,
+          tossYarnCarryAction(carryDirection),
+          "Toss Yarn mouth-carry return was interrupted",
+          interactionPoint,
+        );
       },
       closePropOverlay: closeQuickPlayOverlay,
       complete: () => completeQuickPlayRuntime(runtime),
@@ -1581,12 +1629,13 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
     targetPoint,
     walkMotion: null,
     actorDirection: null,
+    actorVariant: action === "toss_yarn" ? actionConfig("toss_yarn").yarnColor : null,
     pointerMode,
     resting: reportedPetDirectorState.resting,
     failure: null,
   };
   publishQuickPlaySession();
-  quickPlayTrace.push({ at: Date.now(), action, phase: quickPlaySession.phase, bounds: runtime.startBounds, targetPoint });
+  quickPlayTrace.push({ at: Date.now(), action, phase: quickPlaySession.phase, bounds: runtime.startBounds, targetPoint, actorDirection: quickPlaySession.actorDirection });
   // QA may accelerate authored animation time, but must never compress the
   // human placement window so far that the overlay expires before it loads.
   const watchdogMs = Math.max(15_000, (action === "play_cursor" ? 13_000 : 65_000) / quickPlayTimeScale);
@@ -2032,7 +2081,7 @@ export const mainProcessQa = {
       runtime.dangleReleased = true;
       closeQuickPlayOverlay();
     }
-    if (point) releaseFeedSnackPlacementPointer(runtime, point);
+    if (point) releasePlacementPointer(runtime, point);
     resolver(point ? { ...point, velocityX: 0, velocityY: 0 } : null);
     return true;
   },
@@ -2163,7 +2212,7 @@ ipcMain.on("quick-play:overlay-input", (event, input: { type?: string; screenX?:
     runtime.dangleReleased = true;
     closeQuickPlayOverlay();
   }
-  releaseFeedSnackPlacementPointer(runtime, point);
+  releasePlacementPointer(runtime, point);
   resolve({
     ...point,
     velocityX: Number.isFinite(input.velocityX) ? Number(input.velocityX) : 0,

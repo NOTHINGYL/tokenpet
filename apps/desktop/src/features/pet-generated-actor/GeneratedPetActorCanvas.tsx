@@ -77,6 +77,9 @@ async function loadGeneratedActorImages(manifest: PetActorManifest) {
   const frameSources = new Set<string>();
   Object.values(manifest.animations).forEach((animation) => {
     animation.frames.forEach((frame) => frameSources.add(resolveFrameUrl(manifest.actorId, frame)));
+    Object.values(animation.variants ?? {}).forEach((frames) => {
+      frames.forEach((frame) => frameSources.add(resolveFrameUrl(manifest.actorId, frame)));
+    });
   });
 
   const entries = await Promise.all([...frameSources].map(async (src) => [src, await loadImage(src)] as const));
@@ -133,6 +136,11 @@ function resolveActionAnimation(
   return resolveAnimation(manifest, moodId);
 }
 
+function resolveAnimationVariant(animation: PetActorAnimation, variantId: string | undefined) {
+  const frames = variantId ? animation.variants?.[variantId] : undefined;
+  return frames?.length ? { ...animation, frames } : animation;
+}
+
 function resolveTokenMode(appearance: PetAppearanceSettings, manifest: PetActorManifest): PetActorTokenMode {
   const tokenBubbleId = getEffectiveTokenBubbleId(appearance);
   const frame = getTokenFrameOption(appearance);
@@ -158,18 +166,20 @@ function resolveTokenRect(manifest: PetActorManifest, tokenMode: PetActorTokenMo
 
 function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): GeneratedActorRenderPlan | null {
   const moodId = props.moodId ?? props.appearance.moodId;
-  const animation = resolveActionAnimation(
+  const baseAnimation = resolveActionAnimation(
     manifest,
     props.storyActionId ?? props.actionId,
     props.motionActionId,
     moodId,
   );
+  const animation = resolveAnimationVariant(baseAnimation, props.actorVariant);
   if (!animation?.frames.length) return null;
   const isChromeFreeStoryAction = animation.id === "action.walk_round_trip"
     || animation.id === "action.walk_round_trip_look"
     || animation.id === "action.play_cursor"
     || animation.id.startsWith("action.feed_snack_")
-    || animation.id.startsWith("action.dangle_");
+    || animation.id.startsWith("action.dangle_")
+    || animation.id.startsWith("action.toss_yarn_");
   const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
@@ -572,6 +582,7 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       data-actor-id={plan.manifest.actorId}
       data-actor-animation={plan.animation.id}
       data-actor-facing={plan.facing}
+      data-actor-variant={props.actorVariant}
       data-actor-mirrored={plan.facing === "left" && animationSupportsAuthoredFacing(plan.animation.id) ? "true" : "false"}
       data-actor-cycle-duration-ms={props.animationCycleDurationMs}
       data-actor-started-at-ms={props.animationStartedAtMs}

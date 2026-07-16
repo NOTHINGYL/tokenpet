@@ -15,6 +15,7 @@ const GENERATED_AT = "2026-07-09T00:00:00.000Z";
 const toolDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(toolDir, "../../..");
 const sourcePath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
+const tossYarnActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2/source-actions.json");
 const outputDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-british");
 const frameDir = resolve(outputDir, "frames");
 const runtimeSourceDir = resolve(outputDir, "source");
@@ -49,23 +50,33 @@ function defaultFrameDuration(action) {
   return 1200;
 }
 
-function createAnimation(actionId, action, frameInputs, artboard) {
+function createFrames(actionId, action, frameInputs, artboard, variantId = null) {
   const durationMs = defaultFrameDuration(action);
-  const frames = frameInputs.map((input, index) => {
+  return frameInputs.map((input, index) => {
     const fileName = outputFrameName(input);
     const bodyTransform = input.source.bodyTransform ?? action.bodyTransform;
     return {
-      id: `${actionId}-${index + 1}`,
+      id: `${actionId}${variantId ? `-${variantId}` : ""}-${index + 1}`,
       mood: action.mood,
       src: `frames/${fileName}`,
       kind: "png",
       rect: { x: 0, y: 0, width: artboard.width, height: artboard.height },
       durationMs: input.source.durationMs ?? durationMs,
       sha256: input.sha256,
-      sourceAssetId: `${actionId}:${index + 1}`,
+      sourceAssetId: `${actionId}${variantId ? `:${variantId}` : ""}:${index + 1}`,
       ...(bodyTransform ? { bodyTransform } : {}),
     };
   });
+}
+
+function createAnimation(actionId, action, frameInputSet, artboard) {
+  const frames = createFrames(actionId, action, frameInputSet.frames, artboard);
+  const variants = Object.fromEntries(
+    [...frameInputSet.variants].map(([variantId, inputs]) => [
+      variantId,
+      createFrames(actionId, action, inputs, artboard, variantId),
+    ]),
+  );
 
   return {
     id: `action.${actionId}`,
@@ -79,6 +90,7 @@ function createAnimation(actionId, action, frameInputs, artboard) {
     ...(action.reducedMotionFallback ? { reducedMotionFallback: action.reducedMotionFallback } : {}),
     ...(action.locomotion ? { locomotion: action.locomotion } : {}),
     frames,
+    ...(Object.keys(variants).length ? { variants } : {}),
   };
 }
 
@@ -275,25 +287,39 @@ async function readAndVerifySourceFrames(source) {
   const allInputs = [];
   const byAction = new Map();
   for (const [actionId, action] of Object.entries(source.actions)) {
-    const frames = [];
-    for (const frame of action.sourceFrames) {
-      const buffer = await readFile(resolve(repoRoot, frame.src));
-      const actualSha256 = sha256(buffer);
-      if (actualSha256 !== frame.expectedSha256) {
-        throw new Error(`${frame.src}: expected SHA-256 ${frame.expectedSha256}, got ${actualSha256}`);
+    const readFrames = async (sourceList) => {
+      const frames = [];
+      for (const frame of sourceList) {
+        const buffer = await readFile(resolve(repoRoot, frame.src));
+        const actualSha256 = sha256(buffer);
+        if (actualSha256 !== frame.expectedSha256) {
+          throw new Error(`${frame.src}: expected SHA-256 ${frame.expectedSha256}, got ${actualSha256}`);
+        }
+        const input = { source: frame, buffer, sha256: actualSha256 };
+        frames.push(input);
+        allInputs.push([frame.src, buffer]);
       }
-      const input = { source: frame, buffer, sha256: actualSha256 };
-      frames.push(input);
-      allInputs.push([frame.src, buffer]);
+      return frames;
+    };
+    const frames = await readFrames(action.sourceFrames);
+    const variants = new Map();
+    for (const [variantId, variantFrames] of Object.entries(action.variants ?? {})) {
+      variants.set(variantId, await readFrames(variantFrames));
     }
-    byAction.set(actionId, frames);
+    byAction.set(actionId, { frames, variants });
   }
   return { byAction, allInputs };
 }
 
 export async function buildGoldenBritish() {
   const sourceText = await readFile(sourcePath, "utf8");
-  const source = JSON.parse(sourceText);
+  const tossYarnActionsText = await readFile(tossYarnActionsPath, "utf8");
+  const tossYarnActions = JSON.parse(tossYarnActionsText);
+  const baseSource = JSON.parse(sourceText);
+  const source = {
+    ...baseSource,
+    actions: { ...baseSource.actions, ...tossYarnActions.actions },
+  };
   assertValidPetActorSourceSpec(source);
 
   const sourceImageBuffer = await readFile(resolve(repoRoot, source.sourceImage));
@@ -303,8 +329,11 @@ export async function buildGoldenBritish() {
   }
 
   const { byAction: sourceFrames, allInputs } = await readAndVerifySourceFrames(source);
-  const sourceSpecSha256 = sha256(sourceText);
-  const inputSetSha256 = hashInputSet(allInputs);
+  const sourceSpecSha256 = sha256(`${sourceText}\n${tossYarnActionsText}`);
+  const inputSetSha256 = hashInputSet([
+    ...allInputs,
+    [relative(repoRoot, tossYarnActionsPath).replaceAll("\\", "/"), Buffer.from(tossYarnActionsText)],
+  ]);
   const manifest = buildManifest(source, sourceSpecSha256, inputSetSha256, sourceFrames);
   assertValidPetActorManifest(manifest);
 
@@ -313,7 +342,8 @@ export async function buildGoldenBritish() {
   const frameOutputs = new Map();
   const outputFiles = [];
   for (const actionId of Object.keys(source.actions)) {
-    const inputs = sourceFrames.get(actionId);
+    const inputSet = sourceFrames.get(actionId);
+    const inputs = [inputSet.frames, ...inputSet.variants.values()].flat();
     for (const input of inputs) {
       const fileName = outputFrameName(input);
       expectedFrameNames.add(fileName);

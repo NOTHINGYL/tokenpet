@@ -13,6 +13,7 @@ type PetAppearanceVisualProps = {
   pointerOffset?: { x: number; y: number };
   cursorTracking?: CursorTrackingVisual;
   facing?: "left" | "right";
+  actorVariant?: string;
   animationNonce?: number;
   previewTimeMs?: number;
   animationStartedAtMs?: number;

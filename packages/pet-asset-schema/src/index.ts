@@ -7,6 +7,15 @@ export type PetActorSourceSchemaVersion = typeof PET_ACTOR_SOURCE_SCHEMA_VERSION
 export const PET_ACTOR_MOODS = ["sleepy", "focused", "hot", "overdrive"] as const;
 export type PetActorMood = (typeof PET_ACTOR_MOODS)[number];
 
+export const TOSS_YARN_ACTOR_DIRECTIONS = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"] as const;
+export type TossYarnActorDirection = (typeof TOSS_YARN_ACTOR_DIRECTIONS)[number];
+export const TOSS_YARN_ACTOR_PHASES = ["chase", "pickup", "carry", "drop"] as const;
+export type TossYarnActorPhase = (typeof TOSS_YARN_ACTOR_PHASES)[number];
+export type TossYarnDirectionalActionId = `toss_yarn_${TossYarnActorPhase}_${TossYarnActorDirection}`;
+export const TOSS_YARN_DIRECTIONAL_ACTION_IDS = TOSS_YARN_ACTOR_PHASES.flatMap((phase) =>
+  TOSS_YARN_ACTOR_DIRECTIONS.map((direction) => `toss_yarn_${phase}_${direction}` as TossYarnDirectionalActionId),
+) as readonly TossYarnDirectionalActionId[];
+
 export const PET_ACTOR_LIFE_STAGES = ["egg", "newKitten", "deskBuddy", "flowCompanion", "guardianCompanion"] as const;
 export type PetActorLifeStage = (typeof PET_ACTOR_LIFE_STAGES)[number];
 
@@ -66,6 +75,7 @@ export const PET_ACTOR_ACTION_IDS = [
   "walk_round_trip",
   "walk_round_trip_look",
   "toss_yarn",
+  ...TOSS_YARN_DIRECTIONAL_ACTION_IDS,
   "nap_here",
   "wake_up",
   "summon_to_screen",
@@ -153,6 +163,8 @@ export type PetActorSourceAction = {
   kind: PetActorAnimationKind;
   mood: PetActorMood;
   sourceFrames: PetActorSourceFrame[];
+  /** Approved offline variants with frame-for-frame timing parity. */
+  variants?: Record<string, PetActorSourceFrame[]>;
   fps: number;
   loop: boolean;
   priority: number;
@@ -250,6 +262,8 @@ export type PetActorAnimation = {
   reducedMotionFallback?: PetActorActionId;
   locomotion?: PetActorLocomotionClip;
   frames: PetActorFrameAsset[];
+  /** Runtime-selectable approved rasters; never a CSS/canvas recolour. */
+  variants?: Record<string, PetActorFrameAsset[]>;
 };
 
 export type PetActorDynamicSlots = {
@@ -336,6 +350,7 @@ const locomotionActionIds = new Set<string>([
   "dangle_return_walk_front_right",
   "dangle_return_walk_back_left",
   "dangle_return_walk_back_right",
+  ...TOSS_YARN_DIRECTIONAL_ACTION_IDS.filter((id) => id.startsWith("toss_yarn_chase_") || id.startsWith("toss_yarn_carry_")),
 ]);
 const quickPlayActionIds = new Set<string>(PET_ACTOR_QUICK_PLAY_ACTION_IDS);
 const moods = new Set<string>(PET_ACTOR_MOODS);
@@ -714,6 +729,39 @@ export function validatePetActorManifest(value: unknown): PetActorValidationResu
         }
         if (frame.bodyTransform !== undefined) validateTransform(frame.bodyTransform, issues, `${framePath}.bodyTransform`);
       });
+      if (animation.variants !== undefined) {
+        if (!isRecord(animation.variants) || Object.keys(animation.variants).length === 0) {
+          pushIssue(issues, "animation.variants", `${animationPath}.variants`, "must be a non-empty record of approved frame arrays");
+        } else {
+          for (const [variantId, variantFrames] of Object.entries(animation.variants)) {
+            const variantPath = `${animationPath}.variants.${variantId}`;
+            validateNonEmptyString(variantId, issues, `${variantPath}.id`);
+            if (!Array.isArray(variantFrames) || variantFrames.length !== animation.frames.length) {
+              pushIssue(issues, "animation.variantFrames", variantPath, `must contain exactly ${animation.frames.length} timing-compatible frames`);
+              continue;
+            }
+            variantFrames.forEach((frame, frameIndex) => {
+              const framePath = `${variantPath}[${frameIndex}]`;
+              if (!isRecord(frame)) {
+                pushIssue(issues, "frame.object", framePath, "must be an object");
+                return;
+              }
+              validateNonEmptyString(frame.id, issues, `${framePath}.id`);
+              validateRelativePath(frame.src, issues, `${framePath}.src`);
+              if (frame.kind !== "png" || typeof frame.src !== "string" || !frame.src.endsWith(".png")) {
+                pushIssue(issues, "frame.productionKind", `${framePath}.kind`, "variant production frames must be PNG rasters");
+              }
+              validateRect(frame.rect, artboard, issues, `${framePath}.rect`);
+              validateSha256(frame.sha256, issues, `${framePath}.sha256`);
+              validateNonEmptyString(frame.sourceAssetId, issues, `${framePath}.sourceAssetId`);
+              if (typeof frame.durationMs !== "number" || !Number.isFinite(frame.durationMs) || frame.durationMs <= 0) {
+                pushIssue(issues, "frame.duration", `${framePath}.durationMs`, "must be a positive duration");
+              }
+              if (frame.bodyTransform !== undefined) validateTransform(frame.bodyTransform, issues, `${framePath}.bodyTransform`);
+            });
+          }
+        }
+      }
     }
   }
 
@@ -829,6 +877,37 @@ export function validatePetActorSourceSpec(value: unknown): PetActorValidationRe
           pushIssue(issues, "source.locomotionAction", `${actionPath}.locomotion`, "is only valid for a declared locomotion action");
         }
         validateLocomotion(action.locomotion, Array.isArray(action.sourceFrames) ? action.sourceFrames.length : 0, issues, `${actionPath}.locomotion`);
+      }
+      if (action.variants !== undefined) {
+        if (!isRecord(action.variants) || Object.keys(action.variants).length === 0) {
+          pushIssue(issues, "source.variants", `${actionPath}.variants`, "must be a non-empty record of approved raster arrays");
+        } else {
+          for (const [variantId, variantFrames] of Object.entries(action.variants)) {
+            const variantPath = `${actionPath}.variants.${variantId}`;
+            validateNonEmptyString(variantId, issues, `${variantPath}.id`);
+            const expectedCount = Array.isArray(action.sourceFrames) ? action.sourceFrames.length : 0;
+            if (!Array.isArray(variantFrames) || variantFrames.length !== expectedCount) {
+              pushIssue(issues, "source.variantFrames", variantPath, `must contain exactly ${expectedCount} timing-compatible frames`);
+              continue;
+            }
+            variantFrames.forEach((frame, frameIndex) => {
+              const framePath = `${variantPath}[${frameIndex}]`;
+              if (!isRecord(frame)) {
+                pushIssue(issues, "source.frame", framePath, "must be an object");
+                return;
+              }
+              validateRelativePath(frame.src, issues, `${framePath}.src`);
+              if (frame.kind !== "approved-raster") {
+                pushIssue(issues, "source.frameKind", `${framePath}.kind`, "must be approved-raster");
+              }
+              validateSha256(frame.expectedSha256, issues, `${framePath}.expectedSha256`);
+              if (frame.durationMs !== undefined && (typeof frame.durationMs !== "number" || !Number.isFinite(frame.durationMs) || frame.durationMs <= 0)) {
+                pushIssue(issues, "source.frameDuration", `${framePath}.durationMs`, "must be a positive duration when provided");
+              }
+              if (frame.bodyTransform !== undefined) validateTransform(frame.bodyTransform, issues, `${framePath}.bodyTransform`);
+            });
+          }
+        }
       }
       if (action.bodyTransform !== undefined) validateTransform(action.bodyTransform, issues, `${actionPath}.bodyTransform`);
     }

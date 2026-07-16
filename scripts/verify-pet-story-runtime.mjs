@@ -11,6 +11,7 @@ const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-chor
 const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
 const dangleToyExecutorBuildPath = join(root, "dist-electron/quick-play/executors/dangle-toy.js");
 const playCursorExecutorBuildPath = join(root, "dist-electron/quick-play/executors/play-cursor.js");
+const tossYarnExecutorBuildPath = join(root, "dist-electron/quick-play/executors/toss-yarn.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
@@ -18,6 +19,7 @@ assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-
 assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(dangleToyExecutorBuildPath), "Dangle Toy executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(playCursorExecutorBuildPath), "Play Cursor executor build is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(tossYarnExecutorBuildPath), "Toss Yarn executor build is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
@@ -25,6 +27,7 @@ const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).
 const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
 const dangleToyExecutor = await import(`${pathToFileURL(dangleToyExecutorBuildPath).href}?qa=${Date.now()}`);
 const playCursorExecutor = await import(`${pathToFileURL(playCursorExecutorBuildPath).href}?qa=${Date.now()}`);
+const tossYarnExecutor = await import(`${pathToFileURL(tossYarnExecutorBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
   entryPoints: [join(root, "apps/desktop/src/features/pet-story/PetDirector.ts")],
   bundle: true,
@@ -742,6 +745,30 @@ const fullDangleResult = await fullDanglePromise;
 verify("Dangle executor preserves isolated setup, release and exact-return semantics", () => {
   assert.equal(fullDangleResult, true);
   assert.deepEqual(fullDanglePhases, ["alert", "stalk", "crouch", "release", "return", "settle"]);
+});
+
+const tossYarnEvents = [];
+const tossYarnResult = await tossYarnExecutor.executeTossYarn({
+  phase: (phase) => tossYarnEvents.push(`phase:${phase}`),
+  delay: async (durationMs) => { tossYarnEvents.push(`delay:${durationMs}`); return true; },
+  approach: async () => { tossYarnEvents.push("locomote:chase"); return true; },
+  carryHome: async () => { tossYarnEvents.push("locomote:mouth-carry-home"); return true; },
+  closePropOverlay: () => tossYarnEvents.push("overlay:handoff-to-pickup"),
+  complete: async () => tossYarnEvents.push("complete:exact-home"),
+});
+verify("Toss Yarn executor isolates chase, pickup, mouth-carry, drop, and exact return", () => {
+  assert.equal(tossYarnResult, true);
+  assert.deepEqual(tossYarnEvents, [
+    "phase:stand", "delay:350",
+    "phase:outbound", "locomote:chase",
+    "overlay:handoff-to-pickup", "phase:pickup", "delay:670",
+    "phase:carry", "locomote:mouth-carry-home",
+    "phase:drop", "delay:1000",
+    "phase:settle", "delay:280",
+    "complete:exact-home",
+  ]);
+  const timeline = quickPlay.createQuickPlayActionTimeline("toss_yarn", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.toss_yarn, 260);
+  assert.deepEqual(timeline.phases.map((phase) => phase.id), ["roll", "run_to_yarn", "pick_up_yarn", "carry_yarn", "drop_yarn", "restore"]);
 });
 
 const cursorExecutorPhases = [];
