@@ -60,9 +60,7 @@ export type TossYarnQuickPlayConfig = {
 };
 
 export type NapHereQuickPlayConfig = {
-  settlePose: "curl" | "paws" | "side";
-  breathingIntensity: number;
-  zEffect: boolean;
+  settlePace: "gentle" | "quick";
   sleepShadow: boolean;
 };
 
@@ -124,9 +122,7 @@ export const QUICK_PLAY_ACTION_DEFAULTS: Readonly<QuickPlayActionConfigMap> = {
     returnPace: "quick",
   },
   nap_here: {
-    settlePose: "curl",
-    breathingIntensity: 54,
-    zEffect: true,
+    settlePace: "gentle",
     sleepShadow: true,
   },
   wake_up: {
@@ -216,9 +212,7 @@ export function normalizeQuickPlayActionConfig<A extends QuickPlayAnimatedAction
     case "nap_here": {
       const fallback = QUICK_PLAY_ACTION_DEFAULTS.nap_here;
       return {
-        settlePose: enumValue(raw.settlePose, ["curl", "paws", "side"], fallback.settlePose),
-        breathingIntensity: finiteNumber(raw.breathingIntensity, fallback.breathingIntensity, 20, 100),
-        zEffect: booleanValue(raw.zEffect, fallback.zEffect),
+        settlePace: enumValue(raw.settlePace, ["gentle", "quick"], fallback.settlePace),
         sleepShadow: booleanValue(raw.sleepShadow, fallback.sleepShadow),
       } as QuickPlayActionConfigMap[A];
     }
@@ -788,12 +782,14 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
         { id: "restore", durationMs: 280 },
       ]);
     }
-    case "nap_here":
+    case "nap_here": {
+      const options = config as NapHereQuickPlayConfig;
+      const quick = options.settlePace === "quick";
       return createPhaseTimeline([
-        { id: "nap_settle", durationMs: 650 },
-        { id: "curl", durationMs: 500 },
-        { id: "enter_sleep_loop", durationMs: 650 },
+        { id: "grounded_pause", durationMs: quick ? 140 : 360 },
+        { id: "enter_sleep_loop", durationMs: quick ? 660 : 940 },
       ]);
+    }
     case "wake_up": {
       const options = config as WakeUpQuickPlayConfig;
       const stretchMs = options.stretchHold * 1_000;

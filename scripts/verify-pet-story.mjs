@@ -244,6 +244,7 @@ function verifyReachableUi() {
   const actions = read("apps/desktop/src/features/pet-story/ActionsWorkbench.tsx");
   const soundEngine = read("apps/desktop/src/features/pet-story/soundCueEngine.ts");
   const consoleStyles = read("apps/desktop/src/styles/console.css");
+  const petStyles = read("apps/desktop/src/styles/pet.css");
   const fallbackState = read("apps/desktop/src/state/fallbacks.ts");
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
   verify("desktop shared renderer", desktop.includes("<PetAppearanceVisual"), "desktop pet uses the shared appearance/actor renderer");
@@ -282,6 +283,19 @@ function verifyReachableUi() {
       && consoleStyles.includes("--filmstrip-columns"),
     "desktop and Console Preview share chase/pickup/carry/drop actions, baked yarn-colour variants, authored props, and distance-locked root motion",
   );
+  const nap = manifest.animations["action.nap_here"];
+  verify(
+    "Nap Here settles on the fixed token frame without a jump",
+    nap?.frames.length === 2
+      && JSON.stringify(nap.frames.map((frame) => frame.src)) === JSON.stringify(["frames/idle_breathe.png", "frames/sleep_loop.png"])
+      && nap.frames.reduce((total, frame) => total + frame.durationMs, 0) === 1_300
+      && nap.frames.every((frame) => !frame.bodyTransform && !frame.src.includes("nap_here.png"))
+      && desktop.includes("data-pet-resting")
+      && actions.includes("grounded-direct-settle-fixed-token-frame")
+      && !petStyles.includes("quick-nap-breathe")
+      && !petStyles.includes("quick-nap-z"),
+    "desktop and Console share a grounded idle-to-sleep sequence; neither a floating cushion frame nor whole-canvas translate animation can move the token frame",
+  );
   const wakePhaseCounts = { wake_up_blink: 4, wake_up_roll: 4, wake_up_stretch: 8, wake_up_gather: 8 };
   verify(
     "Wake Up uses one dedicated five-second offline sequence",
@@ -299,7 +313,7 @@ function verifyReachableUi() {
     "desktop and Console Preview share 24 registered blink/roll/stretch/gather frames with three preloaded local meow voices and no runtime anatomy transform",
   );
   verify("Actions v19 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
-  verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePose", "breathingIntensity", "zEffect", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)) && !actions.includes('key: "attentionRadius"'), "all action-specific v19 setting keys are modeled without a generic Save form or a misleading local-only cursor radius");
+  verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePace", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)) && !["attentionRadius", "settlePose", "breathingIntensity", "zEffect"].some((key) => actions.includes(`key: \"${key}\"`)), "all action-specific v19 setting keys are modeled without a generic Save form, misleading cursor radius, or fake Nap-only effects");
   verify("Actions v19 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop/u.test(actions), "the Actions implementation contains none of the retired director-dashboard modules");
   verify("ambient story scheduler", desktop.includes("selectAmbientPetEvent") && desktop.includes("ambientRef") && desktop.includes("window.setInterval(tick"), "desktop pet schedules deterministic blink, rest, and wake events through PetDirector");
   verify("Token Egg ambient gate", desktop.includes("lifecycleStage: lifecycleFromUsage(usage)"), "ambient wake/rest/blink receives lifecycle state so Stage 0 can wait for the first-source/token hatch");

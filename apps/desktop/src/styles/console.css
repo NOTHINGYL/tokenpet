@@ -4008,6 +4008,12 @@
   --pet-visual-cat-width: clamp(300px, 22vw, 350px);
   --pet-visual-cat-y: -8px;
 }
+.action-preview-nap_here .pet-generated-actor-shell {
+  /* Nap keeps the embedded token frame in the same artboard as the sleeping
+     cat. Reserve a little floor below it so the filmstrip never covers it. */
+  --pet-visual-cat-width: clamp(560px, 43vw, 650px);
+  --pet-visual-cat-y: -132px;
+}
 .action-preview-wake_up .pet-generated-actor-shell {
   /* Wake Up changes from a compact curl to a very long side stretch. Keep one
      fixed 1024px artboard scale for every phase so the full key pose remains
@@ -4058,6 +4064,14 @@
 .action-preview-dangle-wand { position: absolute; z-index: 5; width: 78px; height: 78px; transform: translate(-77%, -61%); pointer-events: none; }
 .action-preview-dangle-wand img { display: block; width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 3px 4px rgba(29,59,95,.16)); }
 .action-preview-prop-nap_here { color: #7f59cd; font-size: 24px; font-weight: 850; letter-spacing: -2px; }
+.action-preview-nap_here .action-preview-route,
+.action-preview-nap_here .action-preview-home,
+.action-preview-nap_here .action-preview-destination {
+  display: none;
+}
+.action-preview-stage[data-preview-nap-shadow="true"] .action-preview-actor .pet-generated-actor-canvas-root {
+  filter: drop-shadow(0 12px 9px rgba(31, 41, 55, .16));
+}
 .action-preview-prop-wake_up { color: #e6a51f; font-size: 33px; }
 .action-virtual-pointer { margin: -15px 0 0 14px; color: #1f4078; font-size: 25px; text-shadow: 0 1px 1px #fff; }
 .action-preview-coordinate-readout {

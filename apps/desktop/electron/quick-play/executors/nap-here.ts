@@ -5,9 +5,9 @@ export type NapHereExecutorPorts = {
   complete: () => Promise<void>;
 };
 
-export async function executeNapHere(ports: NapHereExecutorPorts) {
+export async function executeNapHere(ports: NapHereExecutorPorts, settleDurationMs: number) {
   ports.phase("settle");
-  if (!await ports.delay(1_800)) return false;
+  if (!await ports.delay(settleDurationMs)) return false;
   ports.markResting();
   await ports.complete();
   return true;

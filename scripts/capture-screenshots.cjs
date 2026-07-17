@@ -1060,7 +1060,7 @@ async function verifyActions(window, desktopPet) {
     play_cursor: ["followSmoothing", "maxHeadTurnAngle", "earFollow"],
     drag_dangle: ["fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect"],
     toss_yarn: ["yarnColor", "rollDistance", "rollSpeed", "returnPace"],
-    nap_here: ["settlePose", "breathingIntensity", "zEffect", "sleepShadow"],
+    nap_here: ["settlePace", "sleepShadow"],
     wake_up: ["meowVoice", "meowCue", "stretchHold", "wakeSparkle"],
     summon_to_pointer: ["walkPace", "arrivalOffset", "routeCurve", "settleDelay"],
   };
@@ -1233,6 +1233,66 @@ async function verifyActions(window, desktopPet) {
     `eight Dangle phases, dedicated pursuit actor, clean wand/fish assets, connected cord, and chrome-free preview: ${JSON.stringify(danglePreview)}`,
   );
   await capture(window, "console-actions-dangle.png", "Console / Actions / Dangle Toy preview");
+
+  await click(window, "[data-action-id=nap_here]", "select Nap Here preview");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "nap_here", [], "Nap Here settings");
+  const napPreviewPlaying = await evaluate(window, () => document.querySelector("[data-action-play]")?.getAttribute("aria-label") === "Pause preview");
+  if (napPreviewPlaying) await click(window, "[data-action-play]", "pause Nap Here preview for grounded-state review");
+  await evaluate(window, () => {
+    const scrubber = document.querySelector("[data-action-scrubber]");
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(scrubber, "700");
+    scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+    scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await delay(160);
+  const napPreview = await evaluate(window, () => {
+    const stage = document.querySelector("[data-action-preview-stage]");
+    const actor = stage?.querySelector(".action-preview-actor");
+    const shell = stage?.querySelector(".pet-generated-actor-shell");
+    const root = stage?.querySelector(".pet-generated-actor-canvas-root");
+    const stageRect = stage?.getBoundingClientRect();
+    const tokenRect = shell?.querySelector(".pet-actor-token-hotspot")?.getBoundingClientRect();
+    return {
+      contract: stage?.dataset.previewNapContract,
+      phase: stage?.dataset.previewNapPhase,
+      animation: stage?.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+      frame: stage?.querySelector(".pet-generated-actor-canvas")?.dataset.actorFrame,
+      keyframes: document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]").length,
+      actorX: actor?.style.getPropertyValue("--actor-preview-x"),
+      actorY: actor?.style.getPropertyValue("--actor-preview-y"),
+      tokenVisible: Boolean(shell && !shell.classList.contains("pet-token-hidden") && shell.querySelector(".pet-actor-token-hotspot")),
+      tokenFitsStage: Boolean(stageRect && tokenRect
+        && tokenRect.left >= stageRect.left - 1
+        && tokenRect.right <= stageRect.right + 1
+        && tokenRect.top >= stageRect.top - 1
+        && tokenRect.bottom <= stageRect.bottom - 8),
+      stageBounds: stageRect ? { left: stageRect.left, top: stageRect.top, right: stageRect.right, bottom: stageRect.bottom } : null,
+      tokenBounds: tokenRect ? { left: tokenRect.left, top: tokenRect.top, right: tokenRect.right, bottom: tokenRect.bottom } : null,
+      routeHidden: getComputedStyle(stage.querySelector(".action-preview-route")).display === "none",
+      homeHidden: getComputedStyle(stage.querySelector(".action-preview-home")).display === "none",
+      destinationHidden: getComputedStyle(stage.querySelector(".action-preview-destination")).display === "none",
+      shadow: root ? getComputedStyle(root).filter : "none",
+    };
+  });
+  verify(
+    "Actions Nap Here preview shares the grounded fixed-token transition",
+    napPreview.contract === "grounded-direct-settle-fixed-token-frame"
+      && napPreview.phase === "sleep_loop"
+      && napPreview.animation === "action.sleep_loop"
+      && /^sleep_loop-\d+$/.test(napPreview.frame ?? "")
+      && napPreview.keyframes === 2
+      && napPreview.actorX === "0%"
+      && napPreview.actorY === "0%"
+      && napPreview.tokenVisible
+      && napPreview.tokenFitsStage
+      && napPreview.routeHidden
+      && napPreview.homeHidden
+      && napPreview.destinationHidden
+      && napPreview.shadow !== "none",
+    `Ready and Asleep use registered poses without route chrome or token-frame translation: ${JSON.stringify(napPreview)}`,
+  );
+  await capture(window, "console-actions-nap-here.png", "Console / Actions / Nap Here grounded settle");
 
   await click(window, "[data-action-id=wake_up]", "select Wake Up preview");
   await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "wake_up", [], "Wake Up settings");

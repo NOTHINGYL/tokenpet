@@ -7,7 +7,7 @@
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "742faa58051a2c3084eebeec39584588b3aceb713b31a6b9ad662cac6a6392a5",
+  "contentHash": "736ac8d61e0ab45b9846363fba20cf842b3bb3132f01f335d5aa154a09bc2aca",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -4471,27 +4471,12 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 260,
+          "durationMs": 360,
           "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
           "sourceAssetId": "nap_here:1"
         },
         {
           "id": "nap_here-2",
-          "mood": "sleepy",
-          "src": "frames/nap_here.png",
-          "kind": "png",
-          "rect": {
-            "x": 0,
-            "y": 0,
-            "width": 1024,
-            "height": 1024
-          },
-          "durationMs": 620,
-          "sha256": "a6d58a6da097dff250b1859f2701fbed8c18c3393e939c765284c3960658c4f5",
-          "sourceAssetId": "nap_here:2"
-        },
-        {
-          "id": "nap_here-3",
           "mood": "sleepy",
           "src": "frames/sleep_loop.png",
           "kind": "png",
@@ -4501,9 +4486,9 @@
             "width": 1024,
             "height": 1024
           },
-          "durationMs": 520,
+          "durationMs": 940,
           "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
-          "sourceAssetId": "nap_here:3"
+          "sourceAssetId": "nap_here:2"
         }
       ]
     },
@@ -27612,7 +27597,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.2.0-authored-root-motion",
-    "sourceSpecSha256": "a3132f9cdefb43c52aa116be5dcd9b3d89f9b3e57ede11347571d80490a60067",
-    "inputSetSha256": "37af078ac6edd0f5a94740ba4d6a400478b550d54ee044fc9bbe2a22fbb5f224"
+    "sourceSpecSha256": "be184c2d29075a7eadf4c988abffd6020d089c270d7e24358587e8508496627b",
+    "inputSetSha256": "bc94c1295206da409dd8b925239bad6799d2247104285bb44de38a9e691ead11"
   }
 }

@@ -481,7 +481,6 @@ export function PetApp() {
       const closeSize = Math.round(24 + (companionScale - 0.75) * 8);
       const closeCenterX = 130 + 78 * companionScale;
       const closeCenterY = 172 - 66 * companionScale;
-      const napBreathing = Number(story.actionSettings.byAction.nap_here?.breathingIntensity ?? 54);
       return ({
         "--pet-scale": appearance.size.toString(),
         "--pet-opacity": appearance.opacity.toString(),
@@ -490,10 +489,9 @@ export function PetApp() {
         "--pet-ui-close-top": `${Math.round(closeCenterY - closeSize / 2)}px`,
         "--pet-ui-close-right": `${Math.round(260 - closeCenterX - closeSize / 2)}px`,
         "--pet-ui-close-font-size": `${Math.round(closeSize * 0.66)}px`,
-        "--quick-nap-breathe": `${Math.max(1, Math.min(5, napBreathing / 24))}px`,
       }) as CSSProperties;
     },
-    [appearance.opacity, appearance.shadow, appearance.size, story.actionSettings.byAction.nap_here],
+    [appearance.opacity, appearance.shadow, appearance.size],
   );
 
   const quickPlayActorAction = useMemo<PetActionId | null>(() => {
@@ -544,15 +542,12 @@ export function PetApp() {
     if (phase === "return" || phase === "outbound") return "run_across";
     if (action === "play_cursor") return "play_cursor";
     if (action === "nap_here") {
-      const pose = story.actionSettings.byAction.nap_here?.settlePose;
-      if (phase === "settle" && pose === "side") return "nap_here";
-      if (phase === "settle" && pose === "paws") return "sleep_loop";
       return phase === "settle" ? "nap_here" : "sleep_loop";
     }
     if (action === "summon_to_pointer" && phase === "stand") return "summon_to_screen";
     if (action === "summon_to_pointer") return phase === "settle" ? "focus_loop" : "run_across";
     return action;
-  }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.phase, story.actionSettings.byAction.nap_here, story.actionSettings.byAction.walk_round_trip]);
+  }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.phase, story.actionSettings.byAction.walk_round_trip]);
 
   const quickPlayFacing = useMemo<"left" | "right" | undefined>(() => {
     if (quickPlaySession.activeAction === "token_snack") return undefined;
@@ -606,7 +601,7 @@ export function PetApp() {
       className={`pet-stage pet-theme-${appearance.themeId} pet-state-${mood} ${dragging ? "is-dragging" : ""} ${summoning ? "is-summoning" : ""}`}
       data-quick-play-action={quickPlaySession.activeAction ?? "none"}
       data-quick-play-phase={quickPlaySession.phase}
-      data-nap-z-effect={story.actionSettings.byAction.nap_here?.zEffect === false ? "false" : "true"}
+      data-pet-resting={quickPlaySession.resting ? "true" : "false"}
       data-nap-shadow={story.actionSettings.byAction.nap_here?.sleepShadow === false ? "false" : "true"}
       data-wake-sparkle={story.actionSettings.byAction.wake_up?.wakeSparkle === false ? "false" : "true"}
       style={stageStyle}

@@ -1024,7 +1024,34 @@ async function run() {
   await waitForQuickPlayEnd("nap_here");
   await waitFor(() => qa.getQuickPlaySession().resting === true, "persistent sleep state");
   const napDisabled = await execute(panel, "document.querySelector('[data-action-id=nap_here]')?.disabled === true");
-  verify("Nap settles once into persistent sleep", napDisabled && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds), "already-asleep Nap is disabled without acquiring another action lock");
+  const napVisual = await execute(pet, `(() => {
+    const stage = document.querySelector('.pet-stage');
+    const canvas = document.querySelector('.pet-generated-actor-canvas');
+    const root = document.querySelector('.pet-generated-actor-canvas-root');
+    return {
+      animation: document.querySelector('[data-actor-animation]')?.dataset.actorAnimation,
+      frame: canvas?.dataset.actorFrame,
+      canvasAnimation: canvas ? getComputedStyle(canvas).animationName : null,
+      resting: stage?.dataset.petResting,
+      tokenVisible: Boolean(document.querySelector('.pet-actor-token-hotspot')),
+      shadow: root ? getComputedStyle(root).filter : null,
+    };
+  })()`);
+  const napScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-nap-here-grounded.png");
+  writeFileSync(napScreenshot, (await pet.webContents.capturePage()).toPNG());
+  verify(
+    "Nap settles once into persistent sleep without moving the actor canvas",
+    napDisabled
+      && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds)
+      && napVisual.animation === "action.sleep_loop"
+      && /^sleep_loop-\d+$/.test(napVisual.frame ?? "")
+      && (napVisual.canvasAnimation === "none" || napVisual.canvasAnimation === "")
+      && napVisual.resting === "true"
+      && napVisual.tokenVisible
+      && napVisual.shadow !== "none"
+      && existsSync(napScreenshot),
+    `already-asleep Nap is disabled, bounds/token frame remain fixed, and no whole-canvas bounce survives: ${JSON.stringify(napVisual)}`,
+  );
   quickPlaySummaries.push({ action: "nap_here", startBounds: napBounds, endBounds: pet.getBounds(), trace: qa.getQuickPlayTrace(), resting: true });
 
   qa.resetQuickPlayTrace();

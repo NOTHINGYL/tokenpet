@@ -1,6 +1,6 @@
 {
   "name": "@tokenpet/pet-asset-schema",
-  "version": "0.8.4.7",
+  "version": "0.8.4.8",
   "private": true,
   "type": "module",
   "exports": {

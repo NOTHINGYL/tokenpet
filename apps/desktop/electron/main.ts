@@ -1601,12 +1601,14 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
   }
 
   if (action === "nap_here") {
+    const config = actionConfig("nap_here");
+    const timeline = createQuickPlayActionTimeline("nap_here", config);
     await executeNapHere({
       phase: updateQuickPlayPhase,
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
       markResting: () => { reportedPetDirectorState = { action: "sleep_loop", resting: true }; },
       complete: () => completeQuickPlayRuntime(runtime),
-    });
+    }, timeline.durationMs);
     return;
   }
 

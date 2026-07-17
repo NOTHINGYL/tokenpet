@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { PetActorAnimation, PetActorFrameAsset, PetActorManifest } from "../../../../../packages/pet-asset-schema/src";
 import {
+  createQuickPlayActionTimeline,
   createDistanceLockedWalkPlan,
   DANGLE_PURSUIT_ROOT_MOTION,
   DANGLE_RETURN_ROOT_MOTION,
@@ -12,6 +13,7 @@ import {
   TOSS_YARN_CARRY_ROOT_MOTION,
   TOSS_YARN_CHASE_ROOT_MOTION,
 } from "../../../electron/quick-play-choreography";
+import type { NapHereQuickPlayConfig } from "../../../electron/quick-play-choreography";
 import type {
   CursorTrackingVisual,
   PetActionId,
@@ -148,14 +150,12 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
     ],
   },
   nap_here: {
-    id: "nap_here", label: "Nap here", icon: `${iconRoot}/nap-here.png`, durationMs: 1_800,
-    contract: "stay in place · no restart while asleep", propLabel: "sleep effect", propMark: "Zz",
-    phaseLabels: ["Settle", "Curl", "Breathe", "Dream", "Sleep"],
-    authoredPhaseActions: ["idle_breathe", "nap_here", "nap_here", "sleep_loop", "sleep_loop"],
+    id: "nap_here", label: "Nap here", icon: `${iconRoot}/nap-here.png`, durationMs: 1_300,
+    contract: "grounded settle · fixed token frame · no restart while asleep", propLabel: "sleep state", propMark: "Zz",
+    phaseLabels: ["Ready", "Asleep"],
+    authoredPhaseActions: ["idle_breathe", "sleep_loop"],
     settings: [
-      { key: "settlePose", label: "Settle pose", type: "choices", defaultValue: "curl", options: [{ value: "curl", label: "Cozy curl", mark: "☾" }, { value: "paws", label: "On paws", mark: "🐾" }, { value: "side", label: "Side rest", mark: "◡" }] },
-      { key: "breathingIntensity", label: "Breathing intensity", type: "range", min: 20, max: 100, step: 5, defaultValue: 54, format: percent },
-      { key: "zEffect", label: "Z effect", type: "toggle", defaultValue: true, detail: "Show a gentle sleep marker" },
+      { key: "settlePace", label: "Settle pace", type: "choices", defaultValue: "gentle", options: [{ value: "gentle", label: "Gentle", mark: "☾" }, { value: "quick", label: "Quick", mark: "⌁" }] },
       { key: "sleepShadow", label: "Sleep shadow", type: "toggle", defaultValue: true, detail: "Ground the resting pose" },
     ],
   },
@@ -211,7 +211,7 @@ function buildPreviewFrames(
   actorVariant?: string,
 ): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
-  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn" || definition.id === "wake_up") {
+  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn" || definition.id === "nap_here" || definition.id === "wake_up") {
     let startMs = 0;
     return definition.authoredPhaseActions.map((actorActionId, index) => {
       const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
@@ -381,6 +381,12 @@ export function ActionsWorkbench(props: {
   const tossRollDurationMs = Math.min(1_800, Math.max(280, Math.round(Number(settings.rollDistance ?? 120) / (190 * Number(settings.rollSpeed ?? 100) / 100) * 1_000)));
   const tossPhaseDurations = [tossRollDurationMs + 350, tossChasePlan.durationMs, 670, tossCarryPlan.durationMs, 1_000, 280];
   const tossPreviewDurationMs = tossPhaseDurations.reduce((total, duration) => total + duration, 0);
+  const napSettlePace: NapHereQuickPlayConfig["settlePace"] = settings.settlePace === "quick" ? "quick" : "gentle";
+  const napPhaseDurations = useMemo(() => createQuickPlayActionTimeline("nap_here", {
+    settlePace: napSettlePace,
+    sleepShadow: settings.sleepShadow !== false,
+  }).phases.map((phase) => phase.durationMs), [napSettlePace, settings.sleepShadow]);
+  const napPreviewDurationMs = napPhaseDurations.reduce((total, duration) => total + duration, 0);
   const wakeStretchDurationMs = Number(settings.stretchHold ?? 3) * 1_000;
   const wakePhaseDurations = useMemo(() => {
     const wakeRemainderMs = 5_000 - wakeStretchDurationMs;
@@ -401,6 +407,8 @@ export function ActionsWorkbench(props: {
         ? danglePreviewDurationMs
         : selectedAction === "toss_yarn"
           ? tossPreviewDurationMs
+          : selectedAction === "nap_here"
+            ? napPreviewDurationMs
           : definition.durationMs;
   const frames = useMemo(
     () => buildPreviewFrames(
@@ -408,10 +416,10 @@ export function ActionsWorkbench(props: {
       manifest,
       fallbackImage,
       previewDurationMs,
-      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : selectedAction === "wake_up" ? wakePhaseDurations : undefined,
+      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : selectedAction === "nap_here" ? napPhaseDurations : selectedAction === "wake_up" ? wakePhaseDurations : undefined,
       selectedAction === "toss_yarn" ? yarnColor : undefined,
     ),
-    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, previewDurationMs, selectedAction, tossPreviewDurationMs, wakePhaseDurations, yarnColor],
+    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, napPhaseDurations, previewDurationMs, selectedAction, tossPreviewDurationMs, wakePhaseDurations, yarnColor],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -526,10 +534,12 @@ export function ActionsWorkbench(props: {
         : baseStage;
   const actorPreviewAppearance = {
     ...props.appearance,
-    size: selectedAction === "walk_round_trip" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
-    tokenBubbleId: "hidden" as const,
+    size: selectedAction === "walk_round_trip" || selectedAction === "nap_here" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
+    tokenBubbleId: selectedAction === "nap_here" ? props.appearance.tokenBubbleId : "hidden" as const,
     moodBadge: { ...props.appearance.moodBadge, showMood: false },
-    accessorySettings: { ...props.appearance.accessorySettings, tokenFrameId: "hidden" as const },
+    accessorySettings: selectedAction === "nap_here"
+      ? props.appearance.accessorySettings
+      : { ...props.appearance.accessorySettings, tokenFrameId: "hidden" as const },
   };
   const cursorTarget = {
     x: Math.min(1, Math.max(-1, (stage.cursorX - 50) / 31)),
@@ -617,7 +627,7 @@ export function ActionsWorkbench(props: {
         : feedPropStage === "consumed" ? 0 : 1;
   const feedPropOpacity = feedPropStage === "swallow" ? Math.max(0, 1 - sampled.phaseProgress * 1.15) : feedPropStage === "consumed" ? 0 : 1;
   const showProp = selectedAction !== "walk_round_trip"
-    && !(selectedAction === "nap_here" && settings.zEffect === false)
+    && selectedAction !== "nap_here"
     && !(selectedAction === "wake_up" && settings.wakeSparkle === false)
     && !(selectedAction === "toss_yarn" && sampled.frame.label !== "Roll" && sampled.frame.label !== "Chase");
 
@@ -662,6 +672,9 @@ export function ActionsWorkbench(props: {
             data-preview-dangle-contract={selectedAction === "drag_dangle" ? "offline-phases-distance-locked" : undefined}
             data-preview-toss-yarn-phase={selectedAction === "toss_yarn" ? sampled.frame.actorActionId : undefined}
             data-preview-toss-yarn-contract={selectedAction === "toss_yarn" ? "offline-eight-direction-mouth-carry-exact-return" : undefined}
+            data-preview-nap-phase={selectedAction === "nap_here" ? sampled.frame.actorActionId : undefined}
+            data-preview-nap-contract={selectedAction === "nap_here" ? "grounded-direct-settle-fixed-token-frame" : undefined}
+            data-preview-nap-shadow={selectedAction === "nap_here" && settings.sleepShadow !== false ? "true" : "false"}
             data-preview-wake-up-phase={selectedAction === "wake_up" ? sampled.frame.actorActionId : undefined}
             data-preview-wake-up-contract={selectedAction === "wake_up" ? "offline-five-second-whole-frame-stretch" : undefined}
           >

@@ -627,6 +627,18 @@ verify("Quick Play semantic timelines preserve strict action contracts", () => {
   const wake = quickPlay.createQuickPlayActionTimeline("wake_up", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.wake_up);
   assert.equal(wake.durationMs, 5_000);
   assert.ok(wake.phases.some((phase) => phase.id === "long_full_body_stretch"));
+  const gentleNap = quickPlay.createQuickPlayActionTimeline("nap_here", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.nap_here);
+  assert.equal(gentleNap.durationMs, 1_300);
+  assert.deepEqual(gentleNap.phases.map((phase) => phase.id), ["grounded_pause", "enter_sleep_loop"]);
+  const quickNap = quickPlay.createQuickPlayActionTimeline("nap_here", { settlePace: "quick", sleepShadow: false });
+  assert.equal(quickNap.durationMs, 800);
+  assert.deepEqual(quickPlay.normalizeQuickPlayActionConfig("nap_here", {
+    settlePace: "quick",
+    sleepShadow: false,
+    settlePose: "side",
+    breathingIntensity: 100,
+    zEffect: true,
+  }), { settlePace: "quick", sleepShadow: false });
 });
 
 verify("Feed snack travel owns two distance-locked four-footfall gaits", () => {

@@ -377,6 +377,16 @@ test("Toss Yarn ships eight-direction chase and baked three-colour mouth-carry p
   }
 });
 
+test("Nap Here transitions directly from grounded idle to the fixed-frame sleep pose", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const nap = manifest.animations["action.nap_here"];
+  assert.deepEqual(nap.frames.map((frame) => frame.src), ["frames/idle_breathe.png", "frames/sleep_loop.png"]);
+  assert.deepEqual(nap.frames.map((frame) => frame.durationMs), [360, 940]);
+  assert.equal(nap.frames.reduce((total, frame) => total + frame.durationMs, 0), 1_300);
+  assert.equal(nap.frames.some((frame) => frame.bodyTransform), false);
+  assert.equal(nap.frames.some((frame) => frame.src.includes("nap_here.png")), false, "the old floating-cushion transition must not return");
+});
+
 test("Wake Up ships 24 registered whole-cat frames, review media, and local meow cues", async () => {
   const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
   const expectedCounts = {
