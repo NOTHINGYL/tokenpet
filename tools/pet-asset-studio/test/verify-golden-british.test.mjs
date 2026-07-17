@@ -13,6 +13,8 @@ const bundleDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-briti
 const sourceSpecPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
 const walkClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v4");
 const walkRegistrationPath = resolve(walkClipRoot, "locomotion-report.json");
+const petWalkV5Root = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v5");
+const petWalkV5ReportPath = resolve(petWalkV5Root, "asset-report.json");
 const feedClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/feed-snack-v2");
 const feedAssetReportPath = resolve(feedClipRoot, "asset-report.json");
 const cursorClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/play-cursor-v2");
@@ -106,6 +108,39 @@ test("walk frames share a registered body anchor before native root motion", asy
   for (const artifact of ["walk-cycle-preview.gif", "walk-root-motion-preview.gif", "walk-root-motion-contact-sheet.png"]) {
     assert.ok((await stat(resolve(walkClipRoot, artifact))).size > 0, `${artifact} must remain available for visual gait review`);
   }
+});
+
+test("Pet ships eight-direction walk and destination-look rasters without runtime transforms", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const report = JSON.parse(await readFile(petWalkV5ReportPath, "utf8"));
+  const directions = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  assert.equal(report.schemaVersion, "tokenpet-pet-walk-assets/v5");
+  assert.equal(report.walkFrames, 64);
+  assert.equal(report.lookFrames, 64);
+  assert.equal(report.offlineMirrors.runtimeTransform, "none");
+  assert.deepEqual(report.directions, directions);
+  for (const direction of directions) {
+    const walk = manifest.animations[`action.walk_round_trip_walk_${direction}`];
+    const look = manifest.animations[`action.walk_round_trip_look_${direction}`];
+    assert.equal(walk?.frames.length, 8, `${direction} walk needs a complete four-footfall cycle`);
+    assert.equal(look?.frames.length, 8, `${direction} look needs a complete stationary sequence`);
+    assert.equal(walk.locomotion.kind, "authored-root-motion");
+    assert.equal(walk.locomotion.nominalStepDistancePx, 18);
+    assert.equal(walk.locomotion.footfallsPerCycle, 4);
+    assert.ok(walk.frames.every((frame) => frame.bodyTransform === undefined));
+    assert.ok(look.frames.every((frame) => frame.bodyTransform === undefined));
+    assert.ok(walk.frames.every((frame, index) => frame.src.endsWith(`walk_round_trip_walk_${direction}_${String(index + 1).padStart(2, "0")}.png`)));
+    assert.ok(look.frames.every((frame, index) => frame.src.endsWith(`walk_round_trip_look_${direction}_${String(index + 1).padStart(2, "0")}.png`)));
+  }
+  const frameOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/"));
+  assert.equal(frameOutputs.length, 128);
+  assert.ok(frameOutputs.every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  for (const direction of directions) {
+    for (const phase of ["walk", "look"]) {
+      assert.ok((await stat(resolve(petWalkV5Root, `pet-${phase}-${direction.replaceAll("_", "-")}-preview.gif`))).size > 0);
+    }
+  }
+  assert.ok((await stat(resolve(petWalkV5Root, "pet-eight-direction-contact-sheet.png"))).size > 0);
 });
 
 test("Feed Snack ships dedicated eight-direction approach, single-prop consumption, return and prop assets", async () => {

@@ -449,7 +449,7 @@ async function run() {
         ? `action.feed_snack_${phase === "outbound" ? "walk_slow" : "return_run"}_${actorDirectionId}`
         : action === "toss_yarn"
           ? `action.toss_yarn_${phase === "outbound" ? "chase" : "carry"}_${String(qa.getQuickPlaySession().actorDirection ?? "right").replaceAll("-", "_")}`
-          : "action.walk_round_trip";
+          : `action.walk_round_trip_walk_${actorDirectionId}`;
       const expectedFramePrefix = expectedAnimation.slice("action.".length);
       await waitFor(() => execute(pet, `document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === '${expectedAnimation}'`), `${action} ${phase} actor frames`);
       await waitFor(() => execute(pet, `(() => {
@@ -601,6 +601,9 @@ async function run() {
         writeFileSync(dropScreenshot, (await pet.webContents.capturePage()).toPNG());
       }
     }
+    if (action === "walk_round_trip") {
+      returnVisual = (await captureAuthoredWalkVisual("return")).visual;
+    }
     await waitForQuickPlayEnd(action);
     await delay(120);
     const endBounds = pet.getBounds();
@@ -619,6 +622,12 @@ async function run() {
   const outboundYDirection = Math.sign((petDestination?.y ?? petRoundTrip.startBounds.y) - petRoundTrip.startBounds.y);
   const outboundXIsMonotonic = outboundPetBounds.every((bounds, index) => index === 0 || outboundXDirection === 0 || Math.sign(bounds.x - outboundPetBounds[index - 1].x) === outboundXDirection || bounds.x === outboundPetBounds[index - 1].x);
   const outboundYIsMonotonic = outboundPetBounds.every((bounds, index) => index === 0 || outboundYDirection === 0 || Math.sign(bounds.y - outboundPetBounds[index - 1].y) === outboundYDirection || bounds.y === outboundPetBounds[index - 1].y);
+  const petDirections = ["right", "left", "front", "back", "front-left", "front-right", "back-left", "back-right"];
+  const oppositePetDirection = {
+    right: "left", left: "right", front: "back", back: "front",
+    "front-left": "back-right", "front-right": "back-left",
+    "back-left": "front-right", "back-right": "front-left",
+  };
   verify(
     "Pet performs a random safe exact round trip",
     petDestination
@@ -630,9 +639,13 @@ async function run() {
       && new Set(outboundPetBounds.map((entry) => `${entry.x}:${entry.y}`)).size >= 3
       && outboundXIsMonotonic
       && outboundYIsMonotonic
-      && petRoundTrip.activeVisual?.animation === "action.walk_round_trip"
-      && ["left", "right"].includes(petRoundTrip.activeVisual?.facing)
-      && /^walk_round_trip-[2-8]$/.test(petRoundTrip.activeVisual?.frame ?? "")
+      && petDirections.includes(petRoundTrip.activeVisual?.actorDirection)
+      && petRoundTrip.returnVisual?.actorDirection === oppositePetDirection[petRoundTrip.activeVisual?.actorDirection]
+      && petRoundTrip.activeVisual?.animation === `action.walk_round_trip_walk_${String(petRoundTrip.activeVisual?.actorDirection).replaceAll("-", "_")}`
+      && petRoundTrip.returnVisual?.animation === `action.walk_round_trip_walk_${String(petRoundTrip.returnVisual?.actorDirection).replaceAll("-", "_")}`
+      && petRoundTrip.activeVisual?.mirrored === "false"
+      && petRoundTrip.returnVisual?.mirrored === "false"
+      && /^walk_round_trip_walk_.+-[2-8]$/.test(petRoundTrip.activeVisual?.frame ?? "")
       && petRoundTrip.activeVisual?.timelineMs >= 100
       && petRoundTrip.activeVisual?.walkMotion?.stepDistancePx > 0
       && petRoundTrip.activeVisual?.walkMotion?.stepDistancePx <= 26

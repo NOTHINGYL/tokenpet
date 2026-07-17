@@ -25,6 +25,15 @@ export const TOSS_YARN_DIRECTIONAL_ACTION_IDS = TOSS_YARN_ACTOR_PHASES.flatMap((
   TOSS_YARN_ACTOR_DIRECTIONS.map((direction) => `toss_yarn_${phase}_${direction}` as TossYarnDirectionalActionId),
 ) as readonly TossYarnDirectionalActionId[];
 
+export const PET_WALK_ACTOR_DIRECTIONS = TOSS_YARN_ACTOR_DIRECTIONS;
+export type PetWalkActorDirection = (typeof PET_WALK_ACTOR_DIRECTIONS)[number];
+export const PET_WALK_DIRECTIONAL_PHASES = ["walk", "look"] as const;
+export type PetWalkDirectionalPhase = (typeof PET_WALK_DIRECTIONAL_PHASES)[number];
+export type PetWalkDirectionalActionId = `walk_round_trip_${PetWalkDirectionalPhase}_${PetWalkActorDirection}`;
+export const PET_WALK_DIRECTIONAL_ACTION_IDS = PET_WALK_DIRECTIONAL_PHASES.flatMap((phase) =>
+  PET_WALK_ACTOR_DIRECTIONS.map((direction) => `walk_round_trip_${phase}_${direction}` as PetWalkDirectionalActionId),
+) as readonly PetWalkDirectionalActionId[];
+
 export const WAKE_UP_PHASE_ACTION_IDS = [
   "wake_up_blink",
   "wake_up_roll",
@@ -92,6 +101,7 @@ export const PET_ACTOR_ACTION_IDS = [
   "run_across",
   "walk_round_trip",
   "walk_round_trip_look",
+  ...PET_WALK_DIRECTIONAL_ACTION_IDS,
   "toss_yarn",
   ...TOSS_YARN_DIRECTIONAL_ACTION_IDS,
   "nap_here",
@@ -353,6 +363,7 @@ export class PetActorManifestValidationError extends Error {
 const actionIds = new Set<string>(PET_ACTOR_ACTION_IDS);
 const locomotionActionIds = new Set<string>([
   "walk_round_trip",
+  ...PET_WALK_DIRECTIONAL_ACTION_IDS.filter((actionId) => actionId.includes("_walk_")),
   "feed_snack_walk_slow",
   "feed_snack_return_run",
   ...FEED_SNACK_DIRECTIONAL_ACTION_IDS.filter((actionId) => actionId.includes("_walk_slow_") || actionId.includes("_return_run_")),

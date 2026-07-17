@@ -7,7 +7,7 @@
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "bc94b6e209432156872b331072aefbee856f4213f9e328a3f3da549722e4699f",
+  "contentHash": "742faa58051a2c3084eebeec39584588b3aceb713b31a6b9ad662cac6a6392a5",
   "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
   "artboard": {
     "width": 1024,
@@ -7861,6 +7861,2726 @@
           "durationMs": 120,
           "sha256": "56295252a5eafad17b7a8e9bf939c52cb4df23773d15ff1670c575f2c6421ddf",
           "sourceAssetId": "wake_up_gather:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_right": {
+      "id": "action.walk_round_trip_walk_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_right",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "443621a68397e8a4a0f0f0df1efeebbce9fa534c817c2bfe088fb3b3b242e638",
+          "sourceAssetId": "walk_round_trip_walk_right:1"
+        },
+        {
+          "id": "walk_round_trip_walk_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "fc06145fdc9fe5af07b9ea47d7d23edf6efee3fa4045c58b696d8ffdfd3d9aa6",
+          "sourceAssetId": "walk_round_trip_walk_right:2"
+        },
+        {
+          "id": "walk_round_trip_walk_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "b47d6bbcc51fc72dbbed41dcfe820d12bd8d5a5340bca682228579d1cbb73e5a",
+          "sourceAssetId": "walk_round_trip_walk_right:3"
+        },
+        {
+          "id": "walk_round_trip_walk_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "d90b578a19fe7224f5291237de8f83bd3b4f5c8bdca67814ef21bcc48dbfa188",
+          "sourceAssetId": "walk_round_trip_walk_right:4"
+        },
+        {
+          "id": "walk_round_trip_walk_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "dc04fec4bbf28deb6c95e80b262e71250c30a64dc861920c10f7fa466db66996",
+          "sourceAssetId": "walk_round_trip_walk_right:5"
+        },
+        {
+          "id": "walk_round_trip_walk_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "65ca88a2dd38bb7c7f009867a7fa04845cf7e8174f14f20a2e5db189ee5ccfec",
+          "sourceAssetId": "walk_round_trip_walk_right:6"
+        },
+        {
+          "id": "walk_round_trip_walk_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "98e1db9a25b430c910830fd9fdf6557cfd753afd07dc1aa8568a75a7f2bb39a3",
+          "sourceAssetId": "walk_round_trip_walk_right:7"
+        },
+        {
+          "id": "walk_round_trip_walk_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "cf8ca2683aeb15bedc1bafad10e75824d692fa791bef1eb05e698ee102a92132",
+          "sourceAssetId": "walk_round_trip_walk_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_right": {
+      "id": "action.walk_round_trip_look_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_right",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "04440c622612027199c3e6432b82ea5fbd6b041fb0f70e84944135f1dd8fba3e",
+          "sourceAssetId": "walk_round_trip_look_right:1"
+        },
+        {
+          "id": "walk_round_trip_look_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "39fcc3bd3bb48a573596acef9f0bfa64df7299fce10ee00298e9287f0bd6675a",
+          "sourceAssetId": "walk_round_trip_look_right:2"
+        },
+        {
+          "id": "walk_round_trip_look_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "b81ac113aeafc2710f095490dffdae7fd8c79066bb9090b1a531edfd3bf2c39f",
+          "sourceAssetId": "walk_round_trip_look_right:3"
+        },
+        {
+          "id": "walk_round_trip_look_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "ade5712cf4d788f5376fbfd0cf804a3184cc863d795728ecc207a066ad6e0043",
+          "sourceAssetId": "walk_round_trip_look_right:4"
+        },
+        {
+          "id": "walk_round_trip_look_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "f822998e550aa2e30c6fc3ca0186395155d59ba2396c7d6291991a9f2705ba6d",
+          "sourceAssetId": "walk_round_trip_look_right:5"
+        },
+        {
+          "id": "walk_round_trip_look_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "b8572e9749ee478019e9456f198a6da99b8a29febfa2da21fcdb304e739a53e0",
+          "sourceAssetId": "walk_round_trip_look_right:6"
+        },
+        {
+          "id": "walk_round_trip_look_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c3e075762bd584811ec0075d118939256de7fccc276c49fef376649338a2d521",
+          "sourceAssetId": "walk_round_trip_look_right:7"
+        },
+        {
+          "id": "walk_round_trip_look_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c403af7c4ebd7c14b975bcd9cf36788dd0f5c45596618dfaa1541275c06410e4",
+          "sourceAssetId": "walk_round_trip_look_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_left": {
+      "id": "action.walk_round_trip_walk_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_left",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "90092e4f5f05022cc8505ee9dc194a6651a05a2f516fbd998f3106bde37c09d9",
+          "sourceAssetId": "walk_round_trip_walk_left:1"
+        },
+        {
+          "id": "walk_round_trip_walk_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "5539c4354abc6efc90fc296d88ef0571b8da88c04d3ddd656638be5698bc90a1",
+          "sourceAssetId": "walk_round_trip_walk_left:2"
+        },
+        {
+          "id": "walk_round_trip_walk_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "548d18b7219262891aa7f7b81a46bc5872e9a113ad867c9881ae57e8c7203242",
+          "sourceAssetId": "walk_round_trip_walk_left:3"
+        },
+        {
+          "id": "walk_round_trip_walk_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "f2e54bf30875c765b43616037a024d82357586994fd90d2404e73a2c35a8e968",
+          "sourceAssetId": "walk_round_trip_walk_left:4"
+        },
+        {
+          "id": "walk_round_trip_walk_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "ab1025dcef7c0ac12ae65b37af0567773152f9345b9884b4bab63d32bc2393cd",
+          "sourceAssetId": "walk_round_trip_walk_left:5"
+        },
+        {
+          "id": "walk_round_trip_walk_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "076318006ead779874d0783641bf5a2cd13f9d6e2f245928011b0ab137025628",
+          "sourceAssetId": "walk_round_trip_walk_left:6"
+        },
+        {
+          "id": "walk_round_trip_walk_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "8b2221fba334255afbe5902aa89386665718b09994cf51d776a446b00d4f4236",
+          "sourceAssetId": "walk_round_trip_walk_left:7"
+        },
+        {
+          "id": "walk_round_trip_walk_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "ad1d5bfabf7852b93cbc2a880a934b8dfbcef2878bfdb39184327f2c1f361e51",
+          "sourceAssetId": "walk_round_trip_walk_left:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_left": {
+      "id": "action.walk_round_trip_look_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_left",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "38d9e0f971b4f9588e41a37a10804ced60abafe5f7cae5a35b654bd98e1a19e5",
+          "sourceAssetId": "walk_round_trip_look_left:1"
+        },
+        {
+          "id": "walk_round_trip_look_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9678fd613483e5eec03bf07ecfde386cf15d264617c6641c385c2f05a8e98304",
+          "sourceAssetId": "walk_round_trip_look_left:2"
+        },
+        {
+          "id": "walk_round_trip_look_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "ef062a57ae8b9268f0f8d831737b954186a036a859cbc499db83d97bc0cbba6f",
+          "sourceAssetId": "walk_round_trip_look_left:3"
+        },
+        {
+          "id": "walk_round_trip_look_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "84e405e7b5ae045cb8193727c9fb2a157f1e76919369853b32343f28e4a96148",
+          "sourceAssetId": "walk_round_trip_look_left:4"
+        },
+        {
+          "id": "walk_round_trip_look_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "1a58d5f9814784b12c446dc6eb196ba39f44cfa29eb8b8d4192c8492f6a53a36",
+          "sourceAssetId": "walk_round_trip_look_left:5"
+        },
+        {
+          "id": "walk_round_trip_look_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "3b1b5f8815f252f78f0471ec91faf3574c3d88f9582289ac9b19fd80c0153fc4",
+          "sourceAssetId": "walk_round_trip_look_left:6"
+        },
+        {
+          "id": "walk_round_trip_look_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "8731bc89c276f4ba118f856e71949c821ddd9a2fc1521faa2f670328339272bd",
+          "sourceAssetId": "walk_round_trip_look_left:7"
+        },
+        {
+          "id": "walk_round_trip_look_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "29731ffeb5c3863f51b4da3681f252190a4225fdedb43a189fc6a0edcde1a69f",
+          "sourceAssetId": "walk_round_trip_look_left:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_front": {
+      "id": "action.walk_round_trip_walk_front",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_front",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_front-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "b81f559ef22e76f0c71dbf0e4c824b61ce9b62d7e1bb11a8d7c605bf1590140f",
+          "sourceAssetId": "walk_round_trip_walk_front:1"
+        },
+        {
+          "id": "walk_round_trip_walk_front-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "e27a0b15a3a29c6b2eb138eb4d98e737b0a376e0f197412e2badd01943eb0767",
+          "sourceAssetId": "walk_round_trip_walk_front:2"
+        },
+        {
+          "id": "walk_round_trip_walk_front-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "3b97abee4db290189aa4ce9fe8a3e4ba9d711e01752394d1d8e2c3fda010ae18",
+          "sourceAssetId": "walk_round_trip_walk_front:3"
+        },
+        {
+          "id": "walk_round_trip_walk_front-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "9a20209979514616022047dec4e88d8eb8093aedd267b86c798fad997db6e20c",
+          "sourceAssetId": "walk_round_trip_walk_front:4"
+        },
+        {
+          "id": "walk_round_trip_walk_front-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "90e7d1f9bfc69b8a0277b704ab48a31c1bd80216bbdfb605ad053d02427e4888",
+          "sourceAssetId": "walk_round_trip_walk_front:5"
+        },
+        {
+          "id": "walk_round_trip_walk_front-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "951555984115261a1d58ea4d53e3d0d86a5eef049bb6b27a55dc484862592de5",
+          "sourceAssetId": "walk_round_trip_walk_front:6"
+        },
+        {
+          "id": "walk_round_trip_walk_front-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "19a3c3d6bda250b3cea0f9a50000631ce89db36286b21ae44dd797b3fc12b020",
+          "sourceAssetId": "walk_round_trip_walk_front:7"
+        },
+        {
+          "id": "walk_round_trip_walk_front-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "f7441f5bbaed9c384280a7a0c955a4af7857b27e304803d545d8bc1e5b8cd02e",
+          "sourceAssetId": "walk_round_trip_walk_front:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_front": {
+      "id": "action.walk_round_trip_look_front",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_front",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_front-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "42ebac5d5eb20fb2983c7032723c4441be8e5127ead012a5ad2abf8f000ad206",
+          "sourceAssetId": "walk_round_trip_look_front:1"
+        },
+        {
+          "id": "walk_round_trip_look_front-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c39a86586518045a2dc9f07b7021cc3b4042f31ac1961aede2870a0ae4930f02",
+          "sourceAssetId": "walk_round_trip_look_front:2"
+        },
+        {
+          "id": "walk_round_trip_look_front-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "7b937871ac42827b2dd3811e8e4590aa83aa60835d363d90b148182086aa44a2",
+          "sourceAssetId": "walk_round_trip_look_front:3"
+        },
+        {
+          "id": "walk_round_trip_look_front-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "22032058eab24330842fb8a5110b5fca904f5da051bff0dbd0c1e3135da32c72",
+          "sourceAssetId": "walk_round_trip_look_front:4"
+        },
+        {
+          "id": "walk_round_trip_look_front-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "931b6343006ecc0216224f155098e14726b49901db660ae675d4e480fac0e194",
+          "sourceAssetId": "walk_round_trip_look_front:5"
+        },
+        {
+          "id": "walk_round_trip_look_front-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "872e1632582808429d4c5bb56078db590b6c41d2af32e6e7cc5c94d9ea24ce08",
+          "sourceAssetId": "walk_round_trip_look_front:6"
+        },
+        {
+          "id": "walk_round_trip_look_front-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c2d69fdc894b2553ea09fa9dc7b745aa7d7095c9d59c7504ae640f9dc39f281c",
+          "sourceAssetId": "walk_round_trip_look_front:7"
+        },
+        {
+          "id": "walk_round_trip_look_front-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "6c9bf09a1b63ee82ff775fbc5e29b52e452aa95b8918ca811482ccf22320c69b",
+          "sourceAssetId": "walk_round_trip_look_front:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_back": {
+      "id": "action.walk_round_trip_walk_back",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_back",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_back-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "28781d4b262a0d7eb2a0173e8e3f83e017c4ed6ee3ae2878031ec5c461b3a180",
+          "sourceAssetId": "walk_round_trip_walk_back:1"
+        },
+        {
+          "id": "walk_round_trip_walk_back-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "5b9d512d8bd691174bb03840013339e708013cb774b1eb3fbb29f5ba0c507951",
+          "sourceAssetId": "walk_round_trip_walk_back:2"
+        },
+        {
+          "id": "walk_round_trip_walk_back-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "6616ef49cd9111287fd762af65f3102582c6681a6028e6882e22de29c094901b",
+          "sourceAssetId": "walk_round_trip_walk_back:3"
+        },
+        {
+          "id": "walk_round_trip_walk_back-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "373fd51a43682b534acb1addcfae9957bf0fc5b210d18aebf1a835418a126157",
+          "sourceAssetId": "walk_round_trip_walk_back:4"
+        },
+        {
+          "id": "walk_round_trip_walk_back-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "c783613c737379b22e214c817baa044af9025f9230a237d6f173baa4a7c70968",
+          "sourceAssetId": "walk_round_trip_walk_back:5"
+        },
+        {
+          "id": "walk_round_trip_walk_back-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "0775435cf713560b8f5f6f406c5cc71f808e26f0a913dfcb847f851e4fba902a",
+          "sourceAssetId": "walk_round_trip_walk_back:6"
+        },
+        {
+          "id": "walk_round_trip_walk_back-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "ee1e82fb764fb19c3f2220fed24cbb384d6f4f35164c817fb334fa940d367d7d",
+          "sourceAssetId": "walk_round_trip_walk_back:7"
+        },
+        {
+          "id": "walk_round_trip_walk_back-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "0a39f86f08d6ed9ca8c02bf5557738981163a5152ebf1b2c854f8c9a9a3de190",
+          "sourceAssetId": "walk_round_trip_walk_back:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_back": {
+      "id": "action.walk_round_trip_look_back",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_back",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_back-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "fe4b20ccc04a800ca16d16729af2436613dabd76d2bde07a511007d5c85fb9d8",
+          "sourceAssetId": "walk_round_trip_look_back:1"
+        },
+        {
+          "id": "walk_round_trip_look_back-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "3f91d095fb59f11d68e22f7cbacc9d89042ca553a3194830f1f58ae8c03cfa58",
+          "sourceAssetId": "walk_round_trip_look_back:2"
+        },
+        {
+          "id": "walk_round_trip_look_back-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "1ddbc5c9ca998bb67acc0d9b63ecb06f38baf12416ebd06ee1b63aef164feffd",
+          "sourceAssetId": "walk_round_trip_look_back:3"
+        },
+        {
+          "id": "walk_round_trip_look_back-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "2d0cedaf0bc37e909dd0ad07d4d847672416a04751554cc0df7cdc163451da02",
+          "sourceAssetId": "walk_round_trip_look_back:4"
+        },
+        {
+          "id": "walk_round_trip_look_back-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "fb8036b69ca3b89f7e316e3785b145fba9ab6e286563df1eca4d90ab3733c735",
+          "sourceAssetId": "walk_round_trip_look_back:5"
+        },
+        {
+          "id": "walk_round_trip_look_back-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "43cd5964fec5bae899381583710d95145cd178c32d80fd67c049c1eb3cb87793",
+          "sourceAssetId": "walk_round_trip_look_back:6"
+        },
+        {
+          "id": "walk_round_trip_look_back-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "1109e3ab908cc71f0c486459c5d0b6d45e21e92e17f06483f7d156b42f7f199c",
+          "sourceAssetId": "walk_round_trip_look_back:7"
+        },
+        {
+          "id": "walk_round_trip_look_back-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "df7260b169f79f6a705b63eba4980a0f54680679d4908e52edd0b72dd28b5214",
+          "sourceAssetId": "walk_round_trip_look_back:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_front_right": {
+      "id": "action.walk_round_trip_walk_front_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_front_right",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_front_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "bd88487a9cfd805693a474e276238cbea23fc39c7e38ced82550a6d20f09aed2",
+          "sourceAssetId": "walk_round_trip_walk_front_right:1"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "cedfeeae6c533f0fb18c289cf4760a73431b9561e398470c28e806e72be30ff9",
+          "sourceAssetId": "walk_round_trip_walk_front_right:2"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "a83eb000267afe6424f940039a99a4660b6e9f3c1dbc073b7c2480b2d9bccab6",
+          "sourceAssetId": "walk_round_trip_walk_front_right:3"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "97507ec3492c73e06d940a20ad70c33f6895add37eca760b44178109e891222f",
+          "sourceAssetId": "walk_round_trip_walk_front_right:4"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "30b8c36e26010afc8ddf276dfe2d7e3d77cd1519da0f6f3f91c62eea13b0ade1",
+          "sourceAssetId": "walk_round_trip_walk_front_right:5"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "1aaaa1b20e629d7e0d8a67c124d98ba20eddbf1fca9a0c4931af7b7cd91f686d",
+          "sourceAssetId": "walk_round_trip_walk_front_right:6"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "6d0d97732b771dfad38826741a41291d84b2208bc57ed44cb001d688aec1bd61",
+          "sourceAssetId": "walk_round_trip_walk_front_right:7"
+        },
+        {
+          "id": "walk_round_trip_walk_front_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "3b6ff92dc756b2f039cfda195f9cd4c901099dcc32464d195ffbbd7b8ce49523",
+          "sourceAssetId": "walk_round_trip_walk_front_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_front_right": {
+      "id": "action.walk_round_trip_look_front_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_front_right",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_front_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "dd17e645be2af8f658a4fa8e5ae17b425e20958d201ac0d26b8d30f0d34ba5b6",
+          "sourceAssetId": "walk_round_trip_look_front_right:1"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "6297afe451a46e9ed78a88b6de00a60226cabcde41f51a25cde116f814f7c0e0",
+          "sourceAssetId": "walk_round_trip_look_front_right:2"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "b0e33e69937f515a7add9932ec533b1530053e95d51bdbd806e4da53852d4532",
+          "sourceAssetId": "walk_round_trip_look_front_right:3"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "bc5665b0eab3dbe9cc1b1c2d34c36da79e939069daf2ce214dd85f9dc15f3c38",
+          "sourceAssetId": "walk_round_trip_look_front_right:4"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "89fec8a74a33aa8d814065251eb6ebc588191281dbcd046c28dd85f40b858107",
+          "sourceAssetId": "walk_round_trip_look_front_right:5"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "154f8b530e7c6f5beb08d7a401c9080c95cd279b02784cdd3a0cc947e9b2f4c5",
+          "sourceAssetId": "walk_round_trip_look_front_right:6"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "e99f3a89cf1e9c510d84347045444efbd6993ac8906d3abdb6203b67689917fb",
+          "sourceAssetId": "walk_round_trip_look_front_right:7"
+        },
+        {
+          "id": "walk_round_trip_look_front_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "c3da4897f8e1a343674bfd569e84aa00b2bfce71b515f7d819fc777c2633a43a",
+          "sourceAssetId": "walk_round_trip_look_front_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_front_left": {
+      "id": "action.walk_round_trip_walk_front_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_front_left",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_front_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "88eed299a8be69449680fa65674064ea6ddb7210ccd97a8222f60f6f8a2a9ab7",
+          "sourceAssetId": "walk_round_trip_walk_front_left:1"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "6f23e5af13307ff278cabf3e63cdeb03d2a1356ab67954a4cfafa2a588b45265",
+          "sourceAssetId": "walk_round_trip_walk_front_left:2"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "ddd26169520d3bc237eec70efff6b6a163e3b53695ae92aaa0fd8099e7d86dd2",
+          "sourceAssetId": "walk_round_trip_walk_front_left:3"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "c08298685e0695c29f97c696da0fddbfca5bc1824e0c0db78ec99c3bcaa627c3",
+          "sourceAssetId": "walk_round_trip_walk_front_left:4"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "e7076b7d9a0bbd575a52fda4f4b72f8cffbfce9f537b8dcb23a3aceee77f4bc3",
+          "sourceAssetId": "walk_round_trip_walk_front_left:5"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "3ed4ff697b620a5e6252f4a27210203e54c8c45c00357fef01a5eb9c0929d7f2",
+          "sourceAssetId": "walk_round_trip_walk_front_left:6"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "d2b8d9de2922843433c6a8da0c2bc85cf68afb096bfb3525b2bd42c5081288dd",
+          "sourceAssetId": "walk_round_trip_walk_front_left:7"
+        },
+        {
+          "id": "walk_round_trip_walk_front_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_front_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "68c732c6b84de38df426fa92b331ed320f332a6c747991b7ad814fa02e57afb7",
+          "sourceAssetId": "walk_round_trip_walk_front_left:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_front_left": {
+      "id": "action.walk_round_trip_look_front_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_front_left",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_front_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "b9a56c84d5ea679fc70666b71d1977a546b58e31612a3a1b02cddd8a15c35380",
+          "sourceAssetId": "walk_round_trip_look_front_left:1"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "9ff219d48f993024d4366fb1077e4f9633ed54b93bd24509dcb82e3aaac0b397",
+          "sourceAssetId": "walk_round_trip_look_front_left:2"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "d4b4a5b3bf5d9ec392e945a113da1c92e7596d51395170167badbd2b141d0dfb",
+          "sourceAssetId": "walk_round_trip_look_front_left:3"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "91b30ed3f7ac1a41b4345517c214744edb9954a5584a63fb53f4b53293c0e36d",
+          "sourceAssetId": "walk_round_trip_look_front_left:4"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "73753281ac33fcc5a26bf4ee2d7a6e21140114ff26d1f6e86bcbab4f24d2d1d5",
+          "sourceAssetId": "walk_round_trip_look_front_left:5"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "e3f18d5699df992463d50343c1594e697d502537cb880dcc8cb99d403e6727f4",
+          "sourceAssetId": "walk_round_trip_look_front_left:6"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "08ea481c01c3da8013b47bc0b5b474e7ad2bfd2f0ed6a3522bdd5389d2e6f9ff",
+          "sourceAssetId": "walk_round_trip_look_front_left:7"
+        },
+        {
+          "id": "walk_round_trip_look_front_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_front_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "d857e602090c091061ad212d9c6649451163a9576bc0d6c5b9a1654b7a16fc7f",
+          "sourceAssetId": "walk_round_trip_look_front_left:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_back_right": {
+      "id": "action.walk_round_trip_walk_back_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_back_right",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_back_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "98266118a9ea4fb08d0133645c5af3de266ba3ab0d445dff620d301cdd0d88c5",
+          "sourceAssetId": "walk_round_trip_walk_back_right:1"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "a12ee1898f7fe02c7fdd9fbd9666882cfc8d46176ec05e4522d72981849b976a",
+          "sourceAssetId": "walk_round_trip_walk_back_right:2"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "299f71395f6b69b380eec5c2b729d1ac98b4a19df4e4344445c868d514f9d082",
+          "sourceAssetId": "walk_round_trip_walk_back_right:3"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "e835b09d9742dce5f3df37b2a9608c01957961b52855672764d5f009bbfbc906",
+          "sourceAssetId": "walk_round_trip_walk_back_right:4"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "9c64d37c7e4fbdeb9e31a468c6e3ace8b9937237323a2d457ad6c85fa0948248",
+          "sourceAssetId": "walk_round_trip_walk_back_right:5"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "7c78446cbdc1d3e5ec2be3d7c37fb6d03ce3a5c1bee5858c4ae3418e53d3f77d",
+          "sourceAssetId": "walk_round_trip_walk_back_right:6"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "4182b10a44acfe1e640ca877973c44e86e777213016aeeff70c26753de0df123",
+          "sourceAssetId": "walk_round_trip_walk_back_right:7"
+        },
+        {
+          "id": "walk_round_trip_walk_back_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "9d9890222a778d3b7c36aa04c8c8e4b25d46510894dc5b56d9d7b5d1626e7205",
+          "sourceAssetId": "walk_round_trip_walk_back_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_back_right": {
+      "id": "action.walk_round_trip_look_back_right",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_back_right",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_back_right-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "38a69bbf4daaf0995b542174b04d7d72f0fc7abba4a3545f7b4843968e7039de",
+          "sourceAssetId": "walk_round_trip_look_back_right:1"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "94349539ffa65297235448abdef634c4e9f3f17299fed0a9a7cca16c4c6c1110",
+          "sourceAssetId": "walk_round_trip_look_back_right:2"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "50dcdbcad6aa813eb7a75b14070627bf615e9e68333473a75e0ec48e5d4e9d50",
+          "sourceAssetId": "walk_round_trip_look_back_right:3"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "dcfa1e39f04a7779b6b3230e4957261e7b3d271ca8e54f26894af367db5c7c43",
+          "sourceAssetId": "walk_round_trip_look_back_right:4"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "67e729bf22aad3aab034f8421940bcd3b9170cc4d6d54413a31961fef1fcc6fc",
+          "sourceAssetId": "walk_round_trip_look_back_right:5"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "49ca0674965d4da10e9c5f10ca026b0a31ab2f5761d043795634f1dcc6ac61fe",
+          "sourceAssetId": "walk_round_trip_look_back_right:6"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "e4e612b6e33976da8fd6ce4c125d7e74bb998662d5d90259bc63ab602a68dd97",
+          "sourceAssetId": "walk_round_trip_look_back_right:7"
+        },
+        {
+          "id": "walk_round_trip_look_back_right-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_right_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "3bb5c5f8ac39ba57e1d4f714c800166b238b2b3663ef6c8ad55659f66ebc275d",
+          "sourceAssetId": "walk_round_trip_look_back_right:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_walk_back_left": {
+      "id": "action.walk_round_trip_walk_back_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_walk_back_left",
+      "fps": 9,
+      "loop": true,
+      "priority": 100,
+      "locomotion": {
+        "kind": "authored-root-motion",
+        "nominalStepDistancePx": 18,
+        "footfallsPerCycle": 4,
+        "rootStepKeyframes": [
+          0,
+          0.18,
+          1,
+          1.18,
+          2,
+          2.18,
+          3,
+          3.18,
+          4
+        ],
+        "phases": [
+          {
+            "frameIndex": 0,
+            "id": "footfall-1",
+            "contacts": [
+              "near-hind"
+            ]
+          },
+          {
+            "frameIndex": 1,
+            "id": "footfall-2",
+            "contacts": [
+              "near-hind",
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 2,
+            "id": "footfall-3",
+            "contacts": [
+              "near-fore"
+            ]
+          },
+          {
+            "frameIndex": 3,
+            "id": "footfall-4",
+            "contacts": [
+              "near-fore",
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 4,
+            "id": "footfall-5",
+            "contacts": [
+              "far-hind"
+            ]
+          },
+          {
+            "frameIndex": 5,
+            "id": "footfall-6",
+            "contacts": [
+              "far-hind",
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 6,
+            "id": "footfall-7",
+            "contacts": [
+              "far-fore"
+            ]
+          },
+          {
+            "frameIndex": 7,
+            "id": "footfall-8",
+            "contacts": [
+              "far-fore",
+              "near-hind"
+            ]
+          }
+        ]
+      },
+      "frames": [
+        {
+          "id": "walk_round_trip_walk_back_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "4216db2c771e51489a8433582ada8653e6cd98ae9db1c8c0ffc45115d310b78e",
+          "sourceAssetId": "walk_round_trip_walk_back_left:1"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "c29d64a0c95b178fcbc960fa0dbe2f0ef1338b260b0de07649b7aefcf6bbef06",
+          "sourceAssetId": "walk_round_trip_walk_back_left:2"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "6a90ebf38dce7931f4b50730a9a320e72c65e1680f58768e141660ea40614636",
+          "sourceAssetId": "walk_round_trip_walk_back_left:3"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "14d72bc1f8c9c6ad6b3b3910fb802aab4234cda1e8f7edc73a1694d2eabbb4cf",
+          "sourceAssetId": "walk_round_trip_walk_back_left:4"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "7e9e15110c991fdf5b6dc9a363dfb280a06ff408c898d2a1dbaf2735fbb232ee",
+          "sourceAssetId": "walk_round_trip_walk_back_left:5"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "b3f63af5f3eb9fd7644cbccd7a1392baa80b134acd565bf1fc47c6e290f637f8",
+          "sourceAssetId": "walk_round_trip_walk_back_left:6"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "a576409c933503436814c99f22d2d03e9a7911eda532bde109aac3c4177d5db0",
+          "sourceAssetId": "walk_round_trip_walk_back_left:7"
+        },
+        {
+          "id": "walk_round_trip_walk_back_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_walk_back_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 110,
+          "sha256": "2e86a86d65442249bad2c09fa56058f02025c644873b181d44a75c3ffd396501",
+          "sourceAssetId": "walk_round_trip_walk_back_left:8"
+        }
+      ]
+    },
+    "action.walk_round_trip_look_back_left": {
+      "id": "action.walk_round_trip_look_back_left",
+      "kind": "loop",
+      "mood": "focused",
+      "motionState": "walk_round_trip_look_back_left",
+      "fps": 5,
+      "loop": true,
+      "priority": 100,
+      "frames": [
+        {
+          "id": "walk_round_trip_look_back_left-1",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_01.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "23db8562832dff878539227477110fd776f79c1785e3e63cbc51209c5da93830",
+          "sourceAssetId": "walk_round_trip_look_back_left:1"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-2",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_02.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "2767477e94ef559600b17c3d8a5483c471b3ff508ad58c0770ff17af54874f13",
+          "sourceAssetId": "walk_round_trip_look_back_left:2"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-3",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_03.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "1b67b77ec21ed5495f708545b7d5f65b4a1f7567839eac5e840fe62d3d12ccd2",
+          "sourceAssetId": "walk_round_trip_look_back_left:3"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-4",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_04.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "d1cd2faddcf9c6aae6781624244c82dd11bb1335c522c78dfe71afbbebb7a7a1",
+          "sourceAssetId": "walk_round_trip_look_back_left:4"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-5",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_05.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "d8ef9427657c79bcb67fbd8215aa43bc0ad7a23bd27f805083c87948d468d46e",
+          "sourceAssetId": "walk_round_trip_look_back_left:5"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-6",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_06.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 220,
+          "sha256": "fbcf3b6ca61e975e6bfafc5382613e0a4ae8e1e4cef21b1ee52cf0aa01cdcfbd",
+          "sourceAssetId": "walk_round_trip_look_back_left:6"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-7",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_07.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "5be3d1c379f8ac5376814666720ec1c4a8b62562684e5ed538842b28ff8ddeea",
+          "sourceAssetId": "walk_round_trip_look_back_left:7"
+        },
+        {
+          "id": "walk_round_trip_look_back_left-8",
+          "mood": "focused",
+          "src": "frames/walk_round_trip_look_back_left_08.png",
+          "kind": "png",
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 1024,
+            "height": 1024
+          },
+          "durationMs": 180,
+          "sha256": "95cd51d52bfe585c106e17d724e22c9c0a157432d09332753ad4ef134517de88",
+          "sourceAssetId": "walk_round_trip_look_back_left:8"
         }
       ]
     },
@@ -24892,7 +27612,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.2.0-authored-root-motion",
-    "sourceSpecSha256": "0cd4a600b1544b013e7c2c63b723a1a80302b208d958423f52f971f137273169",
-    "inputSetSha256": "76168c59cdda5958b831f29df793f52eb8f35e993fe640326b446d5c68c32803"
+    "sourceSpecSha256": "a3132f9cdefb43c52aa116be5dcd9b3d89f9b3e57ede11347571d80490a60067",
+    "inputSetSha256": "37af078ac6edd0f5a94740ba4d6a400478b550d54ee044fc9bbe2a22fbb5f224"
   }
 }

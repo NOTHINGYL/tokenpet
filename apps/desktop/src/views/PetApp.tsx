@@ -97,6 +97,14 @@ function feedSnackDirectionalAction(
   return `feed_snack_${phase}_${directionId}` as PetActionId;
 }
 
+function petWalkDirectionalAction(
+  phase: "walk" | "look",
+  direction: QuickPlaySession["actorDirection"],
+): PetActionId {
+  const directionId = (direction ?? "right").replaceAll("-", "_");
+  return `walk_round_trip_${phase}_${directionId}` as PetActionId;
+}
+
 export function PetApp() {
   const { usage } = useUsage();
   const { settings } = useAppSettings();
@@ -493,9 +501,8 @@ export function PetApp() {
     const phase = quickPlaySession.phase;
     if (!action) return null;
     if (action === "walk_round_trip") {
-      // Stand and settle freeze frame 1 of the same side-profile locomotion
-      // clip, so starting/stopping never hard-cuts from the upright look asset.
-      return phase === "pause" ? "walk_round_trip_look" : "walk_round_trip";
+      const destinationLook = phase === "pause" && story.actionSettings.byAction.walk_round_trip?.lookAroundEffect !== false;
+      return petWalkDirectionalAction(destinationLook ? "look" : "walk", quickPlaySession.actorDirection);
     }
     if (action === "token_snack") {
       if (phase === "stand") return "feed_snack_stretch";
@@ -549,6 +556,7 @@ export function PetApp() {
 
   const quickPlayFacing = useMemo<"left" | "right" | undefined>(() => {
     if (quickPlaySession.activeAction === "token_snack") return undefined;
+    if (quickPlaySession.activeAction === "walk_round_trip") return undefined;
     if (quickPlaySession.activeAction === "drag_dangle") {
       if (quickPlaySession.actorDirection && !["left", "right"].includes(quickPlaySession.actorDirection)) return undefined;
       if (quickPlaySession.actorDirection === "left" || quickPlaySession.actorDirection === "right") return quickPlaySession.actorDirection;
@@ -563,15 +571,7 @@ export function PetApp() {
       if (!quickPlaySession.targetPoint) return undefined;
       return quickPlaySession.targetPoint.x >= currentCenterX ? "right" : "left";
     }
-    if (
-      quickPlaySession.activeAction !== "walk_round_trip"
-      || !quickPlaySession.startBounds
-      || !quickPlaySession.targetPoint
-    ) return undefined;
-    const startCenterX = quickPlaySession.startBounds.x + quickPlaySession.startBounds.width / 2;
-    const outboundFacing = quickPlaySession.targetPoint.x >= startCenterX ? "right" : "left";
-    const facesHome = quickPlaySession.phase === "return" || quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete";
-    return facesHome ? (outboundFacing === "right" ? "left" : "right") : outboundFacing;
+    return undefined;
   }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.currentBounds, quickPlaySession.phase, quickPlaySession.startBounds, quickPlaySession.targetPoint]);
 
   const actorAppearance = useMemo(() => quickPlaySession.activeAction === "drag_dangle"

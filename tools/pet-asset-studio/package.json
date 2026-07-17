@@ -1,6 +1,6 @@
 {
   "name": "@tokenpet/pet-asset-studio",
-  "version": "0.8.4.6",
+  "version": "0.8.4.7",
   "private": true,
   "type": "module",
   "scripts": {

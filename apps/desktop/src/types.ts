@@ -220,6 +220,8 @@ export type TossYarnDirectionalActionId = `toss_yarn_${TossYarnActorPhaseId}_${T
 export type FeedSnackActorDirectionId = TossYarnActorDirectionId;
 export type FeedSnackDirectionalPhaseId = "walk_slow" | "return_run" | "arrive" | "lick" | "bite" | "chew" | "swallow";
 export type FeedSnackDirectionalActionId = `feed_snack_${FeedSnackDirectionalPhaseId}_${FeedSnackActorDirectionId}`;
+export type PetWalkDirectionalPhaseId = "walk" | "look";
+export type PetWalkDirectionalActionId = `walk_round_trip_${PetWalkDirectionalPhaseId}_${TossYarnActorDirectionId}`;
 export type WakeUpPhaseActionId = "wake_up_blink" | "wake_up_roll" | "wake_up_stretch" | "wake_up_gather";
 
 export type PetActionId =
@@ -235,7 +237,7 @@ export type PetActionId =
   | "dangle_return_walk" | "dangle_return_walk_front" | "dangle_return_walk_back" | "dangle_settle"
   | "dangle_return_walk_front_left" | "dangle_return_walk_front_right" | "dangle_return_walk_back_left" | "dangle_return_walk_back_right"
   | "feed_snack_stretch" | "feed_snack_walk_slow" | "feed_snack_arrive" | "feed_snack_lick" | "feed_snack_eat" | "feed_snack_return_run" | "feed_snack_settle" | FeedSnackDirectionalActionId
-  | "run_across" | "walk_round_trip_look" | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | TossYarnDirectionalActionId | "nap_here" | "wake_up" | WakeUpPhaseActionId
+  | "run_across" | "walk_round_trip_look" | PetWalkDirectionalActionId | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | TossYarnDirectionalActionId | "nap_here" | "wake_up" | WakeUpPhaseActionId
   | "settle_down" | "focus_start" | "cool_down" | "walk_round_trip" | "summon_to_screen" | "summon_to_pointer" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";

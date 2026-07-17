@@ -68,6 +68,21 @@ function verifyManifest() {
       && walk?.locomotion?.phases?.map((phase) => phase.contacts[0]).join(",") === "near-hind,near-hind,near-fore,near-fore,far-hind,far-hind,far-fore,far-fore",
     "v4 interleaves the source rows so every planted paw owns one contact/support pair",
   );
+  const petWalkDirections = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  verify(
+    "Pet owns complete eight-direction walk and look assets",
+    petWalkDirections.every((direction) => {
+      const directionalWalk = manifest.animations[`action.walk_round_trip_walk_${direction}`];
+      const directionalLook = manifest.animations[`action.walk_round_trip_look_${direction}`];
+      return directionalWalk?.frames.length === 8
+        && directionalLook?.frames.length === 8
+        && directionalWalk.frames.every((frame, index) => frame.src.endsWith(`walk_round_trip_walk_${direction}_${String(index + 1).padStart(2, "0")}.png`))
+        && directionalLook.frames.every((frame, index) => frame.src.endsWith(`walk_round_trip_look_${direction}_${String(index + 1).padStart(2, "0")}.png`))
+        && directionalWalk.locomotion?.nominalStepDistancePx === 18
+        && directionalWalk.locomotion?.footfallsPerCycle === 4;
+    }),
+    "all eight camera sectors have dedicated registered walk/look rasters and the shared distance-locked root profile",
+  );
 
   const feedWalk = manifest.animations["action.feed_snack_walk_slow"];
   const feedReturn = manifest.animations["action.feed_snack_return_run"];
@@ -232,7 +247,8 @@ function verifyReachableUi() {
   const fallbackState = read("apps/desktop/src/state/fallbacks.ts");
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
   verify("desktop shared renderer", desktop.includes("<PetAppearanceVisual"), "desktop pet uses the shared appearance/actor renderer");
-  verify("Pet walk starts and stops on the locomotion clip", desktop.includes('return phase === "pause" ? "walk_round_trip_look" : "walk_round_trip"') && desktop.includes('quickPlaySession.phase === "stand"') && desktop.includes('quickPlaySession.phase === "settle"'), "stand and settle freeze the planted first pose of the same side-profile clip; only pause switches to the look-around asset");
+  const petWalkAssetPrep = read("tools/pet-asset-studio/scripts/prepare-pet-walk-assets.py");
+  verify("Pet selects registered eight-direction walk and look clips", desktop.includes("petWalkDirectionalAction") && desktop.includes('replaceAll("-", "_")') && electronMainSource.includes("setPetActorDirection") && electronMainSource.includes("petWalkLocomotionAction") && electronMainSource.includes("dangleActorDirection(from, to)") && petWalkAssetPrep.includes("whole-frame") && petWalkAssetPrep.includes('"runtimeTransform": "none"'), "stand, outbound, destination look, reverse return, and settle use the vector-selected native/offline-mirrored raster without runtime facing transforms");
   const feedExecutor = read("apps/desktop/electron/quick-play/executors/feed-snack.ts");
   const feedAssetPrep = read("tools/pet-asset-studio/scripts/prepare-feed-snack-assets.py");
   verify("Feed snack uses an isolated eight-direction authored executor", electronMainSource.includes("executeFeedSnack") && electronMainSource.includes("feedSnackLocomotionAction") && electronMainSource.includes("setFeedSnackActorDirection") && feedExecutor.includes('"feed_snack_walk_slow"') && feedExecutor.includes('"feed_snack_return_run"') && ["arrive", "lick", "bite", "chew", "swallow"].every((phase) => feedExecutor.includes(`ports.phase("${phase}")`)) && feedExecutor.includes('ports.setPropStage("consumed"') && desktop.includes("feedSnackDirectionalAction") && desktop.includes('replaceAll("-", "_")') && feedAssetPrep.includes("whole-frame") && feedAssetPrep.includes("runtimeTransform"), "Feed keeps semantic and single-prop consumption order isolated, chooses the true eight-sector bundle in Electron, and never mirrors or rotates anatomy at runtime");
@@ -243,7 +259,7 @@ function verifyReachableUi() {
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
   verify("Actions v19 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v19 preview actions and excludes Capture from its selector");
   verify("Actions v19 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes('previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs}') && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
-  verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses one sandbox edge to the other with the shared root curve, a contained actor artboard, and pointer cursors on Settings controls");
+  verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes('resolveAnimation(manifest, "walk_round_trip_walk_front_right")') && actions.includes("offline-eight-direction-vector-selected-distance-locked") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses the diagonal sandbox with the production front-right action/root curve, a contained actor artboard, and pointer cursors on Settings controls");
   verify("Actions Feed preview mirrors the production asset sequence", actions.includes("feedPhaseDurations") && actions.includes("data-preview-feed-phase") && actions.includes("offline-eight-direction-single-prop-consume-exact-return") && actions.includes("feed_snack_arrive_front_right") && actions.includes("feed_snack_bite_front_right") && actions.includes("feed_snack_chew_front_right") && actions.includes("feed_snack_swallow_front_right") && actions.includes("feed_snack_return_run_back_left") && actions.includes("data-preview-snack-stage") && actions.includes("snack-${String(settings.snackStyle") && consoleStyles.includes(".action-preview-token_snack .pet-generated-actor-shell"), "Console visibly previews a direction-matched diagonal Feed route with the production rasters, root motion and continuous selected snack handoff");
   const playCursorRoles = ["neutral", "notice", "eye_left", "eye_right", "eye_up", "eye_down", "head_left", "head_right", "head_up", "head_down", "ear_left", "ear_right", "ear_up", "ear_down", "blink", "settle"];
   verify("Play Cursor uses registered offline directional poses", playCursorRoles.every((role) => fileIsNonEmpty(join(root, `assets/source/pet-actors/golden-british/frames/play_cursor_${role}.png`)) && fileIsNonEmpty(join(root, `apps/desktop/public/pet-actors/golden-british/frames/play_cursor_${role}.png`))) && generatedRenderer.includes("playCursorFrameAtTime") && generatedRenderer.includes('if (motionState === "play_cursor") return;') && actions.includes("offline-eyes-head-ears") && electronMainSource.includes("tracking.eyeOffset") && electronMainSource.includes("PLAY_CURSOR_DURATION_MS"), "desktop and Console share 16 registered whole-cat frames; eyes, head, and ears cascade without runtime body transforms");

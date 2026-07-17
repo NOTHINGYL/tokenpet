@@ -175,7 +175,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
   const animation = resolveAnimationVariant(baseAnimation, props.actorVariant);
   if (!animation?.frames.length) return null;
   const isChromeFreeStoryAction = animation.id === "action.walk_round_trip"
-    || animation.id === "action.walk_round_trip_look"
+    || animation.id.startsWith("action.walk_round_trip_")
     || animation.id === "action.play_cursor"
     || animation.id.startsWith("action.feed_snack_")
     || animation.id.startsWith("action.dangle_")

@@ -15,6 +15,7 @@ const GENERATED_AT = "2026-07-09T00:00:00.000Z";
 const toolDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(toolDir, "../../..");
 const sourcePath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
+const petWalkActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v5/source-actions.json");
 const feedSnackActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/feed-snack-v2/source-actions.json");
 const tossYarnActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2/source-actions.json");
 const outputDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-british");
@@ -314,14 +315,16 @@ async function readAndVerifySourceFrames(source) {
 
 export async function buildGoldenBritish() {
   const sourceText = await readFile(sourcePath, "utf8");
+  const petWalkActionsText = await readFile(petWalkActionsPath, "utf8");
   const feedSnackActionsText = await readFile(feedSnackActionsPath, "utf8");
   const tossYarnActionsText = await readFile(tossYarnActionsPath, "utf8");
+  const petWalkActions = JSON.parse(petWalkActionsText);
   const feedSnackActions = JSON.parse(feedSnackActionsText);
   const tossYarnActions = JSON.parse(tossYarnActionsText);
   const baseSource = JSON.parse(sourceText);
   const source = {
     ...baseSource,
-    actions: { ...baseSource.actions, ...feedSnackActions.actions, ...tossYarnActions.actions },
+    actions: { ...baseSource.actions, ...petWalkActions.actions, ...feedSnackActions.actions, ...tossYarnActions.actions },
   };
   assertValidPetActorSourceSpec(source);
 
@@ -332,9 +335,10 @@ export async function buildGoldenBritish() {
   }
 
   const { byAction: sourceFrames, allInputs } = await readAndVerifySourceFrames(source);
-  const sourceSpecSha256 = sha256(`${sourceText}\n${feedSnackActionsText}\n${tossYarnActionsText}`);
+  const sourceSpecSha256 = sha256(`${sourceText}\n${petWalkActionsText}\n${feedSnackActionsText}\n${tossYarnActionsText}`);
   const inputSetSha256 = hashInputSet([
     ...allInputs,
+    [relative(repoRoot, petWalkActionsPath).replaceAll("\\", "/"), Buffer.from(petWalkActionsText)],
     [relative(repoRoot, feedSnackActionsPath).replaceAll("\\", "/"), Buffer.from(feedSnackActionsText)],
     [relative(repoRoot, tossYarnActionsPath).replaceAll("\\", "/"), Buffer.from(tossYarnActionsText)],
   ]);

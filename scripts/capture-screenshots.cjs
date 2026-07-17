@@ -1321,7 +1321,7 @@ async function verifyActions(window, desktopPet) {
   await capture(window, "console-actions-wake-up.png", "Console / Actions / Wake Up maximum stretch");
 
   await click(window, "[data-action-id=walk_round_trip]", "select Pet locomotion preview");
-  await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip", [], "Pet preview walk actor");
+  await waitFor(window, () => document.querySelector("[data-action-preview] [data-actor-animation]")?.dataset.actorAnimation === "action.walk_round_trip_walk_front_right", [], "Pet preview directional walk actor");
   const samplePetPreviewAt = async (ratio) => {
     await evaluate(window, (nextRatio) => {
       const scrubber = document.querySelector("[data-action-scrubber]");
@@ -1386,12 +1386,12 @@ async function verifyActions(window, desktopPet) {
     && sample.alphaBounds.bottom <= sample.stageBounds.bottom + 1;
   verify(
     "Actions Pet preview shares Quick Play gait",
-    petPreviewLeft.animation === "action.walk_round_trip"
+    petPreviewLeft.animation === "action.walk_round_trip_walk_front_right"
       && petPreviewLeft.rootProgress <= .02
       && petPreviewRight.rootProgress >= .98
       && petPreviewLeft.distancePx === 288
       && petPreviewLeft.cycleMs > 0
-      && /^walk_round_trip-[1-8]$/.test(petPreviewRight.frame ?? ""),
+      && /^walk_round_trip_walk_front_right-[1-8]$/.test(petPreviewRight.frame ?? ""),
     `left/right root samples use the production actor and root plan: ${JSON.stringify({ petPreviewLeft, petPreviewRight })}`,
   );
   verify("Actions Pet preview keeps the whole cat visible", fitsStage(petPreviewLeft) && fitsStage(petPreviewRight) && petPreviewLeft.petSize === .78, `non-transparent cat bounds fit both stage endpoints: ${JSON.stringify({ left: petPreviewLeft, right: petPreviewRight })}`);

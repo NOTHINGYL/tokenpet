@@ -27,6 +27,13 @@ async function readTossYarnSourceFixture() {
   return fixture;
 }
 
+async function readPetWalkSourceFixture() {
+  const fixture = await readSourceFixture();
+  const fragment = JSON.parse(await readFile(resolve(packageDir, "../../assets/source/pet-actors/golden-british/story-actions/walk-round-trip-v5/source-actions.json"), "utf8"));
+  fixture.actions = { ...fixture.actions, ...fragment.actions };
+  return fixture;
+}
+
 function issueCodes(value) {
   const result = validatePetActorManifest(value);
   return result.success ? [] : result.issues.map((issue) => issue.code);
@@ -86,6 +93,20 @@ test("locomotion clips reject unordered root motion and incomplete paw phases", 
   const codes = sourceIssueCodes(fixture);
   assert.ok(codes.includes("locomotion.rootOrder"));
   assert.ok(codes.includes("locomotion.phases"));
+});
+
+test("Pet walk source accepts all eight vector-selected walk and look actions", async () => {
+  const fixture = await readPetWalkSourceFixture();
+  const directions = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  assert.equal(sourceIssueCodes(fixture).length, 0);
+  for (const direction of directions) {
+    const walk = fixture.actions[`walk_round_trip_walk_${direction}`];
+    const look = fixture.actions[`walk_round_trip_look_${direction}`];
+    assert.equal(walk.sourceFrames.length, 8);
+    assert.equal(look.sourceFrames.length, 8);
+    assert.equal(walk.locomotion.footfallsPerCycle, 4);
+    assert.equal(look.locomotion, undefined);
+  }
 });
 
 test("Feed Snack owns dedicated outbound and return locomotion clips", async () => {

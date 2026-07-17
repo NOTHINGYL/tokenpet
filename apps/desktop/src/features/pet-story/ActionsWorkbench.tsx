@@ -232,7 +232,10 @@ function buildPreviewFrames(
       return frame;
     });
   }
-  const requestedAnimation = resolveAnimation(manifest, definition.id);
+  const requestedActionId: PetActionId = definition.id === "walk_round_trip"
+    ? "walk_round_trip_walk_front_right"
+    : definition.id;
+  const requestedAnimation = resolveAnimation(manifest, requestedActionId);
   if (requestedAnimation && requestedAnimation.frames.length > 1) {
     const phaseDuration = previewDurationMs / requestedAnimation.frames.length;
     let sourceCursor = 0;
@@ -240,7 +243,7 @@ function buildPreviewFrames(
       const next = {
         id: `${definition.id}-${frame.id}-${index}`,
         label: labelForFrame(definition.phaseLabels, index, requestedAnimation.frames.length),
-        actorActionId: definition.id as PetActionId,
+        actorActionId: requestedActionId,
         src: frameUrl(manifest, frame),
         startMs: phaseDuration * index,
         durationMs: phaseDuration,
@@ -279,7 +282,7 @@ function stageSample(actionId: ActionsPreviewId, progress: number, walkRootProgr
   const roundTrip = Math.sin(Math.PI * progress);
   const cursorX = 50 + Math.sin(progress * Math.PI * 4) * 31;
   const cursorY = 45 + Math.cos(progress * Math.PI * 3) * 18;
-  if (actionId === "walk_round_trip") return { actorX: -PET_PREVIEW_TRAVEL_PERCENT / 2 + walkRootProgress * PET_PREVIEW_TRAVEL_PERCENT, actorY: 0, propX: 83, propY: 70, cursorX: 83, cursorY: 70 };
+  if (actionId === "walk_round_trip") return { actorX: -PET_PREVIEW_TRAVEL_PERCENT / 2 + walkRootProgress * PET_PREVIEW_TRAVEL_PERCENT, actorY: -10 + walkRootProgress * 10, propX: 82, propY: 72, cursorX: 82, cursorY: 72 };
   if (actionId === "token_snack") return { actorX: -roundTrip * 19, actorY: 0, propX: 30, propY: 71, cursorX: 30, cursorY: 71 };
   if (actionId === "play_cursor") return { actorX: 0, actorY: 0, propX: cursorX, propY: cursorY, cursorX, cursorY };
   if (actionId === "drag_dangle") return { actorX: Math.sin(progress * Math.PI * 2) * 8, actorY: -roundTrip * 3, propX: cursorX, propY: 24 + Math.sin(progress * Math.PI * 5) * 10, cursorX, cursorY: 24 };
@@ -345,7 +348,7 @@ export function ActionsWorkbench(props: {
   const savedSettings = props.story.actionSettings?.byAction[selectedAction] ?? {};
   const settings = { ...defaultSettingsFor(definition), ...savedSettings };
   const yarnColor = String(settings.yarnColor ?? "orange");
-  const walkAnimation = manifest ? resolveAnimation(manifest, "walk_round_trip") : undefined;
+  const walkAnimation = manifest ? resolveAnimation(manifest, "walk_round_trip_walk_front_right") : undefined;
   const walkRootMotion = walkAnimation?.locomotion
     ? {
       nominalStepDistancePx: walkAnimation.locomotion.nominalStepDistancePx,
@@ -649,6 +652,7 @@ export function ActionsWorkbench(props: {
             data-preview-walk-root-progress={selectedAction === "walk_round_trip" ? walkRootProgress.toFixed(4) : undefined}
             data-preview-walk-cycle-ms={selectedAction === "walk_round_trip" ? walkPreviewPlan.cycleDurationMs : undefined}
             data-preview-walk-distance-px={selectedAction === "walk_round_trip" ? walkPreviewPlan.distancePx : undefined}
+            data-preview-pet-contract={selectedAction === "walk_round_trip" ? "offline-eight-direction-vector-selected-distance-locked" : undefined}
             data-preview-feed-phase={selectedAction === "token_snack" ? sampled.frame.actorActionId : undefined}
             data-preview-feed-root-progress={selectedAction === "token_snack" ? feedTravelProgress.toFixed(4) : undefined}
             data-preview-feed-contract={selectedAction === "token_snack" ? "offline-eight-direction-single-prop-consume-exact-return" : undefined}
@@ -662,12 +666,12 @@ export function ActionsWorkbench(props: {
             data-preview-wake-up-contract={selectedAction === "wake_up" ? "offline-five-second-whole-frame-stretch" : undefined}
           >
             <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
-              <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 36 L84 36" : "M18 38 C35 34 44 44 62 35"} />
+              <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 25 L84 43" : "M18 38 C35 34 44 44 62 35"} />
             </svg>
-            <span className="action-preview-home" style={{ left: "16%", top: "69%" }} aria-hidden="true">⌂</span>
+            <span className="action-preview-home" style={{ left: "16%", top: selectedAction === "walk_round_trip" ? "45%" : "69%" }} aria-hidden="true">⌂</span>
             <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "walk_round_trip" ? "right" : selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
+              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} data-preview-snack-stage={selectedAction === "token_snack" ? feedPropStage : undefined} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale * (selectedAction === "token_snack" ? feedPropConsumeScale : 1), opacity: selectedAction === "token_snack" ? feedPropOpacity : undefined } as CSSProperties} aria-label={definition.propLabel}>

@@ -126,7 +126,8 @@ type TossYarnDirectionId = "right" | "left" | "front" | "back" | "front_right" |
 type TossYarnLocomotionId = `toss_yarn_chase_${TossYarnDirectionId}` | `toss_yarn_carry_${TossYarnDirectionId}`;
 type FeedSnackDirectionId = TossYarnDirectionId;
 type FeedSnackDirectionalLocomotionId = `feed_snack_walk_slow_${FeedSnackDirectionId}` | `feed_snack_return_run_${FeedSnackDirectionId}`;
-type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackSemanticLocomotionId | FeedSnackDirectionalLocomotionId | DangleLocomotionId | TossYarnLocomotionId;
+type PetWalkDirectionalLocomotionId = `walk_round_trip_walk_${TossYarnDirectionId}`;
+type GoldenLocomotionActionId = "walk_round_trip" | PetWalkDirectionalLocomotionId | FeedSnackSemanticLocomotionId | FeedSnackDirectionalLocomotionId | DangleLocomotionId | TossYarnLocomotionId;
 const cachedLocomotionRootMotion = new Map<GoldenLocomotionActionId, WalkRootMotionProfile>();
 
 function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
@@ -1174,6 +1175,16 @@ function setFeedSnackActorDirection(from: Rectangle, to: Rectangle) {
   return actorDirection;
 }
 
+function setPetActorDirection(from: Rectangle, to: Rectangle) {
+  const actorDirection = dangleActorDirection(from, to);
+  quickPlaySession = { ...quickPlaySession, actorDirection };
+  return actorDirection;
+}
+
+function petWalkLocomotionAction(direction: QuickPlayActorDirection): PetWalkDirectionalLocomotionId {
+  return `walk_round_trip_walk_${tossYarnDirectionId(direction)}`;
+}
+
 function feedSnackLocomotionAction(
   phase: "outbound" | "return",
   direction: QuickPlayActorDirection,
@@ -1390,18 +1401,24 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     });
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: { x: target.x + target.width / 2, y: target.y + target.height / 2 } };
+    setPetActorDirection(runtime.startBounds, target);
     await executePet({
       phase: updateQuickPlayPhase,
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      locomote: (phase) => runAuthoredLocomotionLeg(
-        runtime,
-        phase,
-        phase === "outbound" ? runtime.startBounds : target,
-        phase === "outbound" ? target : runtime.startBounds,
-        config.walkPace,
-        "walk_round_trip",
-        phase === "outbound" ? "Pet walk was interrupted" : "Pet return was interrupted",
-      ),
+      locomote: (phase) => {
+        const from = phase === "outbound" ? runtime.startBounds : target;
+        const to = phase === "outbound" ? target : runtime.startBounds;
+        const direction = setPetActorDirection(from, to);
+        return runAuthoredLocomotionLeg(
+          runtime,
+          phase,
+          from,
+          to,
+          config.walkPace,
+          petWalkLocomotionAction(direction),
+          phase === "outbound" ? "Pet walk was interrupted" : "Pet return was interrupted",
+        );
+      },
       complete: () => completeQuickPlayRuntime(runtime),
     }, config.destinationPause);
     return;
