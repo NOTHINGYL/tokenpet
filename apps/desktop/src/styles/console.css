@@ -3966,7 +3966,9 @@
 .action-preview-actor {
   position: absolute;
   z-index: 3;
-  inset: 0;
+  /* Keep the animated actor's own layout box inside the clipped sandbox even
+     when Chromium rounds the stage to a fractional device pixel. */
+  inset: 1px;
   transform: translate(var(--actor-preview-x), var(--actor-preview-y));
   transition: transform 80ms linear;
 }
@@ -4003,7 +4005,7 @@
 .action-preview-toss_yarn .pet-generated-actor-shell {
   /* Toss Yarn uses the same registered 1024px action artboard. Keep the full
      eight-direction cat and its baked mouth yarn inside the sandbox. */
-  --pet-visual-cat-width: clamp(350px, 27vw, 410px);
+  --pet-visual-cat-width: clamp(300px, 22vw, 350px);
   --pet-visual-cat-y: -8px;
 }
 .action-preview-wake_up .pet-generated-actor-shell {

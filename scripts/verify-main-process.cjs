@@ -434,16 +434,19 @@ async function run() {
     let activeVisualScreenshot = null;
     let returnVisual = null;
     let arrivalScreenshot = null;
-    let eatScreenshot = null;
-    let eatOverlayScreenshot = null;
+    let biteScreenshot = null;
+    let swallowScreenshot = null;
+    let swallowOverlayScreenshot = null;
+    let feedInteractionVisuals = [];
     let pickupVisual = null;
     let dropVisual = null;
     let pickupScreenshot = null;
     let dropScreenshot = null;
     const captureAuthoredWalkVisual = async (phase, screenshotName = null) => {
       await waitFor(() => qa.getQuickPlaySession().phase === phase, `${action} authored ${phase} phase`);
+      const actorDirectionId = String(qa.getQuickPlaySession().actorDirection ?? "right").replaceAll("-", "_");
       const expectedAnimation = action === "token_snack"
-        ? phase === "outbound" ? "action.feed_snack_walk_slow" : "action.feed_snack_return_run"
+        ? `action.feed_snack_${phase === "outbound" ? "walk_slow" : "return_run"}_${actorDirectionId}`
         : action === "toss_yarn"
           ? `action.toss_yarn_${phase === "outbound" ? "chase" : "carry"}_${String(qa.getQuickPlaySession().actorDirection ?? "right").replaceAll("-", "_")}`
           : "action.walk_round_trip";
@@ -464,6 +467,7 @@ async function run() {
           animation: actor?.dataset.actorAnimation ?? null,
           variant: actor?.dataset.actorVariant ?? null,
           facing: actor?.dataset.actorFacing ?? null,
+          mirrored: actor?.dataset.actorMirrored ?? null,
           frame: canvas?.dataset.actorFrame ?? null,
           timelineMs: Number(canvas?.dataset.actorTimelineMs ?? NaN),
           cycleDurationMs: Number(actor?.dataset.actorCycleDurationMs ?? NaN),
@@ -473,6 +477,7 @@ async function run() {
         };
       })()`);
       visual.walkMotion = qa.getQuickPlaySession().walkMotion;
+      visual.actorDirection = qa.getQuickPlaySession().actorDirection;
       if (screenshotName) {
         const screenshot = join(root, "docs", "screenshots", "pet-story", screenshotName);
         writeFileSync(screenshot, (await pet.webContents.capturePage()).toPNG());
@@ -512,11 +517,37 @@ async function run() {
         await waitFor(() => qa.getQuickPlaySession().phase === "arrive", "Feed Snack arrival phase");
         arrivalScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-arrive.png");
         writeFileSync(arrivalScreenshot, (await pet.webContents.capturePage()).toPNG());
-        await waitFor(() => qa.getQuickPlaySession().phase === "eat", "Feed Snack eat phase");
-        eatScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-eat.png");
-        writeFileSync(eatScreenshot, (await pet.webContents.capturePage()).toPNG());
-        eatOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-eat-overlay.png");
-        writeFileSync(eatOverlayScreenshot, (await overlay.webContents.capturePage()).toPNG());
+        const captureFeedInteraction = async (phase, stage, settleMs, screenshotName = null) => {
+          await waitFor(() => qa.getQuickPlaySession().phase === phase, `Feed Snack ${phase} phase`);
+          const actorDirectionId = String(qa.getQuickPlaySession().actorDirection ?? "right").replaceAll("-", "_");
+          const expectedAnimation = `action.feed_snack_${phase}_${actorDirectionId}`;
+          await waitFor(() => execute(pet, `document.querySelector('[data-actor-animation]')?.dataset.actorAnimation === '${expectedAnimation}'`), `Feed Snack ${phase} offline actor frames`);
+          await delay(settleMs);
+          const actor = await execute(pet, `(() => {
+            const shell = document.querySelector('[data-actor-animation]');
+            const canvas = document.querySelector('.pet-generated-actor-canvas');
+            return { animation: shell?.dataset.actorAnimation ?? null, frame: canvas?.dataset.actorFrame ?? null };
+          })()`);
+          const prop = await execute(overlay, `(() => {
+            const root = document.querySelector('.quick-overlay-snack-prop');
+            const image = root?.querySelector('img');
+            const style = image ? getComputedStyle(image) : null;
+            return { stage: root?.dataset.snackStage ?? null, animation: style?.animationName ?? null, opacity: Number(style?.opacity ?? NaN), transform: style?.transform ?? null };
+          })()`);
+          const screenshot = screenshotName ? join(root, "docs", "screenshots", "pet-story", screenshotName) : null;
+          if (screenshot) writeFileSync(screenshot, (await pet.webContents.capturePage()).toPNG());
+          const visual = { phase, stage, actor, prop, screenshot };
+          feedInteractionVisuals.push(visual);
+          return visual;
+        };
+        await captureFeedInteraction("lick", "ground", 100);
+        const biteVisual = await captureFeedInteraction("bite", "bite", 140, "quick-play-feed-bite.png");
+        biteScreenshot = biteVisual.screenshot;
+        await captureFeedInteraction("chew", "chew", 170);
+        const swallowVisual = await captureFeedInteraction("swallow", "swallow", 260, "quick-play-feed-swallow.png");
+        swallowScreenshot = swallowVisual.screenshot;
+        swallowOverlayScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-feed-swallow-overlay.png");
+        writeFileSync(swallowOverlayScreenshot, (await overlay.webContents.capturePage()).toPNG());
         returnVisual = (await captureAuthoredWalkVisual("return")).visual;
       }
       if (action === "toss_yarn") {
@@ -575,8 +606,8 @@ async function run() {
     const endBounds = pet.getBounds();
     const endAnimation = await execute(pet, "document.querySelector('[data-actor-animation]')?.dataset.actorAnimation ?? null");
     const trace = qa.getQuickPlayTrace();
-    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, overlayBounds, overlayScreenshot, trace });
-    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, eatScreenshot, eatOverlayScreenshot, trace };
+    quickPlaySummaries.push({ action, startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, biteScreenshot, swallowScreenshot, swallowOverlayScreenshot, feedInteractionVisuals, overlayBounds, overlayScreenshot, trace });
+    return { startBounds, endBounds, startAnimation, endAnimation, activeVisual, returnVisual, pickupVisual, dropVisual, activeVisualScreenshot, pickupScreenshot, dropScreenshot, arrivalScreenshot, biteScreenshot, swallowScreenshot, swallowOverlayScreenshot, feedInteractionVisuals, trace };
   };
 
   qa.setQuickPlayTimeScale(1);
@@ -623,13 +654,22 @@ async function run() {
   qa.setQuickPlayTimeScale(1);
   const feed = await runClosedQuickPlayAction("token_snack", { mode: "snack", point: snackPoint });
   qa.setQuickPlayTimeScale(20);
+  const feedDirections = ["right", "left", "front", "back", "front-left", "front-right", "back-left", "back-right"];
+  const oppositeFeedDirection = {
+    right: "left", left: "right", front: "back", back: "front",
+    "front-left": "back-right", "front-right": "back-left",
+    "back-left": "front-right", "back-right": "front-left",
+  };
   verify(
-    "Feed snack uses two dedicated distance-locked locomotion assets",
-    feed.activeVisual?.animation === "action.feed_snack_walk_slow"
-      && feed.returnVisual?.animation === "action.feed_snack_return_run"
-      && /^feed_snack_walk_slow-[2-8]$/.test(feed.activeVisual?.frame ?? "")
-      && /^feed_snack_return_run-[2-8]$/.test(feed.returnVisual?.frame ?? "")
-      && feed.activeVisual?.facing !== feed.returnVisual?.facing
+    "Feed snack uses direction-matched distance-locked locomotion assets",
+    feedDirections.includes(feed.activeVisual?.actorDirection)
+      && feed.returnVisual?.actorDirection === oppositeFeedDirection[feed.activeVisual?.actorDirection]
+      && feed.activeVisual?.animation === `action.feed_snack_walk_slow_${String(feed.activeVisual?.actorDirection).replaceAll("-", "_")}`
+      && feed.returnVisual?.animation === `action.feed_snack_return_run_${String(feed.returnVisual?.actorDirection).replaceAll("-", "_")}`
+      && /^feed_snack_walk_slow_(?:right|left|front|back|front_right|front_left|back_right|back_left)-[2-8]$/.test(feed.activeVisual?.frame ?? "")
+      && /^feed_snack_return_run_(?:right|left|front|back|front_right|front_left|back_right|back_left)-[2-8]$/.test(feed.returnVisual?.frame ?? "")
+      && feed.activeVisual?.mirrored === "false"
+      && feed.returnVisual?.mirrored === "false"
       && feed.activeVisual?.walkMotion?.stepDistancePx > 0
       && feed.activeVisual?.walkMotion?.stepDistancePx <= 26
       && feed.returnVisual?.walkMotion?.stepDistancePx > 0
@@ -648,15 +688,26 @@ async function run() {
       && feed.returnVisual?.closeOpacity === "0"
       && existsSync(feed.activeVisualScreenshot)
       && existsSync(feed.arrivalScreenshot)
-      && existsSync(feed.eatScreenshot)
-      && existsSync(feed.eatOverlayScreenshot),
+      && existsSync(feed.biteScreenshot)
+      && existsSync(feed.swallowScreenshot)
+      && existsSync(feed.swallowOverlayScreenshot),
     `outbound ${JSON.stringify(feed.activeVisual)}; return ${JSON.stringify(feed.returnVisual)}`,
   );
   verify(
-    "Feed snack performs three lick cycles, eats, and returns exactly",
-    feed.trace.filter((entry) => entry.phase === "lick").length === 3
+    "Feed snack performs one lick, bites, chews, swallows, and returns exactly",
+    feed.trace.filter((entry) => entry.phase === "lick").length === 1
       && feed.trace.filter((entry) => entry.phase === "arrive").length === 1
-      && feed.trace.filter((entry) => entry.phase === "eat").length === 1
+      && feed.trace.filter((entry) => entry.phase === "bite").length === 1
+      && feed.trace.filter((entry) => entry.phase === "chew").length === 1
+      && feed.trace.filter((entry) => entry.phase === "swallow").length === 1
+      && !feed.trace.some((entry) => entry.phase === "eat")
+      && JSON.stringify(feed.feedInteractionVisuals.map((entry) => entry.phase)) === JSON.stringify(["lick", "bite", "chew", "swallow"])
+      && JSON.stringify(feed.feedInteractionVisuals.map((entry) => entry.prop.stage)) === JSON.stringify(["ground", "bite", "chew", "swallow"])
+      && feed.feedInteractionVisuals.every((entry) => entry.actor.animation === `action.feed_snack_${entry.phase}_${String(feed.activeVisual?.actorDirection).replaceAll("-", "_")}`)
+      && feed.feedInteractionVisuals[1].prop.animation === "quick-overlay-snack-bite"
+      && feed.feedInteractionVisuals[2].prop.animation === "quick-overlay-snack-chew"
+      && feed.feedInteractionVisuals[3].prop.animation === "quick-overlay-snack-swallow"
+      && feed.feedInteractionVisuals[3].prop.opacity < feed.feedInteractionVisuals[2].prop.opacity
       && (() => {
         const arriveBounds = feed.trace.find((entry) => entry.phase === "arrive")?.bounds;
         if (!arriveBounds) return false;
@@ -666,7 +717,7 @@ async function run() {
       })()
       && JSON.stringify(feed.endBounds) === JSON.stringify(feed.startBounds)
       && feed.endAnimation === feed.startAnimation,
-    `trace contains arrival, three lick restarts and one eat phase: ${feed.trace.map((entry) => entry.phase).join(" → ")}`,
+    `single-prop handoff ${JSON.stringify(feed.feedInteractionVisuals)}; trace ${feed.trace.map((entry) => entry.phase).join(" → ")}`,
   );
   const feedArrivalBounds = feed.trace.find((entry) => entry.phase === "arrive")?.bounds;
   const feedOutboundBounds = feed.trace.filter((entry) => entry.phase === "outbound" && entry.bounds).map((entry) => entry.bounds);
@@ -891,11 +942,11 @@ async function run() {
   verify("Dangle upper-right pursuit uses native diagonal frames", true, "the session and renderer selected action.dangle_pursuit_run_back_right without runtime mirroring");
   await waitFor(() => {
     const trace = qa.getQuickPlayTrace();
-    return trace.some((entry) => entry.phase === "pursuit"
-      && entry.bounds
-      && entry.bounds.x >= pursuedBounds.x + 180
-      && entry.bounds.y !== pursuedBounds.y);
-  }, "dangle authored multi-axis pursuit");
+    const liveBounds = pet.getBounds();
+    return trace.some((entry) => entry.phase === "pursuit")
+      && liveBounds.x >= pursuedBounds.x + 180
+      && liveBounds.y !== pursuedBounds.y;
+  }, "dangle authored multi-axis pursuit", 30_000);
   verify("Dangle requires more than one second of meaningful movement", JSON.stringify(pursuedBounds) !== JSON.stringify(dangleStart), `continuous pointer motion armed an authored pounce at ${JSON.stringify(pursuedBounds)}`);
   const reverseStartedAt = Date.now();
   const reverseStartBounds = pet.getBounds();

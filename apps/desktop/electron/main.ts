@@ -56,7 +56,7 @@ import {
   executeTossYarn,
   executeWakeUp,
 } from "./quick-play/executors/index.js";
-import type { FeedSnackLocomotionId } from "./quick-play/executors/feed-snack.js";
+import type { FeedSnackLocomotionId as FeedSnackSemanticLocomotionId, FeedSnackPropStage } from "./quick-play/executors/feed-snack.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -124,12 +124,14 @@ type DangleLocomotionId =
   | "dangle_return_walk_front_left" | "dangle_return_walk_front_right" | "dangle_return_walk_back_left" | "dangle_return_walk_back_right";
 type TossYarnDirectionId = "right" | "left" | "front" | "back" | "front_right" | "front_left" | "back_right" | "back_left";
 type TossYarnLocomotionId = `toss_yarn_chase_${TossYarnDirectionId}` | `toss_yarn_carry_${TossYarnDirectionId}`;
-type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackLocomotionId | DangleLocomotionId | TossYarnLocomotionId;
+type FeedSnackDirectionId = TossYarnDirectionId;
+type FeedSnackDirectionalLocomotionId = `feed_snack_walk_slow_${FeedSnackDirectionId}` | `feed_snack_return_run_${FeedSnackDirectionId}`;
+type GoldenLocomotionActionId = "walk_round_trip" | FeedSnackSemanticLocomotionId | FeedSnackDirectionalLocomotionId | DangleLocomotionId | TossYarnLocomotionId;
 const cachedLocomotionRootMotion = new Map<GoldenLocomotionActionId, WalkRootMotionProfile>();
 
 function fallbackLocomotionProfile(actionId: GoldenLocomotionActionId) {
-  if (actionId === "feed_snack_walk_slow") return FEED_SNACK_WALK_ROOT_MOTION;
-  if (actionId === "feed_snack_return_run") return FEED_SNACK_RETURN_ROOT_MOTION;
+  if (actionId.startsWith("feed_snack_walk_slow")) return FEED_SNACK_WALK_ROOT_MOTION;
+  if (actionId.startsWith("feed_snack_return_run")) return FEED_SNACK_RETURN_ROOT_MOTION;
   if (actionId.startsWith("dangle_pursuit_run")) return DANGLE_PURSUIT_ROOT_MOTION;
   if (actionId.startsWith("dangle_return_walk")) return DANGLE_RETURN_ROOT_MOTION;
   if (actionId.startsWith("toss_yarn_chase_")) return TOSS_YARN_CHASE_ROOT_MOTION;
@@ -987,7 +989,7 @@ function closeQuickPlayOverlay() {
   quickPlayOverlayWindow = null;
 }
 
-function publishQuickPlayOverlayState(state: { phase?: "placing" | "playing" | "rolling" | "finishing"; enabled?: boolean; hint?: string; targetScreenX?: number; targetScreenY?: number; pointerScreenX?: number; pointerScreenY?: number; durationMs?: number }) {
+function publishQuickPlayOverlayState(state: { phase?: "placing" | "playing" | "rolling" | "finishing"; enabled?: boolean; hint?: string; targetScreenX?: number; targetScreenY?: number; pointerScreenX?: number; pointerScreenY?: number; durationMs?: number; snackStage?: FeedSnackPropStage }) {
   if (isUsableWindow(quickPlayOverlayWindow)) quickPlayOverlayWindow.webContents.send("quick-play:overlay-state", state);
 }
 
@@ -1164,6 +1166,22 @@ function tossYarnChaseAction(direction: QuickPlayActorDirection): TossYarnLocomo
 
 function tossYarnCarryAction(direction: QuickPlayActorDirection): TossYarnLocomotionId {
   return `toss_yarn_carry_${tossYarnDirectionId(direction)}`;
+}
+
+function setFeedSnackActorDirection(from: Rectangle, to: Rectangle) {
+  const actorDirection = dangleActorDirection(from, to);
+  quickPlaySession = { ...quickPlaySession, actorDirection };
+  return actorDirection;
+}
+
+function feedSnackLocomotionAction(
+  phase: "outbound" | "return",
+  direction: QuickPlayActorDirection,
+): FeedSnackDirectionalLocomotionId {
+  const directionId = tossYarnDirectionId(direction) as FeedSnackDirectionId;
+  return phase === "outbound"
+    ? `feed_snack_walk_slow_${directionId}`
+    : `feed_snack_return_run_${directionId}`;
 }
 
 function dangleTargetCrossedTravelDirection(runtime: QuickPlayRuntime, plannedTarget: Rectangle) {
@@ -1403,24 +1421,44 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
       hint: "Snack placed — here comes your cat…",
       targetScreenX: interactionPoint.x,
       targetScreenY: interactionPoint.y,
+      snackStage: "ground",
     });
     const target = feedSnackTargetBounds(runtime.startBounds, interactionPoint, workArea).bounds;
     runtime.targetBounds = target;
     quickPlaySession = { ...quickPlaySession, targetPoint: interactionPoint };
+    const outboundDirection = setFeedSnackActorDirection(runtime.startBounds, target);
     const feedConfig = actionConfig("token_snack");
     await executeFeedSnack({
       phase: (phase) => updateQuickPlayPhase(phase, interactionPoint),
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      locomote: (phase, locomotionId, pacePercent) => runAuthoredLocomotionLeg(
-        runtime,
-        phase,
-        phase === "outbound" ? runtime.startBounds : target,
-        phase === "outbound" ? target : runtime.startBounds,
-        pacePercent,
-        locomotionId,
-        phase === "outbound" ? "Snack approach was interrupted" : "Snack return was interrupted",
-        interactionPoint,
-      ),
+      locomote: (phase, _locomotionId, pacePercent) => {
+        const from = phase === "outbound"
+          ? runtime.startBounds
+          : isUsableWindow(petWindow) ? petWindow.getBounds() : target;
+        const to = phase === "outbound" ? target : runtime.startBounds;
+        const direction = phase === "outbound" ? outboundDirection : setFeedSnackActorDirection(from, to);
+        return runAuthoredLocomotionLeg(
+          runtime,
+          phase,
+          from,
+          to,
+          pacePercent,
+          feedSnackLocomotionAction(phase, direction),
+          phase === "outbound" ? "Snack approach was interrupted" : "Snack return was interrupted",
+          interactionPoint,
+        );
+      },
+      setPropStage: (snackStage, durationMs) => publishQuickPlayOverlayState({
+        snackStage,
+        durationMs: durationMs / quickPlayTimeScale,
+        hint: snackStage === "bite"
+          ? "One lick — got it!"
+          : snackStage === "chew"
+            ? "Chewing…"
+            : snackStage === "swallow"
+              ? "Gulp!"
+              : "All gone!",
+      }),
       closePropOverlay: closeQuickPlayOverlay,
       complete: () => completeQuickPlayRuntime(runtime),
     }, {

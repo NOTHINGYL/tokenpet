@@ -14,8 +14,12 @@ const frameDir = join(outputDir, "demo-frames");
 const gifPath = join(outputDir, "tokenpet-story-demo.gif");
 const sequencePath = join(outputDir, "demo-sequence.json");
 const settings = structuredClone(fixtureSettings);
+// The demo authors every beat explicitly. Suppress the normal 450ms ambient
+// startup wake so asset loading speed cannot race the launch-frame capture.
+settings.petStory.quietMode = true;
 let usage = launchUsage();
 let window;
+let rendererLoadSequence = 0;
 const emptyQuickPlaySession = {
   activeAction: null,
   startedAt: null,
@@ -108,6 +112,9 @@ function rendererUrl() {
   const url = new URL(pathToFileURL(rendererFile));
   url.searchParams.set("view", "pet");
   url.searchParams.set("demo", "pet-story");
+  // A distinct navigation URL guarantees that the second demo load starts a
+  // fresh renderer/director instead of retaining the preceding Wake Up action.
+  url.searchParams.set("demoLoad", String(++rendererLoadSequence));
   return url.href;
 }
 
@@ -165,13 +172,20 @@ async function captureStep(step) {
     generatedCanvases: document.querySelectorAll(".pet-generated-actor-canvas").length,
     fallbackCanvases: document.querySelectorAll(".pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
     tokenMode: [...(document.querySelector(".pet-generated-actor-shell")?.classList ?? [])].find((name) => name.startsWith("pet-token-")) ?? null,
+    actorAnimation: document.querySelector(".pet-generated-actor-shell")?.getAttribute("data-actor-animation") ?? null,
+    quickPlayAction: document.querySelector(".pet-stage")?.getAttribute("data-quick-play-action") ?? null,
+    quickPlayPhase: document.querySelector(".pet-stage")?.getAttribute("data-quick-play-phase") ?? null,
     canvasWidth: document.querySelector(".pet-generated-actor-canvas")?.width ?? 0,
     canvasHeight: document.querySelector(".pet-generated-actor-canvas")?.height ?? 0,
   }));
   assert.equal(renderer.generatedCanvases, 1, `${step.id} must render exactly one generated actor canvas`);
   assert.equal(renderer.fallbackCanvases, 0, `${step.id} must not show the static fallback`);
   const expectedTokenMode = step.id === "wake" ? "pet-token-hidden" : "pet-token-embedded";
-  assert.equal(renderer.tokenMode, expectedTokenMode, step.id === "wake" ? "wake must show the dedicated chrome-free whole-cat sequence" : `${step.id} must retain the embedded token frame`);
+  assert.equal(
+    renderer.tokenMode,
+    expectedTokenMode,
+    `${step.id === "wake" ? "wake must show the dedicated chrome-free whole-cat sequence" : `${step.id} must retain the embedded token frame`}: ${JSON.stringify(renderer)}`,
+  );
   return {
     ...step,
     file: `docs/screenshots/pet-story/demo-frames/${file}`,
@@ -238,7 +252,10 @@ async function run() {
 
   emit(steps[1].event);
   captures.push(await captureStep(steps[1]));
-  await delay(1_700);
+  // Wake Up owns a five-second chrome-free sequence. Wait for that authored
+  // action to settle before asserting that the ordinary embedded token frame
+  // has returned for the token-update beat.
+  await delay(5_200);
 
   updateUsageToDemoValue();
   await loadPet();

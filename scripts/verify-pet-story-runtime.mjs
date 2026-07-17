@@ -617,7 +617,10 @@ verify("Pet gait locks each authored paw contact to one real desktop footfall", 
 verify("Quick Play semantic timelines preserve strict action contracts", () => {
   const feed = quickPlay.createQuickPlayActionTimeline("token_snack", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.token_snack, 280);
   const feedIds = feed.phases.map((phase) => phase.id);
-  assert.deepEqual(feedIds.filter((id) => id.startsWith("snack_lick_")), ["snack_lick_1", "snack_lick_2", "snack_lick_3"]);
+  assert.deepEqual(
+    feedIds.filter((id) => id.startsWith("snack_") && !["snack_stretch"].includes(id)),
+    ["snack_single_lick", "snack_bite_handoff", "snack_chew", "snack_swallow", "snack_consumed_hold"],
+  );
   assert.ok(feedIds.includes("arrive_and_lower"));
   const cursor = quickPlay.createQuickPlayActionTimeline("play_cursor", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.play_cursor);
   assert.equal(cursor.durationMs, 10_000);
@@ -655,6 +658,7 @@ verify("Feed snack travel owns two distance-locked four-footfall gaits", () => {
 
 const feedExecutorPhases = [];
 const feedExecutorLocomotion = [];
+const feedExecutorPropStages = [];
 let feedExecutorOverlayClosed = false;
 let feedExecutorCompleted = false;
 const feedExecutorResult = await feedSnackExecutor.executeFeedSnack({
@@ -664,12 +668,19 @@ const feedExecutorResult = await feedSnackExecutor.executeFeedSnack({
       feedExecutorLocomotion.push({ phase, actionId, pacePercent });
       return true;
     },
+    setPropStage: (stage, durationMs) => feedExecutorPropStages.push({ stage, durationMs }),
     closePropOverlay: () => { feedExecutorOverlayClosed = true; },
     complete: async () => { feedExecutorCompleted = true; },
   }, { walkPace: 82, returnPacePercent: 140 });
 verify("Feed Snack executor preserves isolated semantic ordering", () => {
   assert.equal(feedExecutorResult, true);
-  assert.deepEqual(feedExecutorPhases, ["stand", "arrive", "lick", "lick", "lick", "eat", "settle"]);
+  assert.deepEqual(feedExecutorPhases, ["stand", "arrive", "lick", "bite", "chew", "swallow", "settle"]);
+  assert.deepEqual(feedExecutorPropStages, [
+    { stage: "bite", durationMs: 380 },
+    { stage: "chew", durationMs: 440 },
+    { stage: "swallow", durationMs: 720 },
+    { stage: "consumed", durationMs: 120 },
+  ]);
   assert.deepEqual(feedExecutorLocomotion, [
     { phase: "outbound", actionId: "feed_snack_walk_slow", pacePercent: 82 },
     { phase: "return", actionId: "feed_snack_return_run", pacePercent: 140 },

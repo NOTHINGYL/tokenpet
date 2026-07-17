@@ -7,6 +7,15 @@ export type PetActorSourceSchemaVersion = typeof PET_ACTOR_SOURCE_SCHEMA_VERSION
 export const PET_ACTOR_MOODS = ["sleepy", "focused", "hot", "overdrive"] as const;
 export type PetActorMood = (typeof PET_ACTOR_MOODS)[number];
 
+export const FEED_SNACK_ACTOR_DIRECTIONS = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"] as const;
+export type FeedSnackActorDirection = (typeof FEED_SNACK_ACTOR_DIRECTIONS)[number];
+export const FEED_SNACK_DIRECTIONAL_PHASES = ["walk_slow", "return_run", "arrive", "lick", "bite", "chew", "swallow"] as const;
+export type FeedSnackDirectionalPhase = (typeof FEED_SNACK_DIRECTIONAL_PHASES)[number];
+export type FeedSnackDirectionalActionId = `feed_snack_${FeedSnackDirectionalPhase}_${FeedSnackActorDirection}`;
+export const FEED_SNACK_DIRECTIONAL_ACTION_IDS = FEED_SNACK_DIRECTIONAL_PHASES.flatMap((phase) =>
+  FEED_SNACK_ACTOR_DIRECTIONS.map((direction) => `feed_snack_${phase}_${direction}` as FeedSnackDirectionalActionId),
+) as readonly FeedSnackDirectionalActionId[];
+
 export const TOSS_YARN_ACTOR_DIRECTIONS = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"] as const;
 export type TossYarnActorDirection = (typeof TOSS_YARN_ACTOR_DIRECTIONS)[number];
 export const TOSS_YARN_ACTOR_PHASES = ["chase", "pickup", "carry", "drop"] as const;
@@ -78,6 +87,7 @@ export const PET_ACTOR_ACTION_IDS = [
   "feed_snack_eat",
   "feed_snack_return_run",
   "feed_snack_settle",
+  ...FEED_SNACK_DIRECTIONAL_ACTION_IDS,
   "play_cursor",
   "run_across",
   "walk_round_trip",
@@ -345,6 +355,7 @@ const locomotionActionIds = new Set<string>([
   "walk_round_trip",
   "feed_snack_walk_slow",
   "feed_snack_return_run",
+  ...FEED_SNACK_DIRECTIONAL_ACTION_IDS.filter((actionId) => actionId.includes("_walk_slow_") || actionId.includes("_return_run_")),
   "dangle_pursuit_run",
   "dangle_pursuit_run_front",
   "dangle_pursuit_run_back",

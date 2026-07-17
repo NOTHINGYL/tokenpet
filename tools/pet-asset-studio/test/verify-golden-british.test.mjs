@@ -108,10 +108,20 @@ test("walk frames share a registered body anchor before native root motion", asy
   }
 });
 
-test("Feed Snack ships dedicated approach, interaction, return and prop assets", async () => {
+test("Feed Snack ships dedicated eight-direction approach, single-prop consumption, return and prop assets", async () => {
   const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
   const feedIds = ["feed_snack_stretch", "feed_snack_walk_slow", "feed_snack_arrive", "feed_snack_lick", "feed_snack_eat", "feed_snack_return_run", "feed_snack_settle"];
   for (const id of feedIds) assert.ok(manifest.animations[`action.${id}`]?.frames.length > 0, `${id} needs approved Feed frames`);
+
+  const directions = ["right", "left", "front", "back", "front_right", "front_left", "back_right", "back_left"];
+  const phaseCounts = { walk_slow: 8, return_run: 8, arrive: 3, lick: 2, bite: 2, chew: 2, swallow: 3 };
+  for (const direction of directions) {
+    for (const [phase, count] of Object.entries(phaseCounts)) {
+      const action = manifest.animations[`action.feed_snack_${phase}_${direction}`];
+      assert.equal(action?.frames.length, count, `${phase} ${direction} needs ${count} registered frames`);
+      assert.ok(action.frames.every((frame) => frame.src.includes("feed_snack_")), `${phase} ${direction} must use Feed-only rasters`);
+    }
+  }
 
   const walk = manifest.animations["action.feed_snack_walk_slow"];
   const returning = manifest.animations["action.feed_snack_return_run"];
@@ -124,13 +134,21 @@ test("Feed Snack ships dedicated approach, interaction, return and prop assets",
   assert.equal(walk.locomotion.nominalStepDistancePx, 16);
   assert.equal(returning.locomotion.nominalStepDistancePx, 24);
 
+  const uniqueDirectionalFrames = new Set(directions.flatMap((direction) =>
+    Object.keys(phaseCounts).flatMap((phase) => manifest.animations[`action.feed_snack_${phase}_${direction}`].frames.map((frame) => frame.src)),
+  ));
+  assert.equal(uniqueDirectionalFrames.size, 216, "all eight directions own distinct locomotion, arrival and eight-frame consume bundles");
+
   const report = JSON.parse(await readFile(feedAssetReportPath, "utf8"));
-  assert.equal(report.schemaVersion, "tokenpet-feed-snack-assets/v2");
-  assert.equal(report.outputs.filter((entry) => entry.path.includes("feed_snack_")).length, 24);
+  assert.equal(report.schemaVersion, "tokenpet-feed-snack-assets/v4");
+  assert.equal(report.catFrames, 256);
+  assert.deepEqual(report.directions, directions);
+  assert.equal(report.offlineMirrors.runtimeTransform, "none");
+  assert.equal(report.outputs.filter((entry) => entry.path.includes("/frames/feed_snack_")).length, 256);
   const transparentOutputs = report.outputs.filter((entry) => entry.path.includes("/frames/") || entry.path.includes("/props/"));
-  assert.equal(transparentOutputs.length, 27);
+  assert.equal(transparentOutputs.length, 259);
   assert.ok(transparentOutputs.every((entry) => entry.cornerAlpha?.every((alpha) => alpha === 0)));
-  for (const artifact of ["feed-snack-contact-sheet.png", "feed-walk-slow-preview.gif", "feed-return-run-preview.gif"]) {
+  for (const artifact of ["feed-snack-contact-sheet.png", "feed-walk-slow-front-preview.gif", "feed-interaction-back-right-preview.gif", "feed-consume-front-right-preview.gif", "feed-return-run-front-left-preview.gif"]) {
     assert.ok((await stat(resolve(feedClipRoot, artifact))).size > 0, `${artifact} must remain available for Feed visual review`);
   }
   for (const prop of ["snack-paw.png", "snack-fish.png", "snack-token.png"]) {

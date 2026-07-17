@@ -15,6 +15,7 @@ const GENERATED_AT = "2026-07-09T00:00:00.000Z";
 const toolDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(toolDir, "../../..");
 const sourcePath = resolve(repoRoot, "assets/source/pet-actors/golden-british/source.json");
+const feedSnackActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/feed-snack-v2/source-actions.json");
 const tossYarnActionsPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/toss-yarn-v2/source-actions.json");
 const outputDir = resolve(repoRoot, "apps/desktop/public/pet-actors/golden-british");
 const frameDir = resolve(outputDir, "frames");
@@ -313,12 +314,14 @@ async function readAndVerifySourceFrames(source) {
 
 export async function buildGoldenBritish() {
   const sourceText = await readFile(sourcePath, "utf8");
+  const feedSnackActionsText = await readFile(feedSnackActionsPath, "utf8");
   const tossYarnActionsText = await readFile(tossYarnActionsPath, "utf8");
+  const feedSnackActions = JSON.parse(feedSnackActionsText);
   const tossYarnActions = JSON.parse(tossYarnActionsText);
   const baseSource = JSON.parse(sourceText);
   const source = {
     ...baseSource,
-    actions: { ...baseSource.actions, ...tossYarnActions.actions },
+    actions: { ...baseSource.actions, ...feedSnackActions.actions, ...tossYarnActions.actions },
   };
   assertValidPetActorSourceSpec(source);
 
@@ -329,9 +332,10 @@ export async function buildGoldenBritish() {
   }
 
   const { byAction: sourceFrames, allInputs } = await readAndVerifySourceFrames(source);
-  const sourceSpecSha256 = sha256(`${sourceText}\n${tossYarnActionsText}`);
+  const sourceSpecSha256 = sha256(`${sourceText}\n${feedSnackActionsText}\n${tossYarnActionsText}`);
   const inputSetSha256 = hashInputSet([
     ...allInputs,
+    [relative(repoRoot, feedSnackActionsPath).replaceAll("\\", "/"), Buffer.from(feedSnackActionsText)],
     [relative(repoRoot, tossYarnActionsPath).replaceAll("\\", "/"), Buffer.from(tossYarnActionsText)],
   ]);
   const manifest = buildManifest(source, sourceSpecSha256, inputSetSha256, sourceFrames);

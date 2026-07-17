@@ -26,6 +26,8 @@ type PointerGesture = {
   dragActionSent: boolean;
 };
 
+const suppressAmbientStoryForDemo = new URLSearchParams(window.location.search).get("demo") === "pet-story";
+
 type BatteryStatus = EventTarget & { charging: boolean; level: number };
 
 function localDateKey(date: Date) {
@@ -85,6 +87,14 @@ function tossYarnDirectionalAction(
 ): PetActionId {
   const directionId = (direction ?? "right").replaceAll("-", "_");
   return `toss_yarn_${phase}_${directionId}` as PetActionId;
+}
+
+function feedSnackDirectionalAction(
+  phase: "walk_slow" | "return_run" | "arrive" | "lick" | "bite" | "chew" | "swallow",
+  direction: QuickPlaySession["actorDirection"],
+): PetActionId {
+  const directionId = (direction ?? "right").replaceAll("-", "_");
+  return `feed_snack_${phase}_${directionId}` as PetActionId;
 }
 
 export function PetApp() {
@@ -210,6 +220,10 @@ export function PetApp() {
   }, [usage.allTimeTokens, usage.status]);
 
   useEffect(() => {
+    // The renderer-driven demo supplies every story beat explicitly. Keeping
+    // the ambient scheduler out of that fixture avoids asset-load timing races
+    // without changing normal desktop launch behaviour.
+    if (suppressAmbientStoryForDemo) return;
     const tick = () => {
       const now = new Date();
       const timestamp = now.getTime();
@@ -485,11 +499,13 @@ export function PetApp() {
     }
     if (action === "token_snack") {
       if (phase === "stand") return "feed_snack_stretch";
-      if (phase === "outbound") return "feed_snack_walk_slow";
-      if (phase === "arrive") return "feed_snack_arrive";
-      if (phase === "lick") return "feed_snack_lick";
-      if (phase === "eat") return "feed_snack_eat";
-      if (phase === "return") return "feed_snack_return_run";
+      if (phase === "outbound") return feedSnackDirectionalAction("walk_slow", quickPlaySession.actorDirection);
+      if (phase === "arrive") return feedSnackDirectionalAction("arrive", quickPlaySession.actorDirection);
+      if (phase === "lick") return feedSnackDirectionalAction("lick", quickPlaySession.actorDirection);
+      if (phase === "bite") return feedSnackDirectionalAction("bite", quickPlaySession.actorDirection);
+      if (phase === "chew") return feedSnackDirectionalAction("chew", quickPlaySession.actorDirection);
+      if (phase === "swallow") return feedSnackDirectionalAction("swallow", quickPlaySession.actorDirection);
+      if (phase === "return") return feedSnackDirectionalAction("return_run", quickPlaySession.actorDirection);
       if (phase === "settle" || phase === "complete") return "feed_snack_settle";
     }
     if (action === "drag_dangle") {
@@ -532,6 +548,7 @@ export function PetApp() {
   }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.phase, story.actionSettings.byAction.nap_here, story.actionSettings.byAction.walk_round_trip]);
 
   const quickPlayFacing = useMemo<"left" | "right" | undefined>(() => {
+    if (quickPlaySession.activeAction === "token_snack") return undefined;
     if (quickPlaySession.activeAction === "drag_dangle") {
       if (quickPlaySession.actorDirection && !["left", "right"].includes(quickPlaySession.actorDirection)) return undefined;
       if (quickPlaySession.actorDirection === "left" || quickPlaySession.actorDirection === "right") return quickPlaySession.actorDirection;
@@ -547,7 +564,7 @@ export function PetApp() {
       return quickPlaySession.targetPoint.x >= currentCenterX ? "right" : "left";
     }
     if (
-      !["walk_round_trip", "token_snack"].includes(quickPlaySession.activeAction ?? "")
+      quickPlaySession.activeAction !== "walk_round_trip"
       || !quickPlaySession.startBounds
       || !quickPlaySession.targetPoint
     ) return undefined;
@@ -609,7 +626,7 @@ export function PetApp() {
           actorVariant={quickPlaySession.actorVariant ?? undefined}
           animationNonce={authoredLocomotionActive
             ? quickPlaySession.walkMotion?.startedAt
-            : quickPlaySession.activeAction === "token_snack" && ["stand", "arrive", "lick", "eat", "settle"].includes(quickPlaySession.phase)
+            : quickPlaySession.activeAction === "token_snack" && ["stand", "arrive", "lick", "bite", "chew", "swallow", "settle"].includes(quickPlaySession.phase)
               ? quickPlaySession.phaseStartedAt ?? undefined
               : quickPlaySession.activeAction === "drag_dangle"
                 ? quickPlaySession.phaseStartedAt ?? undefined

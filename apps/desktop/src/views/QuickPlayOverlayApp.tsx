@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 type OverlayMode = "snack" | "dangle" | "yarn";
 type OverlayPhase = "placing" | "playing" | "rolling" | "finishing";
+type SnackStage = "ground" | "bite" | "chew" | "swallow" | "consumed";
 
 type OverlayState = {
   mode?: OverlayMode;
@@ -16,6 +17,7 @@ type OverlayState = {
   durationMs?: number;
   snackStyle?: "paw" | "fish" | "token";
   snackSize?: number;
+  snackStage?: SnackStage;
   fishToyStyle?: "mint" | "blue" | "feather";
   swingResponse?: number;
   toyTrailEffect?: boolean;
@@ -57,6 +59,7 @@ function initialOverlayState(): OverlayState & Required<Pick<OverlayState, "mode
     hint: search.get("hint") ?? undefined,
     snackStyle: (search.get("snackStyle") as OverlayState["snackStyle"]) ?? "paw",
     snackSize: Number(search.get("snackSize") ?? 100),
+    snackStage: "ground",
     fishToyStyle: (search.get("fishToyStyle") as OverlayState["fishToyStyle"]) ?? "mint",
     swingResponse: Number(search.get("swingResponse") ?? 66),
     toyTrailEffect: search.get("toyTrailEffect") !== "false",
@@ -87,10 +90,16 @@ function YarnIcon({ color }: { color: NonNullable<OverlayState["yarnColor"]> }) 
 
 function SnackProp({ pointer, released, state }: { pointer: PointerPosition; released: boolean; state: OverlayState }) {
   const snackStyle = state.snackStyle ?? "paw";
+  const snackStage = state.snackStage ?? "ground";
   const targetClientX = released && typeof state.targetScreenX === "number" ? state.targetScreenX - window.screenX : pointer.clientX;
   const targetClientY = released && typeof state.targetScreenY === "number" ? state.targetScreenY - window.screenY : pointer.clientY;
   return (
-    <div className={`quick-overlay-snack-prop snack-${snackStyle} ${released ? "is-released" : ""}`} style={{ left: targetClientX, top: targetClientY, "--snack-scale": String(Math.max(.7, Math.min(1.3, (state.snackSize ?? 100) / 100))) } as CSSProperties} aria-hidden="true">
+    <div
+      className={`quick-overlay-snack-prop snack-${snackStyle} snack-stage-${snackStage} ${released ? "is-released" : ""}`}
+      data-snack-stage={snackStage}
+      style={{ left: targetClientX, top: targetClientY, "--snack-scale": String(Math.max(.7, Math.min(1.3, (state.snackSize ?? 100) / 100))), "--snack-stage-duration": `${Math.max(80, state.durationMs ?? 320)}ms` } as CSSProperties}
+      aria-hidden="true"
+    >
       <SnackIcon style={snackStyle} />
     </div>
   );
