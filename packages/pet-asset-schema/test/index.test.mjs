@@ -299,7 +299,7 @@ test("source specs reject legacy aliases and ready claims without same-id source
     },
     capabilities: [
       { id: "idle_breathe", status: "ready" },
-      ...["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer", "capture_moment"].map((id) => ({
+      ...["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance", "capture_moment"].map((id) => ({
         id,
         status: "fallback",
         fallbackId: "idle_breathe",

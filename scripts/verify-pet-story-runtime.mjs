@@ -415,7 +415,7 @@ verify("approved static fallbacks suppress every runtime wearable", () => {
 });
 
 verify("all Quick Play ids resolve and keep stable names", () => {
-  const ids = ["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer", "capture_moment"];
+  const ids = ["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance", "capture_moment"];
   for (const [index, action] of ids.entries()) {
     const directed = director.directPetEvent(
       director.createPetDirectorState("focused"),
@@ -437,10 +437,10 @@ verify("nap/wake persistent end states", () => {
   assert.equal(director.completePetDirectorAction(wake.state, 34_000).currentAction, "focus_loop");
 });
 
-verify("summon/capture side effects", () => {
-  const summon = director.directPetEvent(director.createPetDirectorState("focused"), { type: "quickPlay.action", action: "summon_to_pointer" }, { actorId: "golden-british", now: 40_000 });
+verify("Dance stays animation-only while Capture keeps its side effect", () => {
+  const dance = director.directPetEvent(director.createPetDirectorState("focused"), { type: "quickPlay.action", action: "dance" }, { actorId: "golden-british", now: 40_000 });
   const capture = director.directPetEvent(director.createPetDirectorState("focused"), { type: "quickPlay.action", action: "capture_moment" }, { actorId: "golden-british", now: 42_000 });
-  assert.equal(summon.decision.sideEffect, "summon");
+  assert.equal(dance.decision.sideEffect, undefined);
   assert.equal(capture.decision.sideEffect, "capture");
 });
 
@@ -537,7 +537,7 @@ verify("desktop mood badge stays anchored to the scaled actor", () => {
   assert.equal(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "desktop").y, 383);
 });
 
-verify("Quick Play choreography keeps Pet exact-return and Summon safe", () => {
+verify("Quick Play choreography keeps Pet exact-return across the full desktop", () => {
   const workArea = { x: -1440, y: 24, width: 1440, height: 876 };
   const start = { x: -420, y: 180, width: 260, height: 260 };
   const target = quickPlay.sampleSafeRandomTarget(start, workArea, { random: () => .12, roamDistance: "far" });
@@ -639,6 +639,16 @@ verify("Quick Play semantic timelines preserve strict action contracts", () => {
     breathingIntensity: 100,
     zEffect: true,
   }), { settlePace: "quick", sleepShadow: false });
+  const dance = quickPlay.createQuickPlayActionTimeline("dance", quickPlay.QUICK_PLAY_ACTION_DEFAULTS.dance);
+  assert.equal(dance.durationMs, 11_093);
+  assert.deepEqual(dance.phases.map((phase) => phase.id), ["dance_rise", "dance_reference_clip", "dance_restore"]);
+  assert.equal(dance.phases[1].durationMs, 10_133);
+  assert.deepEqual(quickPlay.normalizeQuickPlayActionConfig("dance", {
+    tempo: "fast",
+    loopCount: "3",
+    danceSound: true,
+    routeCurve: "retired",
+  }), { danceSound: true });
 });
 
 verify("Feed snack travel owns two distance-locked four-footfall gaits", () => {

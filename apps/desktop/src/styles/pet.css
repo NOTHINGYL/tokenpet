@@ -675,6 +675,34 @@
     transform 180ms ease;
 }
 
+.dance-video-layer {
+  position: absolute;
+  z-index: 11;
+  inset: 0;
+  display: grid;
+  overflow: visible;
+  place-items: center;
+  pointer-events: none;
+}
+
+.dance-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dance-video-layer-desktop {
+  width: 242px;
+  height: 242px;
+}
+
+.pet-stage[data-quick-play-action="dance"] .pet-drag-region:hover .dance-video {
+  transform: none;
+}
+
 .pet-stage[data-pet-resting="true"][data-nap-shadow="true"] .pet-generated-actor-canvas-root,
 .pet-stage[data-quick-play-action="nap_here"][data-nap-shadow="true"] .pet-generated-actor-canvas-root {
   filter: drop-shadow(0 12px 9px rgba(31, 41, 55, .18));

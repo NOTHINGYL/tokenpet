@@ -420,7 +420,7 @@ async function run() {
   const waitForQuickPlayEnd = (action) => waitFor(
     () => qa.getQuickPlaySession().activeAction === null,
     `${action} Quick Play completion`,
-    action === "walk_round_trip" || action === "token_snack" ? 30_000 : 12_000,
+    action === "walk_round_trip" || action === "token_snack" || action === "dance" ? 30_000 : 12_000,
   );
   const runClosedQuickPlayAction = async (action, placement = null) => {
     qa.resetQuickPlayTrace();
@@ -1056,8 +1056,7 @@ async function run() {
 
   qa.resetQuickPlayTrace();
   await click(panel, "[data-action-id=wake_up]");
-  await waitForClosed(qa, "popover");
-  verify("Wake up closes Quick Play immediately", !safeWindow(qa, "popover"), "the panel closes as soon as the five-second authored sequence is accepted");
+  verify("Wake up keeps Quick Play open", safeWindow(qa, "popover"), "the panel remains available while the five-second authored sequence plays");
   await waitForQuickPlayEnd("wake_up");
   await waitFor(() => qa.getQuickPlaySession().resting === false, "wake restored director state");
   const wakeTrace = qa.getQuickPlayTrace();
@@ -1070,27 +1069,38 @@ async function run() {
   quickPlaySummaries.push({ action: "wake_up", startBounds: napBounds, endBounds: pet.getBounds(), trace: wakeTrace, resting: false });
 
   qa.resetQuickPlayTrace();
-  const summonStart = pet.getBounds();
-  const summonPoint = { x: placementWorkArea.x + placementWorkArea.width - 150, y: placementWorkArea.y + placementWorkArea.height - 190 };
-  qa.setCursorPoint(summonPoint);
-  panel = await openQuickPlay();
-  await click(panel, "[data-action-id=summon_to_pointer]");
+  const danceStart = pet.getBounds();
+  const dancePositionPath = join(userDataPath, "pet-position.json");
+  const danceStoredBefore = existsSync(dancePositionPath)
+    ? readFileSync(dancePositionPath, "utf8")
+    : null;
+  qa.setQuickPlayTimeScale(1);
+  await click(panel, "[data-action-id=dance]");
   await waitForClosed(qa, "popover");
-  qa.setCursorPoint({ x: placementWorkArea.x + 40, y: placementWorkArea.y + 40 });
-  await waitForQuickPlayEnd("summon_to_pointer");
-  qa.setCursorPoint(null);
-  const summonEnd = pet.getBounds();
-  const summonStored = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
-  const summonTrace = qa.getQuickPlayTrace();
+  await waitFor(() => qa.getQuickPlaySession().phase === "dance_reference_clip", "Dance video-reference phase");
+  await delay(1_550);
+  const danceScreenshot = join(root, "docs", "screenshots", "pet-story", "quick-play-dance-tongue-pop.png");
+  writeFileSync(danceScreenshot, (await pet.webContents.capturePage()).toPNG());
+  await waitForQuickPlayEnd("dance");
+  const danceEnd = pet.getBounds();
+  const danceStoredAfter = existsSync(dancePositionPath)
+    ? readFileSync(dancePositionPath, "utf8")
+    : null;
+  const danceTrace = qa.getQuickPlayTrace();
+  const dancePhases = danceTrace.map((entry) => entry.phase);
   verify(
-    "Summon captures acceptance pointer, walks, then persists its new home",
-    JSON.stringify(summonEnd) !== JSON.stringify(summonStart)
-      && boundsFitWorkArea(summonEnd, screen.getDisplayNearestPoint(summonPoint).workArea)
-      && JSON.stringify(summonStored) === JSON.stringify(summonEnd)
-      && new Set(summonTrace.filter((entry) => entry.phase === "outbound").map((entry) => `${entry.bounds?.x}:${entry.bounds?.y}`)).size >= 3,
-    `accepted ${JSON.stringify(summonPoint)}, ignored later cursor movement, arrived and persisted ${JSON.stringify(summonEnd)}`,
+    "Dance performs the detected fixed-bounds 10.133-second source loop and exact restore",
+    JSON.stringify(danceEnd) === JSON.stringify(danceStart)
+      && danceStoredAfter === danceStoredBefore
+      && dancePhases.filter((phase) => phase === "dance_reference_clip").length === 1
+      && dancePhases[0] === "stand"
+      && dancePhases.includes("dance_rise")
+      && dancePhases.includes("dance_restore")
+      && existsSync(danceScreenshot)
+      && danceTrace.every((entry) => !entry.bounds || JSON.stringify(entry.bounds) === JSON.stringify(danceStart)),
+    `fixed bounds ${JSON.stringify(danceStart)} with semantic trace ${dancePhases.join(" → ")}`,
   );
-  quickPlaySummaries.push({ action: "summon_to_pointer", startBounds: summonStart, endBounds: summonEnd, targetPoint: summonPoint, trace: summonTrace });
+  quickPlaySummaries.push({ action: "dance", startBounds: danceStart, endBounds: danceEnd, trace: danceTrace, screenshot: danceScreenshot });
   qa.setQuickPlayTimeScale(1);
 
   const settingsBeforeClose = JSON.stringify(qa.getSettings());
@@ -1099,13 +1109,18 @@ async function run() {
   await waitForDom(popover, "button[aria-label='Close Quick Play']");
   await click(popover, "button[aria-label='Close Quick Play']");
   await waitForClosed(qa, "popover");
+  const settingsAfterClose = JSON.stringify(qa.getSettings());
   verify(
     "Quick Play X closes only panel",
-    pet.isVisible() && qa.getSettings().petVisible && JSON.stringify(qa.getSettings()) === settingsBeforeClose,
-    "pet stays visible and settings are unchanged",
+    pet.isVisible() && qa.getSettings().petVisible && settingsAfterClose === settingsBeforeClose,
+    `pet stays visible and settings are unchanged; before=${settingsBeforeClose}; after=${settingsAfterClose}`,
   );
 
-  const petStoryBeforeConsole = JSON.stringify(qa.getSettings().petStory);
+  const stablePetStorySnapshot = () => {
+    const story = qa.getSettings().petStory;
+    return JSON.stringify({ ...story, journey: { ...story.journey, lastSeenAt: null } });
+  };
+  const petStoryBeforeConsole = stablePetStorySnapshot();
   await doubleClickPet(pet);
   popover = await waitForWindow(qa, "popover");
   await waitForDom(popover, ".open-console");
@@ -1114,7 +1129,8 @@ async function run() {
   await waitForDom(consoleWindow, "[data-console-tab=pet].active");
   await waitForDom(consoleWindow, "[data-pet-page=appearance]");
   verify("Open Console routes to Pet", !consoleWindow.webContents.isCrashed(), "real Console renderer opened Pet without crashing");
-  verify("Open Console preserves pet state", JSON.stringify(qa.getSettings().petStory) === petStoryBeforeConsole, "opening Console did not dispatch or persist a pet action");
+  const petStoryAfterConsole = stablePetStorySnapshot();
+  verify("Open Console preserves pet state", petStoryAfterConsole === petStoryBeforeConsole, `opening Console did not dispatch or persist a pet action; before=${petStoryBeforeConsole}; after=${petStoryAfterConsole}`);
   await waitFor(() => consoleWindow.isVisible() && !consoleWindow.isMinimized(), "Console visible state", 5_000);
   verify("Open Console shows window", consoleWindow.isVisible() && !consoleWindow.isMinimized(), "new Console is visible and available without relying on macOS foreground focus arbitration");
 
@@ -1144,9 +1160,9 @@ async function run() {
     captureCount: document.querySelectorAll('[data-action-id=capture_moment]').length,
   }))()`);
   verify(
-    "Console Actions v19 workbench is interactive",
-    JSON.stringify(actionWorkbench.ids) === JSON.stringify(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer"])
-      && actionWorkbench.selected === "token_snack"
+    "Console Actions v20 Dance workbench is interactive",
+    JSON.stringify(actionWorkbench.ids) === JSON.stringify(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance"])
+      && actionWorkbench.selected === "dance"
       && actionWorkbench.previewOnly === "Preview only"
       && actionWorkbench.footer === "Preview changes apply instantly. Your desktop pet stays still."
       && actionWorkbench.actorId === "golden-british"
@@ -1421,11 +1437,11 @@ async function run() {
   const summonedBounds = pet.getBounds();
   const storedPosition = JSON.parse(readFileSync(join(userDataPath, "pet-position.json"), "utf8"));
   verify(
-    "Summon uses visible safe bounds",
+    "Current-screen rehome uses visible safe bounds",
     summonResult.moved === true && boundsFitWorkArea(summonedBounds, workArea),
     `summoned to ${JSON.stringify(summonedBounds)} within ${JSON.stringify(workArea)}`,
   );
-  verify("Summon persists position", JSON.stringify(storedPosition) === JSON.stringify(summonedBounds), "safe summoned bounds were written to isolated userData");
+  verify("Current-screen rehome persists position", JSON.stringify(storedPosition) === JSON.stringify(summonedBounds), "safe rehomed bounds were written to isolated userData");
 
   await waitForActor(pet);
   const captureResult = await execute(pet, "window.tokenpet.capturePetMoment()");

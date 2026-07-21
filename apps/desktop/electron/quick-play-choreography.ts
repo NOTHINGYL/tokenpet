@@ -21,7 +21,7 @@ export type QuickPlayAnimatedActionId =
   | "toss_yarn"
   | "nap_here"
   | "wake_up"
-  | "summon_to_pointer";
+  | "dance";
 
 export type PetQuickPlayConfig = {
   walkPace: number;
@@ -71,11 +71,8 @@ export type WakeUpQuickPlayConfig = {
   wakeSparkle: boolean;
 };
 
-export type SummonQuickPlayConfig = {
-  walkPace: number;
-  arrivalOffset: "near" | "beside" | "below";
-  routeCurve: "straight" | "gentle" | "curved";
-  settleDelay: number;
+export type DanceQuickPlayConfig = {
+  danceSound: boolean;
 };
 
 export type QuickPlayActionConfigMap = {
@@ -86,7 +83,7 @@ export type QuickPlayActionConfigMap = {
   toss_yarn: TossYarnQuickPlayConfig;
   nap_here: NapHereQuickPlayConfig;
   wake_up: WakeUpQuickPlayConfig;
-  summon_to_pointer: SummonQuickPlayConfig;
+  dance: DanceQuickPlayConfig;
 };
 
 export const QUICK_PLAY_ACTION_DEFAULTS: Readonly<QuickPlayActionConfigMap> = {
@@ -131,11 +128,8 @@ export const QUICK_PLAY_ACTION_DEFAULTS: Readonly<QuickPlayActionConfigMap> = {
     stretchHold: 3,
     wakeSparkle: true,
   },
-  summon_to_pointer: {
-    walkPace: 92,
-    arrivalOffset: "beside",
-    routeCurve: "gentle",
-    settleDelay: 0.7,
+  dance: {
+    danceSound: true,
   },
 };
 
@@ -225,13 +219,10 @@ export function normalizeQuickPlayActionConfig<A extends QuickPlayAnimatedAction
         wakeSparkle: booleanValue(raw.wakeSparkle, fallback.wakeSparkle),
       } as QuickPlayActionConfigMap[A];
     }
-    case "summon_to_pointer": {
-      const fallback = QUICK_PLAY_ACTION_DEFAULTS.summon_to_pointer;
+    case "dance": {
+      const fallback = QUICK_PLAY_ACTION_DEFAULTS.dance;
       return {
-        walkPace: finiteNumber(raw.walkPace, fallback.walkPace, 60, 140),
-        arrivalOffset: enumValue(raw.arrivalOffset, ["near", "beside", "below"], fallback.arrivalOffset),
-        routeCurve: enumValue(raw.routeCurve, ["straight", "gentle", "curved"], fallback.routeCurve),
-        settleDelay: finiteNumber(raw.settleDelay, fallback.settleDelay, 0.2, 1.5),
+        danceSound: booleanValue(raw.danceSound, fallback.danceSound),
       } as QuickPlayActionConfigMap[A];
     }
   }
@@ -804,14 +795,15 @@ export function createQuickPlayActionTimeline<A extends QuickPlayAnimatedActionI
         { id: "gather_restore", durationMs: gatherMs },
       ]);
     }
-    case "summon_to_pointer": {
-      const options = config as SummonQuickPlayConfig;
+    case "dance": {
       return createPhaseTimeline([
-        { id: "stand", durationMs: 500 },
-        { id: "route", durationMs: 220 },
-        { id: "walk", durationMs: travelDuration(travelDistancePx, options.walkPace) },
-        { id: "arrive", durationMs: 260 },
-        { id: "settle", durationMs: options.settleDelay * 1_000 },
+        { id: "dance_rise", durationMs: 480 },
+        // Independent frame and audio autocorrelation select the smallest
+        // complete source loop at 10.133 seconds. It retains the first three
+        // unequal expression phrases and must not be tempo-scaled away from
+        // its trimmed source audio.
+        { id: "dance_reference_clip", durationMs: 10_133 },
+        { id: "dance_restore", durationMs: 480 },
       ]);
     }
   }

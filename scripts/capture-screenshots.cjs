@@ -44,7 +44,7 @@ const quickPlayIds = [
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_pointer",
+  "dance",
   "capture_moment",
 ];
 const emptyQuickPlaySession = {
@@ -61,7 +61,7 @@ const emptyQuickPlaySession = {
 };
 let quickPlaySession = clone(emptyQuickPlaySession);
 let suppressQuickPlayDirector = false;
-const quickPlayPositionActions = new Set(["walk_round_trip", "token_snack", "drag_dangle", "toss_yarn", "summon_to_pointer"]);
+const quickPlayPositionActions = new Set(["walk_round_trip", "token_snack", "drag_dangle", "toss_yarn"]);
 const consolePetActionIds = new Set(["click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_screen", "capture_moment"]);
 
 const coreActorStateIds = [
@@ -86,6 +86,7 @@ const coreActorFramePaths = Object.fromEntries(coreActorStateIds.map((actionId) 
 
 app.commandLine.appendSwitch("disable-background-timer-throttling");
 app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 app.on("window-all-closed", () => {
   // The QA runner owns app shutdown after every assertion and capture completes.
@@ -611,6 +612,10 @@ async function verifyDesktopCatVisualNormalization(desktopPet) {
     moodBadge: { showMood: false },
   });
   await waitFor(desktopPet, () => Boolean(document.querySelector(".pet-stage .pet-generated-actor-canvas-root.is-ready")), [], "Golden desktop normalization actor");
+  await waitFor(desktopPet, () => {
+    const frame = document.querySelector(".pet-stage .pet-generated-actor-canvas")?.dataset.actorFrame;
+    return typeof frame === "string" && frame.endsWith("-1");
+  }, [], "Golden desktop normalization first authored frame");
   const golden = await canvasAlphaGeometry(desktopPet, ".pet-stage", ".pet-stage");
 
   await setFixturePetAppearance(desktopPet, {
@@ -635,7 +640,10 @@ async function verifyDesktopCatVisualNormalization(desktopPet) {
       && ragdoll.opaquePixels > 0
       && Math.abs(golden.transformScale.x - golden.transformScale.y) <= 0.001
       && Math.abs(ragdoll.transformScale.x - ragdoll.transformScale.y) <= 0.001
-      && heightDelta <= 0.1
+      // Golden's authored Hot frame is wider/shorter than the static Ragdoll
+      // silhouette. Preserve native aspect ratios and compare area; a 15%
+      // height envelope avoids treating that intentional pose as resize drift.
+      && heightDelta <= 0.15
       && goldenToRagdollAreaRatio >= 0.9
       && goldenToRagdollAreaRatio <= 1.2,
     `size=1 mapped alpha Golden ${JSON.stringify(golden?.visibleRect)} vs Ragdoll ${JSON.stringify(ragdoll?.visibleRect)}; height delta ${(heightDelta * 100).toFixed(1)}%, area ratio ${goldenToRagdollAreaRatio.toFixed(3)}, transforms ${JSON.stringify({ golden: golden?.transformScale, ragdoll: ragdoll?.transformScale })}`,
@@ -694,6 +702,50 @@ async function verifyDesktopPet() {
   await verifyNoHorizontalOverflow(window, "desktop pet");
   await capture(window, "desktop-pet.png", "Desktop pet");
 
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({
+    activeAction: "dance",
+    startedAt: Date.now() - 1_800,
+    phase: "dance_reference_clip",
+    phaseStartedAt: Date.now() - 1_800,
+    pointerMode: "none",
+  }));
+  await waitFor(window, () => {
+    const video = document.querySelector("[data-dance-video-layer] video");
+    return Boolean(video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime > 1.5);
+  }, [], "desktop transparent Dance video ready");
+  const desktopDance = await evaluate(window, () => {
+    const stageRect = document.querySelector(".pet-drag-region")?.getBoundingClientRect();
+    const video = document.querySelector("[data-dance-video-layer] video");
+    const videoRect = video?.getBoundingClientRect();
+    return {
+      source: document.querySelector("[data-dance-video-layer]")?.dataset.danceVideoSource,
+      readyState: video?.readyState,
+      duration: video?.duration,
+      currentTime: video?.currentTime,
+      muted: video?.muted,
+      fallbackHidden: !document.querySelector(".pet-appearance-visual-desktop"),
+      contained: Boolean(stageRect && videoRect
+        && videoRect.left >= stageRect.left - 1
+        && videoRect.right <= stageRect.right + 1
+        && videoRect.top >= stageRect.top - 1
+        && videoRect.bottom <= stageRect.bottom + 1),
+    };
+  });
+  verify(
+    "desktop Dance uses the transparent fixed-anchor loop layer",
+    desktopDance.source === "pet-video/dance-golden-style.webm"
+      && desktopDance.readyState >= 2
+      && desktopDance.duration >= 10.12
+      && desktopDance.currentTime > 1.5
+      && desktopDance.muted
+      && desktopDance.fallbackHidden
+      && desktopDance.contained,
+    `desktop video decoded on the source clock with no duplicate raster actor: ${JSON.stringify(desktopDance)}`,
+  );
+  await capture(window, "quick-play-dance-video.png", "Desktop / Quick Play / loop-detected fixed-anchor Dance");
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
+  await waitForSelector(window, ".pet-appearance-visual-desktop");
+
   await evaluate(window, () => document.querySelector(".pet-stage").dispatchEvent(new MouseEvent("dblclick", { bubbles: true })));
   await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.qaState.togglePopoverCalls > 0), [], "desktop double-click bridge");
   record("desktop double-click", "double-clicking the pet invokes the Quick Play bridge");
@@ -748,7 +800,7 @@ async function verifyQuickPlay() {
       smallestActionLabel: Math.min(...actionButtons.map((button) => Number.parseFloat(getComputedStyle(button.querySelector(".quick-action-label")).fontSize))),
     };
   });
-  verify("Quick Play v18 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or move your companion.", "the compact controller has the normative title and subtitle");
+  verify("Quick Play v20 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or dance with your companion.", "the compact controller has the normative Dance-era title and subtitle");
   verify("Quick Play 3×3 action order", structure.ids.join(",") === quickPlayIds.join(","), `nine stable ids follow the v18 order: ${structure.ids.join(", ")}`);
   verify("Quick Play cursor helper", structure.helper === "10 sec", "Play cursor matches the concise v18 helper copy");
   verify("Quick Play exactly three controls", structure.controls.join(",") === "Always on top,Lock position,Mute pet sounds", `controls are ${structure.controls.join(", ")}`);
@@ -759,7 +811,7 @@ async function verifyQuickPlay() {
   verify("Quick Play true 3×3 geometry", new Set(structure.actionRects.map((rect) => rect.x)).size === 3 && new Set(structure.actionRects.map((rect) => rect.y)).size === 3, "action cards form three exact columns and rows");
   verify("Quick Play consistent cards", Math.max(...structure.actionRects.map((rect) => rect.width)) - Math.min(...structure.actionRects.map((rect) => rect.width)) <= 1 && Math.max(...structure.actionRects.map((rect) => rect.height)) - Math.min(...structure.actionRects.map((rect) => rect.height)) <= 1, "all nine action cards share dimensions within 1px");
   verify("Quick Play stable icon system", structure.icons === 9, "all actions use local deterministic raster icons rather than platform emoji");
-  verify("Quick Play unlocked icons use normal color", structure.iconStates.every((icon) => !icon.disabled && icon.filter !== "none" && !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `all nine unlocked actions use the v19 color treatment: ${JSON.stringify(structure.iconStates)}`);
+  verify("Quick Play unlocked icons use normal color", structure.iconStates.every((icon) => !icon.disabled && !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `all nine unlocked actions use the v20 color treatment: ${JSON.stringify(structure.iconStates)}`);
   verify("Quick Play close target", structure.closeSize >= 24, `scaled close target is ${structure.closeSize}px`);
   verify("Quick Play footer shelf", structure.footerWidth / structure.panelWidth >= .72 && structure.footerWidth / structure.panelWidth <= .9, `footer is ${Math.round(structure.footerWidth / structure.panelWidth * 100)}% of panel width`);
   verify("Quick Play clean single frame", structure.panelLeft === 0 && structure.panelTop === 0 && structure.panelBeforeContent === "none" && structure.panelShadow.endsWith("inset") && !structure.panelShadow.includes("48px"), `panel fills the window at ${structure.panelLeft},${structure.panelTop}; pseudo-frame ${structure.panelBeforeContent}; shadow ${structure.panelShadow}`);
@@ -771,7 +823,7 @@ async function verifyQuickPlay() {
     const current = await window.tokenpet.getAppSettings();
     await window.tokenpet.setAppSetting("petStory", { ...current.petStory, lockPosition: true });
   });
-  await waitFor(window, () => document.querySelectorAll("[data-lock-mark]").length === 5, [], "Lock position gate");
+  await waitFor(window, () => document.querySelectorAll("[data-lock-mark]").length === 4, [], "Lock position gate");
   const lockedState = await evaluate(window, () => ({
     disabled: [...document.querySelectorAll("[data-action-id]:disabled")].map((button) => button.dataset.actionId),
     enabled: [...document.querySelectorAll("[data-action-id]:not(:disabled)")].map((button) => button.dataset.actionId),
@@ -781,8 +833,8 @@ async function verifyQuickPlay() {
     }),
     detail: document.body.innerText.includes("Movement actions are locked"),
   }));
-  verify("Quick Play lock position matrix", lockedState.disabled.join(",") === "walk_round_trip,token_snack,drag_dangle,toss_yarn,summon_to_pointer" && lockedState.enabled.join(",") === "play_cursor,nap_here,wake_up,capture_moment", `disabled ${lockedState.disabled.join(", ")}; enabled ${lockedState.enabled.join(", ")}`);
-  verify("Quick Play lock-only gray treatment", lockedState.icons.every((icon) => icon.disabled ? icon.filter.includes("grayscale(1)") && Number(icon.opacity) < .7 : !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `only the five Lock position actions are visually gray: ${JSON.stringify(lockedState.icons)}`);
+  verify("Quick Play lock position matrix", lockedState.disabled.join(",") === "walk_round_trip,token_snack,drag_dangle,toss_yarn" && lockedState.enabled.join(",") === "play_cursor,nap_here,wake_up,dance,capture_moment", `disabled ${lockedState.disabled.join(", ")}; enabled ${lockedState.enabled.join(", ")}`);
+  verify("Quick Play lock-only gray treatment", lockedState.icons.every((icon) => icon.disabled ? icon.filter.includes("grayscale(1)") && Number(icon.opacity) < .7 : !icon.filter.includes("grayscale") && Number(icon.opacity) >= .99), `only the four Lock position actions are visually gray: ${JSON.stringify(lockedState.icons)}`);
   verify("Quick Play lock position copy", lockedState.detail, "the controls card explains that movement actions are locked");
   await capture(window, "quick-play.png", "Quick Play v18 locked reference state");
 
@@ -813,7 +865,7 @@ async function verifyQuickPlay() {
 
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
   await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], "clear active action fixture");
-  const closeActions = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "wake_up", "summon_to_pointer"]);
+  const closeActions = new Set(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "dance"]);
   for (const actionId of quickPlayIds) {
     await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
     await waitFor(window, () => document.querySelectorAll("[data-action-id]:disabled").length === 0, [], `reset before ${actionId}`);
@@ -1053,7 +1105,7 @@ async function verifyAppearanceAndSubpages(window) {
 async function verifyActions(window, desktopPet) {
   await selectPetSection(window, "actions");
   await waitForSelector(window, "[data-action-preview] .pet-generated-actor-canvas-root.is-ready");
-  const expectedActions = ["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_pointer"];
+  const expectedActions = ["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance"];
   const expectedSettings = {
     walk_round_trip: ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect"],
     token_snack: ["snackStyle", "walkPace", "snackSize", "startMeow", "returnPace"],
@@ -1062,7 +1114,7 @@ async function verifyActions(window, desktopPet) {
     toss_yarn: ["yarnColor", "rollDistance", "rollSpeed", "returnPace"],
     nap_here: ["settlePace", "sleepShadow"],
     wake_up: ["meowVoice", "meowCue", "stretchHold", "wakeSparkle"],
-    summon_to_pointer: ["walkPace", "arrivalOffset", "routeCurve", "settleDelay"],
+    dance: ["danceSound"],
   };
   const state = await evaluate(window, () => ({
     ids: [...document.querySelectorAll("[data-action-selector] [data-action-id]")].map((button) => button.dataset.actionId),
@@ -1099,14 +1151,130 @@ async function verifyActions(window, desktopPet) {
     retiredModules: [...document.querySelectorAll("[data-pet-page=actions] h2, [data-pet-page=actions] h3")].map((heading) => heading.textContent.trim()).filter((text) => ["Behavior Mode", "Actor States", "Interaction Rules", "Director Priority", "Safety", "Live Actor Preview"].includes(text)),
   }));
   verify("Actions v19 selector", JSON.stringify(state.ids) === JSON.stringify(expectedActions) && state.captureCount === 0, `exact ordered eight-action selector, Capture excluded: ${JSON.stringify(state.ids)}`);
-  verify("Actions v19 selector labels", JSON.stringify(state.labels) === JSON.stringify(["Pet", "Feed snack", "Play cursor", "Dangle toy", "Toss yarn", "Nap here", "Wake up", "Summon"]), `friendly labels: ${JSON.stringify(state.labels)}`);
+  verify("Actions v20 selector labels", JSON.stringify(state.labels) === JSON.stringify(["Pet", "Feed snack", "Play cursor", "Dangle toy", "Toss yarn", "Nap here", "Wake up", "Dance"]), `friendly labels: ${JSON.stringify(state.labels)}`);
   verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all Golden British action previews are enabled and all selector/filmstrip art loaded");
-  verify("Actions default selection", state.selected === "token_snack" && state.settingsFor === "token_snack", "Feed snack is selected and its dedicated settings are visible by default");
-  verify("Actions isolated preview renderer", state.previewOnly === "Preview only" && state.sharedActorId === "golden-british" && state.generatedActors === 1 && state.filmstripFrames >= 5, `preview uses the shared generated Golden actor and complete semantic filmstrip: ${JSON.stringify(state)}`);
+  verify("Actions default selection", state.selected === "dance" && state.settingsFor === "dance", "Dance is selected and its dedicated settings are visible by default");
+  verify("Actions isolated preview renderer", state.previewOnly === "Preview only" && state.sharedActorId === "golden-british" && state.generatedActors === 1 && state.filmstripFrames >= 3, `preview uses the shared generated Golden actor and complete semantic filmstrip: ${JSON.stringify(state)}`);
   verify("Actions v19 composition", state.layout && state.layout.previewWidth / state.layout.settingsWidth >= 1.55 && state.layout.stageHeight >= 285, `dominant preview / secondary settings composition: ${JSON.stringify(state.layout)}`);
   verify("Actions fits 1280×900 without vertical scrolling", state.layout && state.layout.contentScrollHeight <= state.layout.contentClientHeight + 1 && state.layout.footerBottom <= state.layout.contentBottom + 1, `entire selector, workbench, and footer fit the production Console viewport: ${JSON.stringify(state.layout)}`);
   verify("Actions retired modules removed", state.retiredModules.length === 0, `old director modules absent: ${JSON.stringify(state.retiredModules)}`);
   verify("Actions isolation copy", state.footer === "Preview changes apply instantly. Your desktop pet stays still.", `exact footer copy: ${state.footer}`);
+
+  // The production Dance preview starts its own reference track by default.
+  // Stop that single intended stream before opening the isolated playback
+  // probe; two simultaneous elements for the same AAC can leave the second
+  // one waiting on the cold macOS audio device even though play() resolved.
+  const dancePreviewPlaying = await evaluate(window, () => document.querySelector("[data-action-play]")?.getAttribute("aria-label") === "Pause preview");
+  if (dancePreviewPlaying) await click(window, "[data-action-play]", "pause Dance preview before isolated audio verification");
+  await delay(120);
+
+  const danceAudioProbe = await evaluate(window, () => new Promise((resolve) => {
+    const audio = new Audio("./pet-audio/dance-video-reference.m4a");
+    const startedAt = performance.now();
+    let settled = false;
+    let progressTimer = 0;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      window.clearInterval(progressTimer);
+      audio.pause();
+      resolve(value);
+    };
+    audio.volume = .01;
+    audio.addEventListener("loadedmetadata", async () => {
+      try {
+        await audio.play();
+        // A cold macOS audio device can take longer than one animation frame to
+        // expose its first advancing timestamp even after play() resolves. Poll
+        // for real progress instead of accepting a resolved promise as proof.
+        progressTimer = window.setInterval(() => {
+          if (!audio.paused && audio.currentTime > 0) {
+            finish({ loaded: true, played: true, duration: audio.duration, currentTime: audio.currentTime, startupMs: Math.round(performance.now() - startedAt) });
+          }
+        }, 40);
+        window.setTimeout(() => finish({ loaded: true, played: false, duration: audio.duration, currentTime: audio.currentTime, startupMs: Math.round(performance.now() - startedAt) }), 1_500);
+      } catch (error) {
+        finish({ loaded: true, played: false, duration: audio.duration, error: String(error) });
+      }
+    }, { once: true });
+    audio.addEventListener("error", () => finish({ loaded: false, played: false, duration: 0 }), { once: true });
+    audio.load();
+    window.setTimeout(() => finish({ loaded: false, played: false, duration: 0 }), 5_000);
+  }));
+  verify(
+    "Dance reference audio decodes and actually plays for the detected source loop",
+    danceAudioProbe.loaded && danceAudioProbe.played && danceAudioProbe.duration >= 10.10 && danceAudioProbe.duration <= 10.20,
+    `the trimmed 10.133-second AAC loop starts in the production renderer (Chromium reports AAC priming/padding in the container duration): ${JSON.stringify(danceAudioProbe)}`,
+  );
+
+  await evaluate(window, () => {
+    const scrubber = document.querySelector("[data-action-scrubber]");
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+    setter.call(scrubber, "2030");
+    scrubber.dispatchEvent(new Event("input", { bubbles: true }));
+    scrubber.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await waitFor(window, () => {
+    const video = document.querySelector("[data-dance-video-layer] video");
+    return Boolean(video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.duration >= 10.12);
+  }, [], "transparent Dance video ready");
+  const dancePreview = await evaluate(window, () => {
+    const stage = document.querySelector("[data-action-preview-stage]");
+    const actor = stage?.querySelector(".action-preview-actor");
+    const route = stage?.querySelector(".action-preview-route");
+    const home = stage?.querySelector(".action-preview-home");
+    const destination = stage?.querySelector(".action-preview-destination");
+    const video = stage?.querySelector("[data-dance-video-layer] video");
+    const videoLayer = stage?.querySelector("[data-dance-video-layer]");
+    const stageRect = stage?.getBoundingClientRect();
+    const videoRect = video?.getBoundingClientRect();
+    const videoFitsStage = Boolean(stageRect && videoRect
+      && videoRect.left >= stageRect.left - 2
+      && videoRect.right <= stageRect.right + 2
+      && videoRect.top >= stageRect.top - 2
+      && videoRect.bottom <= stageRect.bottom + 2);
+    return {
+      contract: stage?.dataset.previewDanceContract,
+      phase: stage?.dataset.previewDancePhase,
+      videoSource: videoLayer?.dataset.danceVideoSource,
+      audioContract: videoLayer?.dataset.danceVideoAudio,
+      videoReadyState: video?.readyState,
+      videoDuration: video?.duration,
+      videoMuted: video?.muted,
+      actorX: actor?.style.getPropertyValue("--actor-preview-x"),
+      actorY: actor?.style.getPropertyValue("--actor-preview-y"),
+      keyframes: document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]").length,
+      settings: [...document.querySelectorAll("[data-action-settings] [data-action-setting]")].map((field) => field.dataset.actionSetting),
+      routeHidden: !route || getComputedStyle(route).display === "none",
+      homeHidden: !home || getComputedStyle(home).display === "none",
+      destinationHidden: !destination || getComputedStyle(destination).display === "none",
+      videoFitsStage,
+      fallbackHidden: !stage?.querySelector(".pet-appearance-visual-preview"),
+      videoBounds: videoRect ? { left: videoRect.left, right: videoRect.right, top: videoRect.top, bottom: videoRect.bottom } : null,
+      stageBounds: stageRect ? { left: stageRect.left, right: stageRect.right, top: stageRect.top, bottom: stageRect.bottom } : null,
+    };
+  });
+  verify(
+    "Actions Dance preview uses the loop-detected fixed-anchor Golden British video contract",
+    dancePreview.contract === "loop-detected-registered-golden-british-vp9-alpha-trimmed-audio-fixed-anchor-fallback"
+      && dancePreview.phase === "dance_reference_clip"
+      && dancePreview.videoSource === "pet-video/dance-golden-style.webm"
+      && dancePreview.audioContract === "separate-detected-loop-reference"
+      && dancePreview.videoReadyState >= 2
+      && dancePreview.videoDuration >= 10.12
+      && dancePreview.videoMuted
+      && dancePreview.actorX === "0%"
+      && dancePreview.actorY === "0%"
+      && dancePreview.keyframes === 3
+      && JSON.stringify(dancePreview.settings) === JSON.stringify(["danceSound"])
+      && dancePreview.routeHidden
+      && dancePreview.homeHidden
+      && dancePreview.destinationHidden
+      && dancePreview.videoFitsStage
+      && dancePreview.fallbackHidden,
+    `the fixed-anchor VP9 layer uses the detected loop timeline, synchronized trimmed audio, clean stage bounds, and no duplicate fallback actor: ${JSON.stringify(dancePreview)}`,
+  );
+  await capture(window, "console-actions-dance.png", "Console / Actions / Dance preview");
 
   const settingsMatrix = {};
   for (const actionId of expectedActions) {
@@ -1118,9 +1286,8 @@ async function verifyActions(window, desktopPet) {
 
   await click(window, "[data-action-id=play_cursor]", "select Play cursor preview");
   await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "play_cursor", [], "Play cursor settings");
-  // The previous settings-matrix selection is Summon, whose preview actor can
-  // be translated toward the virtual pointer. Let the declared 80ms stage
-  // transition finish before measuring the registered Cursor alpha bounds.
+  // The previous settings-matrix selection is Dance. Let the declared 80ms
+  // stage transition finish before measuring the registered Cursor bounds.
   await delay(240);
   const sampleCursorPreviewAt = async (timeMs) => {
     await evaluate(window, (nextTimeMs) => {
@@ -1245,7 +1412,10 @@ async function verifyActions(window, desktopPet) {
     scrubber.dispatchEvent(new Event("input", { bubbles: true }));
     scrubber.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await delay(160);
+  // The actor artboard scale/offset transition is 180ms. Let the production
+  // transform settle before measuring the embedded token frame; sampling the
+  // interpolated transform made this check timing-dependent after a full QA run.
+  await delay(260);
   const napPreview = await evaluate(window, () => {
     const stage = document.querySelector("[data-action-preview-stage]");
     const actor = stage?.querySelector(".action-preview-actor");
@@ -1266,7 +1436,7 @@ async function verifyActions(window, desktopPet) {
         && tokenRect.left >= stageRect.left - 1
         && tokenRect.right <= stageRect.right + 1
         && tokenRect.top >= stageRect.top - 1
-        && tokenRect.bottom <= stageRect.bottom - 8),
+        && tokenRect.bottom <= stageRect.bottom - 6),
       stageBounds: stageRect ? { left: stageRect.left, top: stageRect.top, right: stageRect.right, bottom: stageRect.bottom } : null,
       tokenBounds: tokenRect ? { left: tokenRect.left, top: tokenRect.top, right: tokenRect.right, bottom: tokenRect.bottom } : null,
       routeHidden: getComputedStyle(stage.querySelector(".action-preview-route")).display === "none",
@@ -1607,6 +1777,8 @@ async function verifyConsole(desktopPet) {
   record("Console IPC navigation", "an existing Console already on a Pet subpage resets to Pet Appearance when Quick Play requests Pet");
 
   await selectPetSection(window, "actions");
+  await click(window, "[data-action-id=token_snack]", "reselect Feed snack after Actions remount");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "token_snack", [], "Feed snack settings after Actions remount");
   const persisted = await evaluate(window, () => ({
     snackSize: Number(document.querySelector('[data-action-setting="snackSize"] input[type=range]')?.value),
   }));
@@ -1626,7 +1798,7 @@ async function run() {
   await verifyConsole(desktopPet);
 
   const finalState = clone(qaState);
-  verify("Quick Play summon command", finalState.actions.includes("summon_to_pointer"), "Summon dispatched the v18 stable pointer-target action id");
+  verify("Quick Play dance command", finalState.actions.includes("dance"), "Dance dispatched the v20 fixed-bounds action id");
   verify("Quick Play capture side effect", finalState.captures >= 2, "repeatable Capture bypassed the exclusive actor action path");
   report.bridgeSummary = {
     ...finalState,

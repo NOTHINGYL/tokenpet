@@ -15,6 +15,7 @@ export const cueForPetAction: Partial<Record<PetActionId, PetSoundCueId>> = {
   nap_here: "rest",
   hot_loop: "hot",
   overdrive_loop: "hot",
+  dance: "hot",
 };
 
 const cueProfile: Record<PetSoundCueId, { start: number; end: number; duration: number; essential?: boolean }> = {
@@ -29,6 +30,10 @@ const cueProfile: Record<PetSoundCueId, { start: number; end: number; duration: 
 
 type WakeMeowVoice = "soft" | "cozy" | "playful";
 const wakeMeowCache: Partial<Record<WakeMeowVoice, HTMLAudioElement>> = {};
+let danceReferenceCache: HTMLAudioElement | null = null;
+let danceReferencePlayGeneration = 0;
+const DANCE_REFERENCE_DURATION_SECONDS = 10.133;
+const DANCE_REFERENCE_READY_TIMEOUT_MS = 4_000;
 
 function wakeMeow(voice: WakeMeowVoice) {
   if (typeof Audio === "undefined") return null;
@@ -43,6 +48,44 @@ function wakeMeow(voice: WakeMeowVoice) {
 
 export function preloadWakeUpMeows() {
   for (const voice of ["soft", "cozy", "playful"] as const) wakeMeow(voice);
+}
+
+function danceReferenceAudio() {
+  if (typeof Audio === "undefined") return null;
+  if (!danceReferenceCache) {
+    const audio = new Audio("./pet-audio/dance-video-reference.m4a");
+    audio.preload = "auto";
+    audio.load();
+    danceReferenceCache = audio;
+  }
+  return danceReferenceCache;
+}
+
+export function preloadDanceReferenceSound() {
+  danceReferenceAudio();
+}
+
+function waitForDanceReferenceReady(audio: HTMLAudioElement) {
+  if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) return Promise.resolve(true);
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      audio.removeEventListener("loadedmetadata", handleReady);
+      audio.removeEventListener("canplay", handleReady);
+      audio.removeEventListener("error", handleError);
+      resolve(ready);
+    };
+    const handleReady = () => finish(true);
+    const handleError = () => finish(false);
+    const timeout = window.setTimeout(() => finish(false), DANCE_REFERENCE_READY_TIMEOUT_MS);
+    audio.addEventListener("loadedmetadata", handleReady, { once: true });
+    audio.addEventListener("canplay", handleReady, { once: true });
+    audio.addEventListener("error", handleError, { once: true });
+    audio.load();
+  });
 }
 
 async function playWakeUpMeow(story: PetStorySettings) {
@@ -73,6 +116,70 @@ function isQuietHours(story: PetStorySettings, now = new Date()) {
   if (start === null || end === null || start === end) return false;
   const current = now.getHours() * 60 + now.getMinutes();
   return start < end ? current >= start && current < end : current >= start || current < end;
+}
+
+function canPlayDanceReference(story: PetStorySettings, preview = false, userInitiated = false) {
+  // Dance owns an explicit Reference sound setting. It is intentionally not
+  // gated by the generic synthesized-cue master or the unrelated `hot` cue;
+  // otherwise the visible ON setting is silent for every default install.
+  if (story.volume <= 0) return false;
+  if (preview) return true;
+  if (story.quietMode) return false;
+  // Quick Play Dance is an explicit request made in a separate renderer. A
+  // scheduled quiet-hours/focus policy must not silently discard that click;
+  // the visible Mute pet sounds toggle, Dance Reference sound setting and
+  // master volume remain authoritative. Ambient/non-interactive callers still
+  // honor the scheduled safety policy.
+  if (userInitiated) return true;
+  return !(story.safety.muteDuringFocus && story.behaviorMode === "focusFriendly")
+    && !isQuietHours(story);
+}
+
+export async function playDanceReferenceSound(
+  story: PetStorySettings,
+  options: { offsetSeconds?: number; preview?: boolean; userInitiated?: boolean } = {},
+) {
+  if (!canPlayDanceReference(story, options.preview, options.userInitiated)) return false;
+  const audio = danceReferenceAudio();
+  if (!audio) return false;
+  const playGeneration = ++danceReferencePlayGeneration;
+  try {
+    if (!await waitForDanceReferenceReady(audio) || playGeneration !== danceReferencePlayGeneration) {
+      return false;
+    }
+    audio.pause();
+    audio.currentTime = Math.min(
+      Math.max(0, options.offsetSeconds ?? 0),
+      Math.max(0, DANCE_REFERENCE_DURATION_SECONDS - .02),
+    );
+    // Dance owns a real reference track, not the synthesized `hot` cue. Its
+    // visible Reference sound switch and the global volume are the only volume
+    // controls; a muted/disabled Hot cue must never make Dance silently fail.
+    audio.volume = Math.min(1, Math.max(0, story.volume / 100));
+    await audio.play();
+    return playGeneration === danceReferencePlayGeneration && !audio.paused;
+  } catch {
+    return false;
+  }
+}
+
+export function stopDanceReferenceSound() {
+  danceReferencePlayGeneration += 1;
+  if (!danceReferenceCache) return;
+  danceReferenceCache.pause();
+  danceReferenceCache.currentTime = 0;
+}
+
+export function syncDanceReferenceSound(offsetSeconds: number, toleranceSeconds = .055) {
+  if (!danceReferenceCache || danceReferenceCache.paused) return false;
+  const target = Math.min(
+    Math.max(0, offsetSeconds),
+    Math.max(0, DANCE_REFERENCE_DURATION_SECONDS - .02),
+  );
+  if (Math.abs(danceReferenceCache.currentTime - target) > toleranceSeconds) {
+    danceReferenceCache.currentTime = target;
+  }
+  return true;
 }
 
 export function canPlayPetSoundCue(

@@ -14,3 +14,10 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# Reproducible local audit cache extracted from the user-provided Dance video.
+# Keep the compact timing metadata, source/runtime comparison boards, and exact
+# AAC reference track in Git; regenerate these large intermediates when needed.
+/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/frames/
+/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/frame-sheets/
+/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/reference-audio.wav

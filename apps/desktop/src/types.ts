@@ -223,6 +223,7 @@ export type FeedSnackDirectionalActionId = `feed_snack_${FeedSnackDirectionalPha
 export type PetWalkDirectionalPhaseId = "walk" | "look";
 export type PetWalkDirectionalActionId = `walk_round_trip_${PetWalkDirectionalPhaseId}_${TossYarnActorDirectionId}`;
 export type WakeUpPhaseActionId = "wake_up_blink" | "wake_up_roll" | "wake_up_stretch" | "wake_up_gather";
+export type DancePhaseActionId = "dance_rise" | "dance_reference_clip" | "dance_eye_snap" | "dance_tongue_pop" | "dance_tongue_hold" | "dance_tongue_sway" | "dance_tongue_retract" | "dance_smug_hold" | "dance_smug_sway_left" | "dance_smug_sway_right" | "dance_eyes_reset" | "dance_restore";
 
 export type PetActionId =
   | "idle_breathe" | "blink" | "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop"
@@ -238,7 +239,7 @@ export type PetActionId =
   | "dangle_return_walk_front_left" | "dangle_return_walk_front_right" | "dangle_return_walk_back_left" | "dangle_return_walk_back_right"
   | "feed_snack_stretch" | "feed_snack_walk_slow" | "feed_snack_arrive" | "feed_snack_lick" | "feed_snack_eat" | "feed_snack_return_run" | "feed_snack_settle" | FeedSnackDirectionalActionId
   | "run_across" | "walk_round_trip_look" | PetWalkDirectionalActionId | "milestone_celebrate" | "level_up" | "daily_digest" | "toss_yarn" | TossYarnDirectionalActionId | "nap_here" | "wake_up" | WakeUpPhaseActionId
-  | "settle_down" | "focus_start" | "cool_down" | "walk_round_trip" | "summon_to_screen" | "summon_to_pointer" | "capture_moment";
+  | "dance" | DancePhaseActionId | "settle_down" | "focus_start" | "cool_down" | "walk_round_trip" | "summon_to_screen" | "capture_moment";
 export type PetLifeStage = "egg" | "newKitten" | "deskBuddy" | "flowCompanion" | "guardianCompanion";
 export type PetBehaviorMode = "gentle" | "balanced" | "playful" | "focusFriendly";
 export type PetMemoryKind = "firstSource" | "milestone" | "stage" | "dailyDigest";
@@ -306,9 +307,9 @@ export type QuickPlayActionId =
   | "toss_yarn"
   | "nap_here"
   | "wake_up"
-  | "summon_to_pointer"
+  | "dance"
   | "capture_moment";
-export type QuickPlayPhase = "idle" | "awaiting-placement" | "rolling" | "stand" | "outbound" | "arrive" | "lick" | "bite" | "chew" | "swallow" | "eat" | "pause" | "tracking" | "alert" | "stalk" | "crouch" | "pounce" | "play" | "pursuit" | "release" | "interact" | "pickup" | "carry" | "drop" | "return" | "settle" | "complete" | "failed";
+export type QuickPlayPhase = "idle" | "awaiting-placement" | "rolling" | "stand" | "outbound" | "arrive" | "lick" | "bite" | "chew" | "swallow" | "eat" | "pause" | "tracking" | "alert" | "stalk" | "crouch" | "pounce" | "play" | "pursuit" | "release" | "interact" | "pickup" | "carry" | "drop" | "return" | "settle" | "dance_rise" | "dance_reference_clip" | "dance_restore" | "complete" | "failed";
 export type QuickPlayWalkMotion = {
   startedAt: number;
   durationMs: number;

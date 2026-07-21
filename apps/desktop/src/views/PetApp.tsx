@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
 import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
+import { DanceVideoLayer } from "../features/pet-story/DanceVideoLayer";
 import {
   completePetDirectorAction,
   createPetDirectorState,
@@ -14,7 +15,14 @@ import {
   thresholdCrossingEvent,
   type PetDirectorState,
 } from "../features/pet-story/PetDirector";
-import { playPetActionSound, preloadWakeUpMeows } from "../features/pet-story/soundCueEngine";
+import {
+  playDanceReferenceSound,
+  playPetActionSound,
+  preloadDanceReferenceSound,
+  preloadWakeUpMeows,
+  stopDanceReferenceSound,
+  syncDanceReferenceSound,
+} from "../features/pet-story/soundCueEngine";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
 import type { CursorTrackingVisual, PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
@@ -122,6 +130,7 @@ export function PetApp() {
   const mood = moodFromUsage(usage, story.moodThresholds);
   const directorRef = useRef(createPetDirectorState(mood));
   const [directorAction, setDirectorAction] = useState<PetActionId>(() => moodAction(mood));
+  const [danceVideoReady, setDanceVideoReady] = useState(false);
   const completionTimerRef = useRef<number | null>(null);
   const clickTimerRef = useRef<number | null>(null);
   const pointerGestureRef = useRef<PointerGesture | null>(null);
@@ -141,6 +150,7 @@ export function PetApp() {
 
   useEffect(() => {
     preloadWakeUpMeows();
+    preloadDanceReferenceSound();
   }, []);
 
   const clearCompletionTimer = useCallback(() => {
@@ -378,6 +388,31 @@ export function PetApp() {
   }, [quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.phaseStartedAt, story]);
 
   useEffect(() => {
+    if (
+      quickPlaySession.activeAction !== "dance"
+      || quickPlaySession.phase !== "dance_reference_clip"
+      || story.actionSettings.byAction.dance?.danceSound === false
+    ) {
+      stopDanceReferenceSound();
+      return;
+    }
+    const offsetSeconds = quickPlaySession.phaseStartedAt
+      ? Math.max(0, (Date.now() - quickPlaySession.phaseStartedAt) / 1_000)
+      : 0;
+    void playDanceReferenceSound(story, { offsetSeconds, userInitiated: true });
+    const syncTimer = window.setInterval(() => {
+      const sourceOffset = quickPlaySession.phaseStartedAt
+        ? Math.max(0, (Date.now() - quickPlaySession.phaseStartedAt) / 1_000)
+        : 0;
+      syncDanceReferenceSound(sourceOffset);
+    }, 100);
+    return () => {
+      window.clearInterval(syncTimer);
+      stopDanceReferenceSound();
+    };
+  }, [quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.phaseStartedAt, story]);
+
+  useEffect(() => {
     const unsubscribe = window.tokenpet?.onCursorPosition?.((position) => {
       const quickPlayTracking = quickPlaySession.activeAction === "play_cursor" && quickPlaySession.phase === "tracking";
       if ((!story.followCursor && !quickPlayTracking) || (!quickPlayTracking && directorRef.current.activePriority > 200)) {
@@ -538,14 +573,16 @@ export function PetApp() {
       if (phase === "interact") return "wake_up_stretch";
       return "wake_up_gather";
     }
-    if (action === "summon_to_pointer" && phase === "outbound") return "summon_to_pointer";
+    if (action === "dance") {
+      if (phase === "dance_rise") return "dance_rise";
+      if (phase === "dance_reference_clip") return "dance_reference_clip";
+      return "dance_restore";
+    }
     if (phase === "return" || phase === "outbound") return "run_across";
     if (action === "play_cursor") return "play_cursor";
     if (action === "nap_here") {
       return phase === "settle" ? "nap_here" : "sleep_loop";
     }
-    if (action === "summon_to_pointer" && phase === "stand") return "summon_to_screen";
-    if (action === "summon_to_pointer") return phase === "settle" ? "focus_loop" : "run_across";
     return action;
   }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.phase, story.actionSettings.byAction.walk_round_trip]);
 
@@ -587,6 +624,11 @@ export function PetApp() {
   ) || quickPlaySession.activeAction === "token_snack" && (
     quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete"
   );
+  const danceReferenceActive = quickPlaySession.activeAction === "dance"
+    && quickPlaySession.phase === "dance_reference_clip";
+  useEffect(() => {
+    if (!danceReferenceActive) setDanceVideoReady(false);
+  }, [danceReferenceActive]);
   const playCursorTracking = quickPlaySession.activeAction !== "play_cursor"
     ? undefined
     : quickPlaySession.phase === "settle" || quickPlaySession.phase === "complete"
@@ -612,7 +654,7 @@ export function PetApp() {
       onPointerCancel={endDrag}
     >
       <div className="pet-drag-region" aria-label="Drag TokenPet">
-        <PetAppearanceVisual
+        {!danceReferenceActive || !danceVideoReady ? <PetAppearanceVisual
           appearance={actorAppearance}
           usage={usage}
           moodId={mood}
@@ -627,15 +669,28 @@ export function PetApp() {
                 ? quickPlaySession.phaseStartedAt ?? undefined
               : quickPlaySession.activeAction === "toss_yarn" && ["pickup", "drop", "settle"].includes(quickPlaySession.phase)
                 ? quickPlaySession.phaseStartedAt ?? undefined
-              : undefined}
-          animationStartedAtMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.startedAt : undefined}
-          animationCycleDurationMs={authoredLocomotionActive ? quickPlaySession.walkMotion?.cycleDurationMs : undefined}
+              : quickPlaySession.activeAction === "dance"
+                ? quickPlaySession.phaseStartedAt ?? undefined
+                : undefined}
+          animationStartedAtMs={authoredLocomotionActive
+            ? quickPlaySession.walkMotion?.startedAt
+            : danceReferenceActive ? quickPlaySession.phaseStartedAt ?? undefined : undefined}
+          animationCycleDurationMs={authoredLocomotionActive
+            ? quickPlaySession.walkMotion?.cycleDurationMs
+            : danceReferenceActive ? 10_133 : undefined}
           previewTimeMs={authoredLocomotionFrozen ? 0 : undefined}
           reduceMotion={story.reduceMotion || (story.safety.batteryLowPause && batteryLow)}
           pointerOffset={story.followCursor || quickPlaySession.activeAction === "play_cursor" ? pointerOffset : undefined}
           cursorTracking={playCursorTracking}
           surface="desktop"
           onBubbleClick={openQuickPlay}
+        /> : null}
+        <DanceVideoLayer
+          active={danceReferenceActive}
+          playing={danceReferenceActive}
+          startedAtMs={quickPlaySession.phaseStartedAt ?? undefined}
+          surface="desktop"
+          onReadyChange={setDanceVideoReady}
         />
       </div>
       <button className="pet-close" type="button" aria-label="Hide TokenPet" onPointerDown={close} onClick={close}>

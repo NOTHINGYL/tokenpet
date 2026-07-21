@@ -25,6 +25,12 @@ const tossYarnClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-brit
 const tossYarnAssetReportPath = resolve(tossYarnClipRoot, "asset-report.json");
 const wakeUpClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/wake-up-v2");
 const wakeUpAssetReportPath = resolve(wakeUpClipRoot, "asset-report.json");
+const danceClipRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dance-video-v2");
+const danceAssetReportPath = resolve(danceClipRoot, "asset-report.json");
+const danceReferenceRoot = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2");
+const danceReferenceAudioPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/reference-audio.m4a");
+const danceLoopAudioPath = resolve(repoRoot, "assets/source/pet-actors/golden-british/story-actions/dance-video-v3/dance-loop-reference.m4a");
+const danceProductionAudioPath = resolve(repoRoot, "apps/desktop/public/pet-audio/dance-video-reference.m4a");
 
 function sha256(buffer) {
   return createHash("sha256").update(buffer).digest("hex");
@@ -423,6 +429,90 @@ test("Wake Up ships 24 registered whole-cat frames, review media, and local meow
   for (const voice of ["soft", "cozy", "playful"]) {
     assert.ok((await stat(resolve(repoRoot, `apps/desktop/public/pet-audio/wake-meow-${voice}.wav`))).size > 1_000);
   }
+});
+
+test("Dance ships the fixed-anchor 10.133-second detected source-loop choreography", async () => {
+  const manifest = JSON.parse(await readFile(resolve(bundleDir, "actor.json"), "utf8"));
+  const expectedCounts = {
+    dance_rise: 4,
+    dance_eye_snap: 8,
+    dance_tongue_pop: 8,
+    dance_tongue_hold: 16,
+    dance_tongue_sway: 16,
+    dance_tongue_retract: 8,
+    dance_smug_hold: 8,
+    dance_smug_sway_left: 4,
+    dance_smug_sway_right: 4,
+    dance_eyes_reset: 8,
+    dance_restore: 4,
+  };
+  for (const [id, count] of Object.entries(expectedCounts)) {
+    const animation = manifest.animations[`action.${id}`];
+    assert.equal(animation.frames.length, count, `${id} needs its complete registered pose group`);
+    assert.equal(animation.frames.some((frame) => frame.bodyTransform), false, `${id} must never use runtime anatomy transforms`);
+  }
+  const cycle = manifest.animations["action.dance"];
+  const referenceClip = manifest.animations["action.dance_reference_clip"];
+  assert.equal(cycle.frames.length, 595);
+  assert.equal(referenceClip.frames.length, 595);
+  assert.equal(cycle.frames.reduce((total, frame) => total + frame.durationMs, 0), 10_133);
+  assert.equal(referenceClip.frames.reduce((total, frame) => total + frame.durationMs, 0), 10_133);
+  assert.equal(cycle.loop, false);
+  assert.equal(new Set(cycle.frames.map((frame) => frame.src)).size, 46);
+  assert.ok(cycle.frames.every((frame) => /dance_video_\d{2}\.png$/.test(frame.src)));
+  assert.equal(manifest.capabilities.find((entry) => entry.id === "dance")?.status, "ready");
+  assert.equal(manifest.capabilities.some((entry) => entry.id === "summon_to_pointer"), false);
+
+  const report = JSON.parse(await readFile(danceAssetReportPath, "utf8"));
+  assert.equal(report.schemaVersion, "tokenpet-dance-assets/v4");
+  assert.equal(report.sourcePresentationFrames, 595);
+  assert.equal(report.uniquePoseFrames, 48);
+  assert.equal(report.scheduledFrames, 595);
+  assert.equal(report.referenceDurationMs, 10_133);
+  assert.equal(report.referenceSegments.length, 19);
+  assert.equal(report.sourceSheets.length, 6);
+  assert.match(report.generationMode, /detected-minimal-loop/);
+  assert.deepEqual(report.audioGrooveOnsetsMs, [
+    1_320, 1_730, 2_250, 5_400, 5_950, 8_480, 9_130,
+  ]);
+  const frameAt = (milliseconds) => {
+    let cursor = 0;
+    for (const frame of referenceClip.frames) {
+      if (milliseconds < cursor + frame.durationMs) return frame;
+      cursor += frame.durationMs;
+    }
+    return referenceClip.frames.at(-1);
+  };
+  assert.ok(
+    report.audioGrooveOnsetsMs.every((milliseconds) => /dance_video_(24|32)\.png$/u.test(frameAt(milliseconds).src)),
+    "every extracted soundtrack onset must start on a baked left/right whole-body accent pose",
+  );
+  assert.equal(report.registration.closedMouthMechanics, "15-to-20-percent-head-neck-forward-projection-with-stable-lower-body");
+  assert.equal(report.registration.tongueOutMechanics, "12-to-15-percent-pelvis-haunch-displacement-with-planted-paws-on-source-audio-onsets");
+  assert.equal(report.registration.sourceFrameScheduling, "one-manifest-entry-per-true-presentation-frame-in-detected-minimal-loop");
+  assert.deepEqual(report.registration.phaseScaleMultipliers, { dance_tongue_hold: 1.13, dance_smug_hold: 1.04 });
+  assert.equal(report.registration.runtimeBodyTransform, "forbidden");
+  assert.equal(report.registration.runtimeWindowMovement, "forbidden");
+  assert.equal(report.outputs.length, 56);
+  assert.ok(report.outputs.every((entry) => entry.cornerAlpha.every((alpha) => alpha === 0)));
+  assert.ok(report.outputs.every((entry) => entry.alphaBounds[3] === 818));
+  for (const artifact of ["dance-contact-sheet.png", "dance-reference-cycle-preview.gif"]) {
+    assert.ok((await stat(resolve(danceClipRoot, artifact))).size > 0, `${artifact} must remain available for Dance visual review`);
+  }
+  for (const artifact of [
+    "dance-source-runtime-head-push-comparison.png",
+    "dance-source-runtime-body-groove-comparison.png",
+  ]) {
+    assert.ok((await stat(resolve(danceReferenceRoot, artifact))).size > 0, `${artifact} must prove the new mechanics against the supplied video`);
+  }
+  assert.ok((await stat(resolve(repoRoot, "apps/desktop/public/quick-play-v18/dance.png"))).size > 0);
+  assert.ok((await stat(danceProductionAudioPath)).size > 100_000);
+  assert.equal(
+    sha256(await readFile(danceProductionAudioPath)),
+    sha256(await readFile(danceLoopAudioPath)),
+    "the production Dance audio must remain byte-identical to the detected-loop authoring track",
+  );
+  assert.notEqual(sha256(await readFile(danceProductionAudioPath)), sha256(await readFile(danceReferenceAudioPath)));
 });
 
 test("production bundle contains approved 1024px raster frames and no SVG cat", async () => {

@@ -1,6 +1,6 @@
 {
   "name": "tokenpet",
-  "version": "0.8.4.8",
+  "version": "0.8.4.9",
   "private": true,
   "description": "A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.",
   "license": "MIT",
@@ -14,6 +14,8 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run build:pet-assets && npm run build:main && npm run build:renderer",
     "build:pet-schema": "npm --prefix packages/pet-asset-schema run build",
+    "build:dance-video": "electron tools/pet-asset-studio/scripts/render-dance-video.cjs",
+    "qa:dance-video": "electron tools/pet-asset-studio/scripts/verify-dance-video.cjs && node tools/pet-asset-studio/scripts/verify-dance-registration.cjs",
     "build:pet-assets": "npm run build:pet-schema && node tools/pet-asset-studio/src/build-golden-british.mjs",
     "build:main": "node -e \"require('node:fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p apps/desktop/electron/tsconfig.json && cp apps/desktop/electron/preload.cjs dist-electron/preload.cjs",
     "build:renderer": "vite build --config apps/desktop/vite.config.ts",
@@ -23,7 +25,7 @@
     "test:pet-story:runtime": "npm run build:main && node scripts/verify-pet-story-runtime.mjs",
     "test:pet-story": "npm --prefix packages/pet-asset-schema test && npm --prefix tools/pet-asset-studio test && npm run verify:pet-story && npm run test:pet-story:runtime",
     "demo:pet-story": "npm run build && electron scripts/capture-pet-story-demo.cjs && npm run verify:pet-story:demo",
-    "qa:pet-story": "npm run check && npm run test:pet-story && electron scripts/verify-main-process.cjs && electron scripts/capture-screenshots.cjs && electron scripts/capture-pet-story-demo.cjs && npm run verify:pet-story:demo",
+    "qa:pet-story": "npm run check && npm run test:pet-story && npm run qa:dance-video && electron scripts/verify-main-process.cjs && electron scripts/capture-screenshots.cjs && electron scripts/capture-pet-story-demo.cjs && npm run verify:pet-story:demo",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p apps/desktop/electron/tsconfig.json",
     "check": "npm run typecheck && npm run build",
     "launch": "node scripts/launch.mjs",
@@ -40,6 +42,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.7.0",
     "electron": "^39.2.7",
+    "ffmpeg-static": "^5.3.0",
     "typescript": "^5.9.3",
     "vite": "^6.4.3"
   },

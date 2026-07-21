@@ -90,7 +90,7 @@
     { "id": "nap_here", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
     { "id": "wake_up", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
     { "id": "summon_to_screen", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
-    { "id": "summon_to_pointer", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
+    { "id": "dance", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" },
     { "id": "capture_moment", "status": "fallback", "fallbackId": "idle_breathe", "uiBehavior": "show" }
   ],
   "fallbackStaticImage": "../../assets/pets/appearance/cat-types/golden-british.png",

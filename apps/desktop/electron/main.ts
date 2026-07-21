@@ -46,23 +46,30 @@ import {
 } from "./quick-play-choreography.js";
 import type { CursorTrackingState, DistanceLockedWalkPlan, DangleMovementState, WalkRootMotionProfile } from "./quick-play-choreography.js";
 import {
+  executeDance,
   executeDangleToy,
   executeFeedSnack,
   executeNapHere,
   executePet,
   executePlayCursor,
   PLAY_CURSOR_DURATION_MS,
-  executeSummon,
   executeTossYarn,
   executeWakeUp,
 } from "./quick-play/executors/index.js";
 import type { FeedSnackLocomotionId as FeedSnackSemanticLocomotionId, FeedSnackPropStage } from "./quick-play/executors/feed-snack.js";
+import type { DancePhase } from "./quick-play/executors/dance.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const isDev = process.env.TOKENPET_DEV_SERVER_URL !== undefined;
 const devServerUrl = process.env.TOKENPET_DEV_SERVER_URL;
 const isMainProcessQa = process.env.TOKENPET_MAIN_PROCESS_QA === "1";
+
+// Dance starts in the persistent pet renderer after a click in the separate
+// Quick Play window. Chromium does not transfer user activation between those
+// renderers, so permit the explicitly user-requested local reference track.
+// Product mute/quiet/focus policy is still enforced by soundCueEngine.
+app.commandLine.appendSwitch("autoplay-policy", "no-user-gesture-required");
 
 let petWindow: BrowserWindow | null = null;
 let popoverWindow: BrowserWindow | null = null;
@@ -882,7 +889,6 @@ const quickPlayPositionActions = new Set<QuickPlayActionId>([
   "token_snack",
   "drag_dangle",
   "toss_yarn",
-  "summon_to_pointer",
 ]);
 
 function currentQuickPlaySession(): QuickPlaySession {
@@ -1630,30 +1636,29 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     return;
   }
 
-  if (action === "summon_to_pointer") {
-    const point = quickPlaySession.targetPoint ?? currentCursorScreenPoint();
-    const workArea = screen.getDisplayNearestPoint(point).workArea;
-    const config = actionConfig(action);
-    const baseTarget = summonBoundsForCursor(runtime.startBounds, point, workArea);
-    const offsetX = config.arrivalOffset === "beside" ? (baseTarget.x + baseTarget.width / 2 < point.x ? -38 : 38) : 0;
-    const offsetY = config.arrivalOffset === "below" ? 44 : config.arrivalOffset === "near" ? -16 : 0;
-    const target = clampBoundsToWorkArea({ ...baseTarget, x: baseTarget.x + offsetX, y: baseTarget.y + offsetY }, workArea);
-    runtime.targetBounds = target;
-    await executeSummon({
-      phase: (phase) => updateQuickPlayPhase(phase, point),
+  if (action === "dance") {
+    const config = actionConfig("dance");
+    const timeline = createQuickPlayActionTimeline("dance", config);
+    await executeDance({
+      phase: updateQuickPlayPhase,
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      walkToTarget: async () => {
-        const moved = await animateQuickPlayBounds(runtime, target, Math.round(3_250 * 92 / config.walkPace), false, config.routeCurve);
-        if (!moved) throw new Error("Summon walk was interrupted");
-        return true;
+      assertFixedBounds: () => {
+        if (!isUsableWindow(petWindow)) throw new Error("Dance pet window is unavailable");
+        if (JSON.stringify(petWindow.getBounds()) !== JSON.stringify(runtime.startBounds)) {
+          throw new Error("Dance must preserve byte-exact pet-window bounds");
+        }
       },
-      persistTarget: () => {
-        if (!isUsableWindow(petWindow)) return;
-        petWindow.setBounds(target, false);
-        writeStoredPetPosition(target);
+      // The renderer owns the optional preloaded cue so it can obey the same
+      // Mute pet sounds and sound-safety rules as every other actor action.
+      sound: () => undefined,
+      complete: async () => {
+        if (!isUsableWindow(petWindow)) throw new Error("Dance pet window is unavailable at restore");
+        petWindow.setBounds(runtime.startBounds, false);
+        positionAccessoryWindows();
+        await completeQuickPlayRuntime(runtime);
       },
-      complete: () => completeQuickPlayRuntime(runtime),
-    }, config.settleDelay);
+    }, timeline.phases.map((phase) => ({ id: phase.id as DancePhase, durationMs: phase.durationMs })), config.danceSound);
+    return;
   }
 }
 
@@ -1675,7 +1680,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
   };
   quickPlayRuntime = runtime;
   if (action === "play_cursor") quickPlayCursorTrackingState = createCursorTrackingState();
-  const targetPoint = action === "summon_to_pointer" ? currentCursorScreenPoint() : null;
+  const targetPoint = null;
   quickPlaySession = {
     activeAction: action,
     startedAt: Date.now(),
@@ -2213,11 +2218,11 @@ const quickPlayActionIds = new Set<QuickPlayActionId>([
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_pointer",
+  "dance",
   "capture_moment",
 ]);
 const consolePetActionIds = new Set<PetActionId>([
-  "click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "summon_to_screen", "capture_moment",
+  "click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance", "summon_to_screen", "capture_moment",
 ]);
 
 ipcMain.handle("quick-play:get-session", () => currentQuickPlaySession());

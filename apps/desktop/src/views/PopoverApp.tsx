@@ -18,8 +18,8 @@ const actions: QuickPlayAction[] = [
   { label: "Dangle toy", id: "drag_dangle", closesPanel: true, movesPet: true },
   { label: "Toss yarn", id: "toss_yarn", closesPanel: true, movesPet: true },
   { label: "Nap here", id: "nap_here", closesPanel: false },
-  { label: "Wake up", id: "wake_up", closesPanel: true },
-  { label: "Summon", id: "summon_to_pointer", closesPanel: true, movesPet: true },
+  { label: "Wake up", id: "wake_up", closesPanel: false },
+  { label: "Dance", id: "dance", closesPanel: true },
   { label: "Capture", id: "capture_moment", closesPanel: false },
 ];
 
@@ -95,7 +95,7 @@ export function PopoverApp() {
         <img className="quick-play-title-mark" src="./quick-play-v18/header-paw.png" alt="" aria-hidden="true" />
         <div className="quick-play-heading">
           <h1>Quick Play</h1>
-          <p>{session.activeAction ? `Playing: ${actions.find((action) => action.id === session.activeAction)?.label ?? session.activeAction}…` : "Play, rest, or move your companion."}</p>
+          <p>{session.activeAction ? `Playing: ${actions.find((action) => action.id === session.activeAction)?.label ?? session.activeAction}…` : "Play, rest, or dance with your companion."}</p>
         </div>
         <button className="quick-play-close" type="button" aria-label="Close Quick Play" onClick={() => window.tokenpet?.closePopover()}>×</button>
       </header>

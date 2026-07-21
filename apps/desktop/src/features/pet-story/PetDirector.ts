@@ -84,11 +84,11 @@ export const actionIds: PetActionId[] = [
   "toss_yarn",
   "nap_here",
   "wake_up",
+  "dance",
   "settle_down",
   "focus_start",
   "cool_down",
   "summon_to_screen",
-  "summon_to_pointer",
   "capture_moment",
 ];
 
@@ -109,7 +109,6 @@ const legacyAnimationIds: Partial<Record<PetActionId, string>> = {
   token_snack: "blink",
   play_cursor: "pounce-cursor",
   walk_round_trip: "run_across",
-  summon_to_pointer: "summon_to_screen",
   milestone_celebrate: "celebrate",
 };
 
@@ -428,7 +427,7 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
         : directorPriority.userReaction,
       durationMs: event.action === "idle_breathe" ? 2_400 : loopPreviewDuration || (event.action === "run_across" ? 2_400 : 1_600),
       ...(persistent ? { persistent } : {}),
-      ...(["summon_to_screen", "summon_to_pointer"].includes(event.action) ? { sideEffect: "summon" as const } : {}),
+      ...(event.action === "summon_to_screen" ? { sideEffect: "summon" as const } : {}),
       ...(event.action === "capture_moment" ? { sideEffect: "capture" as const } : {}),
       ...(event.action === "run_across" ? { sideEffect: "traverse" as const } : {}),
       ignoreCooldown: true,
@@ -464,7 +463,7 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
   const action = event.action;
   if (action === "nap_here") return { action, priority: directorPriority.userReaction, durationMs: 1_800, persistent: "rest" };
   if (action === "wake_up") return { action, priority: directorPriority.userReaction, durationMs: 5_000, persistent: "wake" };
-  if (action === "summon_to_pointer") return { action, priority: directorPriority.userReaction, durationMs: 4_500, sideEffect: "summon" };
+  if (action === "dance") return { action, priority: directorPriority.userReaction, durationMs: 5_200 };
   if (action === "walk_round_trip") return { action, priority: directorPriority.userReaction, durationMs: 5_500, sideEffect: "traverse" };
   if (action === "capture_moment") return { action, priority: directorPriority.userReaction, durationMs: 1_250, sideEffect: "capture" };
   if (action === "token_snack") return { action, priority: directorPriority.userReaction, durationMs: 7_000 };

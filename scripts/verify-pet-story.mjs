@@ -17,7 +17,7 @@ const quickPlayIds = [
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_pointer",
+  "dance",
   "capture_moment",
 ];
 
@@ -214,9 +214,10 @@ function verifyReachableUi() {
   }
   verify("Quick Play no analytics components", !/MetricCard|ProviderStatusRows|Source status|allTimeTokens|sevenDayTokens|todayTokens/u.test(popoverSource), "Quick Play source contains no token-stat or source-list implementation");
   verify("Quick Play no duplicate actor preview", !/PetAppearanceVisual|PetRenderer|GeneratedPetActorCanvas/u.test(popoverSource), "Quick Play contains no repeated cat preview");
-  verify("Quick Play v18 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v18 controller modules");
+  verify("Quick Play v20 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v20 controller modules");
   verify("Quick Play cursor helper copy", popoverSource.includes("Tracks your cursor for 10 seconds."), "the required 10-second helper is visible in source");
-  verify("Wake Up closes Quick Play immediately", popoverSource.includes('{ label: "Wake up", id: "wake_up", closesPanel: true }'), "Wake Up follows the accepted-action panel-close contract");
+  verify("Wake Up keeps Quick Play open", popoverSource.includes('{ label: "Wake up", id: "wake_up", closesPanel: false }'), "Wake Up follows the v20 keep-open contract");
+  verify("Dance closes Quick Play immediately", popoverSource.includes('{ label: "Dance", id: "dance", closesPanel: true }'), "Dance begins only after the compact panel closes");
   verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
   verify("Menu Bar Console entries target Overview", menuBarSource.match(/openConsole\("overview"\)/gu)?.length === 2, "both the settings icon and Open Console footer explicitly request Overview");
   verify("Quick Play Console entry targets Pet", popoverSource.includes('openConsole("pet")'), "the double-click panel explicitly requests the Pet console");
@@ -230,8 +231,8 @@ function verifyReachableUi() {
   verify("Toss Yarn restores the ordinary pointer on the first click", yarnImmediateReleaseIndex >= 0 && yarnImmediateReleaseIndex < placementDoubleClickIndex && quickPlayOverlaySource.includes("releasedRef.current = true") && electronMainSource.includes("if (runtime.overlayTimer) clearInterval(runtime.overlayTimer)"), "Toss Yarn bypasses the snack double-click grace period and freezes its throw origin before retrieval begins");
   verify("Toss Yarn rolls straight, rests at its real endpoint, and performs a single-prop pickup handoff", quickPlayOverlaySource.includes("restingAtTarget ? targetClientX : pointer.clientX") && quickPlayOverlaySource.includes("restingAtTarget ? targetClientY : pointer.clientY") && quickPlayOverlayStyles.includes("var(--roll-duration, 900ms) linear both") && tossYarnExecutorSource.indexOf("ports.closePropOverlay()") < tossYarnExecutorSource.indexOf('ports.phase("pickup")') && tossYarnAssetPrepSource.includes("extract_authored_grid_subjects"), "the same offline yarn travels on one straight vector, remains at the computed target, then transfers atomically from overlay prop to bleed-free baked pickup frames");
   verify("Dangle tracks the rendered fish instead of the rod handle", quickPlayOverlaySource.includes('type: "move"') && quickPlayOverlaySource.includes("onFishPosition") && electronMainSource.includes('input.type === "move"') && electronMainSource.includes("currentBounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null") && electronMainSource.includes("dangleTargetCrossedTravelDirection"), "the spring-rendered fish publishes its global point, facing compares it with live actor bounds, and stale travel is interrupted before it can become backward pursuit");
-  const v18Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "summon-to-pointer", "capture-moment", "control-pin", "control-lock", "control-mute"];
-  verify("Quick Play v18 normative artwork", v18Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local crops from the normative v18 design");
+  const v20Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "dance", "capture-moment", "control-pin", "control-lock", "control-mute"];
+  verify("Quick Play v20 normative artwork", v20Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local artwork from the normative v20 design");
 
   const appearanceVisual = read("apps/desktop/src/features/pet-appearance/PetAppearanceVisual.tsx");
   const compositor = read("apps/desktop/src/features/pet-appearance/PetCompositor.tsx");
@@ -242,6 +243,9 @@ function verifyReachableUi() {
   const desktop = read("apps/desktop/src/views/PetApp.tsx");
   const story = read("apps/desktop/src/features/pet-story/PetStoryPanel.tsx");
   const actions = read("apps/desktop/src/features/pet-story/ActionsWorkbench.tsx");
+  const danceVideoLayer = read("apps/desktop/src/features/pet-story/DanceVideoLayer.tsx");
+  const danceVideoRenderer = read("tools/pet-asset-studio/dance-video/style-scene.mjs");
+  const danceVideoManifest = JSON.parse(read("assets/source/pet-actors/golden-british/story-actions/dance-video-v3/manifest.json"));
   const soundEngine = read("apps/desktop/src/features/pet-story/soundCueEngine.ts");
   const consoleStyles = read("apps/desktop/src/styles/console.css");
   const petStyles = read("apps/desktop/src/styles/pet.css");
@@ -254,12 +258,12 @@ function verifyReachableUi() {
   const feedAssetPrep = read("tools/pet-asset-studio/scripts/prepare-feed-snack-assets.py");
   verify("Feed snack uses an isolated eight-direction authored executor", electronMainSource.includes("executeFeedSnack") && electronMainSource.includes("feedSnackLocomotionAction") && electronMainSource.includes("setFeedSnackActorDirection") && feedExecutor.includes('"feed_snack_walk_slow"') && feedExecutor.includes('"feed_snack_return_run"') && ["arrive", "lick", "bite", "chew", "swallow"].every((phase) => feedExecutor.includes(`ports.phase("${phase}")`)) && feedExecutor.includes('ports.setPropStage("consumed"') && desktop.includes("feedSnackDirectionalAction") && desktop.includes('replaceAll("-", "_")') && feedAssetPrep.includes("whole-frame") && feedAssetPrep.includes("runtimeTransform"), "Feed keeps semantic and single-prop consumption order isolated, chooses the true eight-sector bundle in Electron, and never mirrors or rotates anatomy at runtime");
   const executorIndex = read("apps/desktop/electron/quick-play/executors/index.ts");
-  const executorModules = ["pet", "feed-snack", "play-cursor", "dangle-toy", "toss-yarn", "nap-here", "wake-up", "summon"];
+  const executorModules = ["pet", "feed-snack", "play-cursor", "dangle-toy", "toss-yarn", "nap-here", "wake-up", "dance"];
   verify("Quick Play actions have isolated executor modules", executorModules.every((name) => fileIsNonEmpty(join(root, `apps/desktop/electron/quick-play/executors/${name}.ts`)) && executorIndex.includes(`./${name}.js`)) && electronMainSource.includes('from "./quick-play/executors/index.js"') && electronMainSource.includes("runAuthoredLocomotionLeg") && !electronMainSource.includes('action === "token_snack" || action === "toss_yarn"'), "each animated action owns one semantic module; Electron window ports and the authored locomotion transport are reused explicitly");
   verify("console shared renderer", story.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
-  verify("Actions v19 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v19 preview actions and excludes Capture from its selector");
-  verify("Actions v19 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes('previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs}') && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
+  verify("Actions v20 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v20 preview actions and excludes Capture from its selector");
+  verify("Actions v20 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes('previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs}') && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
   verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes('resolveAnimation(manifest, "walk_round_trip_walk_front_right")') && actions.includes("offline-eight-direction-vector-selected-distance-locked") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses the diagonal sandbox with the production front-right action/root curve, a contained actor artboard, and pointer cursors on Settings controls");
   verify("Actions Feed preview mirrors the production asset sequence", actions.includes("feedPhaseDurations") && actions.includes("data-preview-feed-phase") && actions.includes("offline-eight-direction-single-prop-consume-exact-return") && actions.includes("feed_snack_arrive_front_right") && actions.includes("feed_snack_bite_front_right") && actions.includes("feed_snack_chew_front_right") && actions.includes("feed_snack_swallow_front_right") && actions.includes("feed_snack_return_run_back_left") && actions.includes("data-preview-snack-stage") && actions.includes("snack-${String(settings.snackStyle") && consoleStyles.includes(".action-preview-token_snack .pet-generated-actor-shell"), "Console visibly previews a direction-matched diagonal Feed route with the production rasters, root motion and continuous selected snack handoff");
   const playCursorRoles = ["neutral", "notice", "eye_left", "eye_right", "eye_up", "eye_down", "head_left", "head_right", "head_up", "head_down", "ear_left", "ear_right", "ear_up", "ear_down", "blink", "settle"];
@@ -312,9 +316,61 @@ function verifyReachableUi() {
       && ["soft", "cozy", "playful"].every((voice) => fileIsNonEmpty(join(root, `apps/desktop/public/pet-audio/wake-meow-${voice}.wav`))),
     "desktop and Console Preview share 24 registered blink/roll/stretch/gather frames with three preloaded local meow voices and no runtime anatomy transform",
   );
-  verify("Actions v19 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
-  verify("Actions v19 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePace", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "arrivalOffset", "routeCurve", "settleDelay"].every((key) => actions.includes(`key: \"${key}\"`)) && !["attentionRadius", "settlePose", "breathingIntensity", "zEffect"].some((key) => actions.includes(`key: \"${key}\"`)), "all action-specific v19 setting keys are modeled without a generic Save form, misleading cursor radius, or fake Nap-only effects");
-  verify("Actions v19 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop/u.test(actions), "the Actions implementation contains none of the retired director-dashboard modules");
+  const dancePhaseCounts = { dance_rise: 4, dance_eye_snap: 8, dance_tongue_pop: 8, dance_tongue_hold: 16, dance_tongue_sway: 16, dance_tongue_retract: 8, dance_smug_hold: 8, dance_smug_sway_left: 4, dance_smug_sway_right: 4, dance_eyes_reset: 8, dance_restore: 4 };
+  const danceExecutor = read("apps/desktop/electron/quick-play/executors/dance.ts");
+  const danceAssetPrep = read("tools/pet-asset-studio/scripts/prepare-dance-assets.py");
+  verify(
+    "Dance uses the detected minimal-loop Golden British alpha-video timeline and synchronized audio",
+    Object.entries(dancePhaseCounts).every(([id, count]) => manifest.animations[`action.${id}`]?.frames.length === count)
+      && manifest.animations["action.dance"]?.frames.length === 595
+      && manifest.animations["action.dance_reference_clip"]?.frames.length === 595
+      && manifest.animations["action.dance"]?.frames.reduce((total, frame) => total + frame.durationMs, 0) === 10_133
+      && new Set(manifest.animations["action.dance"].frames.map((frame) => frame.src)).size === 46
+      && Object.keys(dancePhaseCounts).every((id) => manifest.animations[`action.${id}`].frames.every((frame) => !frame.bodyTransform))
+      && manifest.capabilities.some((entry) => entry.id === "dance" && entry.status === "ready")
+      && !manifest.capabilities.some((entry) => entry.id === "summon_to_pointer")
+      && electronMainSource.includes('if (action === "dance")')
+      && electronMainSource.includes("Dance must preserve byte-exact pet-window bounds")
+      && danceExecutor.includes("assertFixedBounds")
+      && danceAssetPrep.includes('"runtimeBodyTransform": "forbidden"')
+      && danceAssetPrep.includes('"sourceFrameScheduling": "one-manifest-entry-per-true-presentation-frame-in-detected-minimal-loop"')
+      && danceAssetPrep.includes('"closedMouthMechanics": "15-to-20-percent-head-neck-forward-projection-with-stable-lower-body"')
+      && danceAssetPrep.includes('"tongueOutMechanics": "12-to-15-percent-pelvis-haunch-displacement-with-planted-paws-on-source-audio-onsets"')
+      && actions.includes("loop-detected-registered-golden-british-vp9-alpha-trimmed-audio-fixed-anchor-fallback")
+      && desktop.includes("<DanceVideoLayer")
+      && actions.includes("<DanceVideoLayer")
+      && danceVideoLayer.includes("pet-video/dance-golden-style.webm")
+      && danceVideoLayer.includes("window.setInterval(() => synchronize(), 100)")
+      && danceVideoManifest.renderer === "loop-detected-registered-golden-british-video-v9"
+      && danceVideoManifest.motion?.closedMouth === "offline-full-pose-forward-blend-collar-pivot-connected-impact-head-shake"
+      && danceVideoManifest.motion?.tongueOut === "offline-fixed-cadence-counterphase-head-haunch-groove"
+      && danceVideoManifest.codec === "vp9"
+      && danceVideoManifest.pixelFormat === "yuva420p"
+      && danceVideoManifest.hasAlpha === true
+      && danceVideoManifest.frameCount === 608
+      && danceVideoManifest.durationMs === 10_133
+      && danceVideoManifest.selectedLoopPeriodMs === 10_133
+      && danceVideoManifest.width === 512
+      && danceVideoManifest.height === 512
+      && danceVideoManifest.sourceKeyframes.canonicalRegisteredFrames === 48
+      && danceVideoManifest.sourceKeyframes.mixedIdentityMasterFrames === 0
+      && danceVideoManifest.motion.bodyAnchor === "fixed-512x818-source-to-256x414-output"
+      && danceVideoManifest.motion.visibleHeightPx === 336
+      && danceVideoRenderer.includes("window.renderDanceFrame")
+      && soundEngine.includes("dance-video-reference.m4a")
+      && soundEngine.includes("waitForDanceReferenceReady")
+      && soundEngine.includes("danceReferencePlayGeneration")
+      && soundEngine.includes("if (userInitiated) return true")
+      && soundEngine.includes("syncDanceReferenceSound")
+      && electronMainSource.includes('appendSwitch("autoplay-policy", "no-user-gesture-required")')
+      && fileIsNonEmpty(join(root, "apps/desktop/public/pet-audio/dance-video-reference.m4a"))
+      && fileIsNonEmpty(join(root, "apps/desktop/public/pet-video/dance-golden-style.webm"))
+      && statSync(join(root, "apps/desktop/public/pet-video/dance-golden-style.webm")).size < 10 * 1024 * 1024,
+    "Quick Play and Console Preview share a 512px, sub-10MiB, 608-frame fixed-anchor VP9-alpha render and its synchronized 10.133-second source-loop audio",
+  );
+  verify("Actions v20 preview modules", ["data-action-selector", "data-action-preview-stage", "data-action-filmstrip", "data-action-scrubber", "data-action-play", "data-action-restart", "data-action-loop", "data-action-settings", "data-reset-action"].every((token) => actions.includes(token)), "selector, stage, filmstrip, scrubber, transport, per-action settings, and reset are all present");
+  verify("Actions v20 dedicated settings", ["walkPace", "roamDistance", "destinationPause", "lookAroundEffect", "snackStyle", "snackSize", "startMeow", "returnPace", "followSmoothing", "maxHeadTurnAngle", "earFollow", "fishToyStyle", "swingResponse", "pursuitPace", "toyTrailEffect", "yarnColor", "rollDistance", "rollSpeed", "settlePace", "sleepShadow", "meowVoice", "meowCue", "stretchHold", "wakeSparkle", "danceSound"].every((key) => actions.includes(`key: \"${key}\"`)) && !["attentionRadius", "settlePose", "breathingIntensity", "zEffect", "arrivalOffset", "routeCurve", "settleDelay", "tempo", "loopCount"].some((key) => actions.includes(`key: \"${key}\"`)), "all action-specific v20 setting keys are modeled without controls that would desynchronize the exact Dance reference clip");
+  verify("Actions v20 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop|Summon/u.test(actions), "the Actions implementation contains none of the retired director-dashboard or Summon modules");
   verify("ambient story scheduler", desktop.includes("selectAmbientPetEvent") && desktop.includes("ambientRef") && desktop.includes("window.setInterval(tick"), "desktop pet schedules deterministic blink, rest, and wake events through PetDirector");
   verify("Token Egg ambient gate", desktop.includes("lifecycleStage: lifecycleFromUsage(usage)"), "ambient wake/rest/blink receives lifecycle state so Stage 0 can wait for the first-source/token hatch");
   verify("mood badge color setting", generatedRenderer.includes("appearance.moodBadge.colorByState ? palette") && fallbackRenderer.includes("appearance.moodBadge.colorByState ?"), "Color-by-state changes both generated and approved static-fallback mood badge palettes");

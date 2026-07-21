@@ -3839,7 +3839,7 @@
 .action-selector > button[data-action-id="toss_yarn"] img { filter: brightness(0) saturate(100%) invert(56%) sepia(88%) saturate(1570%) hue-rotate(350deg) brightness(102%) contrast(92%); }
 .action-selector > button[data-action-id="nap_here"] img { filter: saturate(1.18) contrast(1.02); }
 .action-selector > button[data-action-id="wake_up"] img { filter: saturate(1.12) contrast(1.02); }
-.action-selector > button[data-action-id="summon_to_pointer"] img { filter: brightness(0) saturate(100%) invert(48%) sepia(92%) saturate(1162%) hue-rotate(183deg) brightness(88%) contrast(92%); }
+.action-selector > button[data-action-id="dance"] img { filter: none; }
 .action-selector > button strong {
   overflow: hidden;
   max-width: 100%;
@@ -4011,8 +4011,8 @@
 .action-preview-nap_here .pet-generated-actor-shell {
   /* Nap keeps the embedded token frame in the same artboard as the sleeping
      cat. Reserve a little floor below it so the filmstrip never covers it. */
-  --pet-visual-cat-width: clamp(560px, 43vw, 650px);
-  --pet-visual-cat-y: -132px;
+  --pet-visual-cat-width: clamp(490px, 38vw, 550px);
+  --pet-visual-cat-y: -170px;
 }
 .action-preview-wake_up .pet-generated-actor-shell {
   /* Wake Up changes from a compact curl to a very long side stretch. Keep one
@@ -4020,6 +4020,25 @@
      visible and the body never appears to resize at runtime. */
   --pet-visual-cat-width: clamp(420px, 32vw, 490px);
   --pet-visual-cat-y: -18px;
+}
+.action-preview-dance .pet-generated-actor-shell {
+  /* Dance uses the registered 1024px front-view artboard. Keep the complete
+     ears, paws, and restore pose visible instead of inheriting the oversized
+     generic preview scale. */
+  --pet-visual-cat-width: clamp(420px, 32vw, 490px);
+  --pet-visual-cat-y: -38px;
+}
+.action-preview-dance .dance-video-layer-preview {
+  inset: -1px;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+}
+.action-preview-dance .dance-video {
+  position: absolute;
+  inset: 0;
+  object-fit: contain;
 }
 .action-preview-stage .pet-appearance-visual-preview {
   width: 100%;

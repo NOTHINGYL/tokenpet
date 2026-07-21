@@ -42,6 +42,22 @@ export const WAKE_UP_PHASE_ACTION_IDS = [
 ] as const;
 export type WakeUpPhaseActionId = (typeof WAKE_UP_PHASE_ACTION_IDS)[number];
 
+export const DANCE_PHASE_ACTION_IDS = [
+  "dance_rise",
+  "dance_reference_clip",
+  "dance_eye_snap",
+  "dance_tongue_pop",
+  "dance_tongue_hold",
+  "dance_tongue_sway",
+  "dance_tongue_retract",
+  "dance_smug_hold",
+  "dance_smug_sway_left",
+  "dance_smug_sway_right",
+  "dance_eyes_reset",
+  "dance_restore",
+] as const;
+export type DancePhaseActionId = (typeof DANCE_PHASE_ACTION_IDS)[number];
+
 export const PET_ACTOR_LIFE_STAGES = ["egg", "newKitten", "deskBuddy", "flowCompanion", "guardianCompanion"] as const;
 export type PetActorLifeStage = (typeof PET_ACTOR_LIFE_STAGES)[number];
 
@@ -107,8 +123,9 @@ export const PET_ACTOR_ACTION_IDS = [
   "nap_here",
   "wake_up",
   ...WAKE_UP_PHASE_ACTION_IDS,
+  "dance",
+  ...DANCE_PHASE_ACTION_IDS,
   "summon_to_screen",
-  "summon_to_pointer",
   "capture_moment",
   "milestone_celebrate",
   "level_up",
@@ -127,7 +144,7 @@ export const PET_ACTOR_QUICK_PLAY_ACTION_IDS = [
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_pointer",
+  "dance",
   "capture_moment",
 ] as const;
 export type QuickPlayActionId = (typeof PET_ACTOR_QUICK_PLAY_ACTION_IDS)[number];

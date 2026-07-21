@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TokenPet Dance Video Alpha QA</title>
+    <style>
+      html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #ff00ff; }
+      video { display: block; width: 100%; height: 100%; object-fit: contain; }
+    </style>
+  </head>
+  <body>
+    <video id="dance" muted playsinline preload="auto"></video>
+    <script>
+      window.loadDanceVideo = (source) => new Promise((resolve, reject) => {
+        const video = document.querySelector("#dance");
+        video.addEventListener("error", () => reject(new Error(video.error?.message || "video error")), { once: true });
+        video.addEventListener("seeked", () => requestAnimationFrame(() => requestAnimationFrame(resolve)), { once: true });
+        video.addEventListener("loadedmetadata", () => { video.currentTime = 3.3; }, { once: true });
+        video.src = source;
+        video.load();
+      });
+      window.seekDanceVideo = (seconds) => new Promise((resolve) => {
+        const video = document.querySelector("#dance");
+        video.addEventListener("seeked", () => requestAnimationFrame(() => requestAnimationFrame(resolve)), { once: true });
+        video.currentTime = seconds;
+      });
+    </script>
+  </body>
+</html>

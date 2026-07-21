@@ -25,7 +25,9 @@ import type {
 } from "../../types";
 import { getCatTypeOption } from "../pet-appearance/catalog";
 import { PetAppearanceVisual } from "../pet-appearance/PetAppearanceVisual";
+import { DanceVideoLayer } from "./DanceVideoLayer";
 import { actorAnimationCandidates, actorManifestFor, capabilityFor } from "./PetDirector";
+import { playDanceReferenceSound, stopDanceReferenceSound, syncDanceReferenceSound } from "./soundCueEngine";
 
 export type ActionsPreviewId = Exclude<QuickPlayActionId, "capture_moment">;
 
@@ -73,7 +75,7 @@ export const actionsPreviewIds: ActionsPreviewId[] = [
   "toss_yarn",
   "nap_here",
   "wake_up",
-  "summon_to_pointer",
+  "dance",
 ];
 
 export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
@@ -171,16 +173,13 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
       { key: "wakeSparkle", label: "Wake sparkle", type: "toggle", defaultValue: true, detail: "A small preview-only highlight" },
     ],
   },
-  summon_to_pointer: {
-    id: "summon_to_pointer", label: "Summon", icon: `${iconRoot}/summon-to-pointer.png`, durationMs: 4_500,
-    contract: "walk only · saves new home in real play", propLabel: "virtual pointer", propMark: "⌖",
-    phaseLabels: ["Stand", "Route", "Walk", "Arrive", "Settle"],
-    authoredPhaseActions: ["idle_breathe", "summon_to_screen", "summon_to_screen", "summon_to_screen", "focus_loop"],
+  dance: {
+    id: "dance", label: "Dance", icon: `${iconRoot}/dance.png`, durationMs: 11_093,
+    contract: "10.13 sec detected loop · fixed body anchor · exact restore", propLabel: "reference beat", propMark: "♪",
+    phaseLabels: ["Ready", "Video-reference dance", "Restore"],
+    authoredPhaseActions: ["dance_rise", "dance_reference_clip", "dance_restore"],
     settings: [
-      { key: "walkPace", label: "Walk pace", type: "range", min: 60, max: 140, step: 5, defaultValue: 92, minMark: "🐢", maxMark: "🐇", format: percent },
-      { key: "arrivalOffset", label: "Arrival offset", type: "choices", defaultValue: "beside", options: [{ value: "near", label: "Near" }, { value: "beside", label: "Beside" }, { value: "below", label: "Below" }] },
-      { key: "routeCurve", label: "Route curve", type: "choices", defaultValue: "gentle", options: [{ value: "straight", label: "Straight" }, { value: "gentle", label: "Gentle" }, { value: "curved", label: "Curved" }] },
-      { key: "settleDelay", label: "Settle delay", type: "range", min: .2, max: 1.5, step: .1, defaultValue: .7, format: seconds },
+      { key: "danceSound", label: "Reference sound", type: "toggle", defaultValue: true, detail: "Play the detected 10.13 sec source loop" },
     ],
   },
 };
@@ -211,7 +210,7 @@ function buildPreviewFrames(
   actorVariant?: string,
 ): PreviewFrame[] {
   if (!manifest) return [{ id: `${definition.id}-static`, label: "Approved still", actorActionId: "idle_breathe", src: fallbackImage, startMs: 0, durationMs: previewDurationMs, sourceStartMs: 0, sourceDurationMs: previewDurationMs }];
-  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn" || definition.id === "nap_here" || definition.id === "wake_up") {
+  if (definition.id === "token_snack" || definition.id === "drag_dangle" || definition.id === "toss_yarn" || definition.id === "nap_here" || definition.id === "wake_up" || definition.id === "dance") {
     let startMs = 0;
     return definition.authoredPhaseActions.map((actorActionId, index) => {
       const animation = resolveAnimation(manifest, actorActionId) ?? manifest.animations[manifest.defaultAnimation];
@@ -287,7 +286,7 @@ function stageSample(actionId: ActionsPreviewId, progress: number, walkRootProgr
   if (actionId === "play_cursor") return { actorX: 0, actorY: 0, propX: cursorX, propY: cursorY, cursorX, cursorY };
   if (actionId === "drag_dangle") return { actorX: Math.sin(progress * Math.PI * 2) * 8, actorY: -roundTrip * 3, propX: cursorX, propY: 24 + Math.sin(progress * Math.PI * 5) * 10, cursorX, cursorY: 24 };
   if (actionId === "toss_yarn") return { actorX: -roundTrip * 16, actorY: 0, propX: 25 + progress * 49, propY: 73, cursorX: 74, cursorY: 73 };
-  if (actionId === "summon_to_pointer") return { actorX: -29 + progress * 31, actorY: -roundTrip * 2, propX: 79, propY: 67, cursorX: 79, cursorY: 67 };
+  if (actionId === "dance") return { actorX: 0, actorY: 0, propX: 50, propY: 50, cursorX: 50, cursorY: 50 };
   return { actorX: 0, actorY: 0, propX: 72, propY: 27, cursorX: 72, cursorY: 27 };
 }
 
@@ -335,11 +334,17 @@ export function ActionsWorkbench(props: {
   usage: UsageSnapshot;
   patch: (patch: Partial<PetStorySettings>) => void;
 }) {
-  const [selectedAction, setSelectedAction] = useState<ActionsPreviewId>("token_snack");
+  const [selectedAction, setSelectedAction] = useState<ActionsPreviewId>("dance");
   const [elapsedMs, setElapsedMs] = useState(0);
+  const elapsedMsRef = useRef(0);
   const [playing, setPlaying] = useState(true);
   const [loopPreview, setLoopPreview] = useState(true);
+  const [danceVideoReady, setDanceVideoReady] = useState(false);
   const lastTickRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    elapsedMsRef.current = elapsedMs;
+  }, [elapsedMs]);
   const definition = actionDefinitions[selectedAction];
   const manifest = actorManifestFor(props.appearance.catTypeId);
   const fallbackImage = getCatTypeOption(props.appearance.catTypeId).image;
@@ -399,6 +404,10 @@ export function ActionsWorkbench(props: {
       5_000 - wakeStretchDurationMs - wakeBlinkDurationMs - wakeRollDurationMs,
     ];
   }, [wakeStretchDurationMs]);
+  const dancePhaseDurations = useMemo(() => createQuickPlayActionTimeline("dance", {
+    danceSound: settings.danceSound !== false,
+  }).phases.map((phase) => phase.durationMs), [settings.danceSound]);
+  const dancePreviewDurationMs = dancePhaseDurations.reduce((total, duration) => total + duration, 0);
   const previewDurationMs = selectedAction === "walk_round_trip"
     ? walkPreviewPlan.durationMs
     : selectedAction === "token_snack"
@@ -409,17 +418,19 @@ export function ActionsWorkbench(props: {
           ? tossPreviewDurationMs
           : selectedAction === "nap_here"
             ? napPreviewDurationMs
-          : definition.durationMs;
+            : selectedAction === "dance"
+              ? dancePreviewDurationMs
+              : definition.durationMs;
   const frames = useMemo(
     () => buildPreviewFrames(
       definition,
       manifest,
       fallbackImage,
       previewDurationMs,
-      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : selectedAction === "nap_here" ? napPhaseDurations : selectedAction === "wake_up" ? wakePhaseDurations : undefined,
+      selectedAction === "token_snack" ? feedPhaseDurations : selectedAction === "drag_dangle" ? danglePhaseDurations : selectedAction === "toss_yarn" ? tossPhaseDurations : selectedAction === "nap_here" ? napPhaseDurations : selectedAction === "wake_up" ? wakePhaseDurations : selectedAction === "dance" ? dancePhaseDurations : undefined,
       selectedAction === "toss_yarn" ? yarnColor : undefined,
     ),
-    [definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, napPhaseDurations, previewDurationMs, selectedAction, tossPreviewDurationMs, wakePhaseDurations, yarnColor],
+    [dancePhaseDurations, definition, danglePreviewDurationMs, fallbackImage, feedPreviewDurationMs, manifest, napPhaseDurations, previewDurationMs, selectedAction, tossPreviewDurationMs, wakePhaseDurations, yarnColor],
   );
   const progress = Math.min(1, elapsedMs / Math.max(previewDurationMs, 1));
   const timelineSample = sampleTimeline(frames, elapsedMs);
@@ -465,6 +476,13 @@ export function ActionsWorkbench(props: {
               : Math.min(sampledPhaseElapsedMs, Math.max(0, sampledAnimationDurationMs - 1)),
         }
         : sampledBase;
+  const danceVideoActive = selectedAction === "dance"
+    && sampled.frame.actorActionId === "dance_reference_clip";
+  const danceVideoTimeMs = Math.max(0, elapsedMs - dancePhaseDurations[0]);
+
+  useEffect(() => {
+    if (!danceVideoActive) setDanceVideoReady(false);
+  }, [danceVideoActive]);
   const walkRootProgress = selectedAction === "walk_round_trip" ? distanceLockedWalkProgressAtTime(walkPreviewPlan, elapsedMs) : progress;
   const baseStage = stageSample(selectedAction, progress, walkRootProgress);
   const feedActorAction = sampled.frame.actorActionId;
@@ -534,7 +552,7 @@ export function ActionsWorkbench(props: {
         : baseStage;
   const actorPreviewAppearance = {
     ...props.appearance,
-    size: selectedAction === "walk_round_trip" || selectedAction === "nap_here" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
+    size: selectedAction === "walk_round_trip" || selectedAction === "nap_here" || selectedAction === "dance" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
     tokenBubbleId: selectedAction === "nap_here" ? props.appearance.tokenBubbleId : "hidden" as const,
     moodBadge: { ...props.appearance.moodBadge, showMood: false },
     accessorySettings: selectedAction === "nap_here"
@@ -586,6 +604,30 @@ export function ActionsWorkbench(props: {
     };
   }, [loopPreview, playing, previewAvailable, previewDurationMs]);
 
+  useEffect(() => {
+    const referenceActive = selectedAction === "dance"
+      && sampled.frame.actorActionId === "dance_reference_clip"
+      && playing
+      && settings.danceSound !== false;
+    if (!referenceActive) {
+      stopDanceReferenceSound();
+      return;
+    }
+    const referenceOffsetSeconds = Math.max(0, elapsedMs - dancePhaseDurations[0]) / 1_000;
+    void playDanceReferenceSound(props.story, { offsetSeconds: referenceOffsetSeconds, preview: true });
+    const syncTimer = window.setInterval(() => {
+      const offset = Math.max(0, elapsedMsRef.current - dancePhaseDurations[0]) / 1_000;
+      syncDanceReferenceSound(offset);
+    }, 100);
+    return () => {
+      window.clearInterval(syncTimer);
+      stopDanceReferenceSound();
+    };
+    // elapsedMs intentionally is not a dependency: entering/resuming the
+    // reference phase establishes one audio clock; the animation then follows
+    // the same verified 10.133-second loop clock without restarting every frame.
+  }, [dancePhaseDurations, playing, props.story, sampled.frame.actorActionId, selectedAction, settings.danceSound]);
+
   const updateSetting = (key: string, value: PetActionTuningValue) => {
     props.patch({
       actionSettings: {
@@ -628,6 +670,7 @@ export function ActionsWorkbench(props: {
   const feedPropOpacity = feedPropStage === "swallow" ? Math.max(0, 1 - sampled.phaseProgress * 1.15) : feedPropStage === "consumed" ? 0 : 1;
   const showProp = selectedAction !== "walk_round_trip"
     && selectedAction !== "nap_here"
+    && selectedAction !== "dance"
     && !(selectedAction === "wake_up" && settings.wakeSparkle === false)
     && !(selectedAction === "toss_yarn" && sampled.frame.label !== "Roll" && sampled.frame.label !== "Chase");
 
@@ -677,14 +720,25 @@ export function ActionsWorkbench(props: {
             data-preview-nap-shadow={selectedAction === "nap_here" && settings.sleepShadow !== false ? "true" : "false"}
             data-preview-wake-up-phase={selectedAction === "wake_up" ? sampled.frame.actorActionId : undefined}
             data-preview-wake-up-contract={selectedAction === "wake_up" ? "offline-five-second-whole-frame-stretch" : undefined}
+            data-preview-dance-phase={selectedAction === "dance" ? sampled.frame.actorActionId : undefined}
+            data-preview-dance-contract={selectedAction === "dance" ? "loop-detected-registered-golden-british-vp9-alpha-trimmed-audio-fixed-anchor-fallback" : undefined}
           >
-            <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
-              <path d={selectedAction === "summon_to_pointer" ? "M12 38 C35 12 62 45 86 18" : selectedAction === "walk_round_trip" ? "M16 25 L84 43" : "M18 38 C35 34 44 44 62 35"} />
-            </svg>
-            <span className="action-preview-home" style={{ left: "16%", top: selectedAction === "walk_round_trip" ? "45%" : "69%" }} aria-hidden="true">⌂</span>
-            <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
+            {selectedAction !== "dance" ? <>
+              <svg className="action-preview-route" viewBox="0 0 100 50" preserveAspectRatio="none" aria-hidden="true">
+                <path d={selectedAction === "walk_round_trip" ? "M16 25 L84 43" : "M18 38 C35 34 44 44 62 35"} />
+              </svg>
+              <span className="action-preview-home" style={{ left: "16%", top: selectedAction === "walk_round_trip" ? "45%" : "69%" }} aria-hidden="true">⌂</span>
+              <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
+            </> : null}
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" />
+              {!danceVideoActive || !danceVideoReady ? <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" /> : null}
+              <DanceVideoLayer
+                active={danceVideoActive}
+                playing={playing}
+                sourceTimeMs={danceVideoTimeMs}
+                surface="preview"
+                onReadyChange={setDanceVideoReady}
+              />
             </div>
             {showProp ? (
               <span className={`action-preview-prop action-preview-prop-${selectedAction} yarn-${yarnColor}`} data-preview-prop={definition.propLabel} data-preview-snack-stage={selectedAction === "token_snack" ? feedPropStage : undefined} style={{ left: `${stage.propX}%`, top: `${stage.propY}%`, "--prop-scale": propScale * (selectedAction === "token_snack" ? feedPropConsumeScale : 1), opacity: selectedAction === "token_snack" ? feedPropOpacity : undefined } as CSSProperties} aria-label={definition.propLabel}>
@@ -703,8 +757,8 @@ export function ActionsWorkbench(props: {
                 <span className="action-preview-dangle-wand" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true"><img src="pet-actors/golden-british/props/dangle-wand.png" alt="" draggable={false} /></span>
               </>
             ) : null}
-            {["play_cursor", "summon_to_pointer"].includes(selectedAction) ? <span className="action-virtual-pointer" data-virtual-pointer style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">➤</span> : null}
-            <span className="action-preview-coordinate-readout">sandbox x {Math.round(stage.actorX + 50)} · y {Math.round(stage.actorY + 50)}</span>
+            {selectedAction === "play_cursor" ? <span className="action-virtual-pointer" data-virtual-pointer style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">➤</span> : null}
+            {selectedAction !== "dance" ? <span className="action-preview-coordinate-readout">sandbox x {Math.round(stage.actorX + 50)} · y {Math.round(stage.actorY + 50)}</span> : null}
             {!previewAvailable ? <div className="action-preview-unavailable"><strong>Approved still only</strong><small>{capability.reason}</small></div> : null}
           </div>
 
