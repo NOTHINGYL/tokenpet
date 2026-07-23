@@ -39,7 +39,7 @@ export function CatTypeCard(props: {
   onViewAll: () => void;
 }) {
   return (
-    <section className="pet-card cat-type-card">
+    <section className="pet-card cat-type-card appearance-cat-type-strip" data-appearance-cat-type>
       <div className="pet-card-header">
         <div>
           <strong>Cat Type</strong>
@@ -47,11 +47,26 @@ export function CatTypeCard(props: {
         </div>
         <button className="pet-section-action" type="button" aria-label="View all cat types" onClick={props.onViewAll} data-testid="open-cat-type">
           <span>View all</span>
-          <span aria-hidden="true">-&gt;</span>
         </button>
       </div>
-      <span className="actor-ready-inline"><i />Golden British is actor-ready</span>
-      <CatTypeGrid cats={featuredCatTypes} selectedCat={props.selectedCat} onSelectCat={props.onSelectCat} />
+      <div className="appearance-cat-type-options">
+        {featuredCatTypes.map((cat) => (
+          <button
+            className={`appearance-cat-type-option ${props.selectedCat === cat.id ? "selected" : ""}`}
+            key={cat.id}
+            type="button"
+            data-cat-id={cat.id}
+            aria-pressed={props.selectedCat === cat.id}
+            onClick={() => props.onSelectCat(cat.id)}
+          >
+            <span className="appearance-cat-type-image">
+              <img src={cat.image} alt="" draggable={false} aria-hidden="true" />
+              {props.selectedCat === cat.id ? <span className="cat-selected-check" aria-hidden="true" /> : null}
+            </span>
+            <strong>{cat.label}</strong>
+          </button>
+        ))}
+      </div>
     </section>
   );
 }

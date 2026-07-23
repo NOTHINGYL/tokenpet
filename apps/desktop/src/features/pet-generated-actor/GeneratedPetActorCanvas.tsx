@@ -32,6 +32,7 @@ type GeneratedActorRenderPlan = {
   pointerOffset: { x: number; y: number } | null;
   cursorTracking: CursorTrackingVisual | null;
   facing: "left" | "right";
+  visualNormalization: { scale: number; anchorX: number; anchorY: number };
 };
 
 const GENERATED_ACTOR_IDS = new Set(["golden-british"]);
@@ -39,6 +40,25 @@ const generatedActorManifests: Record<string, PetActorManifest> = {
   "golden-british": goldenBritishActorManifestJson as unknown as PetActorManifest,
 };
 const imageCache = new Map<string, Promise<HTMLImageElement>>();
+
+const DEFAULT_VISUAL_NORMALIZATION = { scale: 1, anchorX: 512, anchorY: 818 } as const;
+
+function actionVisualNormalization(animationId: string) {
+  // Dangle and Yarn were authored substantially larger inside the same 1024px
+  // artboard (767-860px median span versus 530-642px for Pet/Feed/Wake).
+  // A 62% normalization matches their visible body footprint to Pet's
+  // approximately 530x402px median bounds. Normalize around the shared planted-paw anchor instead of scaling the
+  // BrowserWindow or rewriting hundreds of offline source frames.
+  if (
+    animationId === "action.drag_dangle"
+    || animationId.startsWith("action.dangle_")
+    || animationId === "action.toss_yarn"
+    || animationId.startsWith("action.toss_yarn_")
+  ) {
+    return { scale: .62, anchorX: 512, anchorY: 818 } as const;
+  }
+  return DEFAULT_VISUAL_NORMALIZATION;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -184,7 +204,10 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     || animation.id.startsWith("action.dance_")
     || animation.id === "action.wake_up"
     || animation.id.startsWith("action.wake_up_");
-  const tokenMode = isChromeFreeStoryAction ? "hidden" : resolveTokenMode(props.appearance, manifest);
+  const isSleepVisual = animation.id === "action.sleep_loop"
+    || animation.id === "sleepy.idle"
+    || animation.id === "action.nap_here";
+  const tokenMode = isChromeFreeStoryAction || isSleepVisual ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
   const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
@@ -220,6 +243,7 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     pointerOffset: props.pointerOffset ?? null,
     cursorTracking: props.cursorTracking ?? null,
     facing: props.facing ?? "right",
+    visualNormalization: actionVisualNormalization(animation.id),
   };
 }
 
@@ -465,6 +489,11 @@ function renderGeneratedPetActorCanvas(
 
   context.save();
   applyGeneratedBodyMotion(context, plan, frame, time, interactiveState.hover);
+  if (plan.visualNormalization.scale !== 1) {
+    context.translate(plan.visualNormalization.anchorX, plan.visualNormalization.anchorY);
+    context.scale(plan.visualNormalization.scale, plan.visualNormalization.scale);
+    context.translate(-plan.visualNormalization.anchorX, -plan.visualNormalization.anchorY);
+  }
   const supportsAuthoredFacing = animationSupportsAuthoredFacing(plan.animation.id);
   if (plan.facing === "left" && supportsAuthoredFacing) {
     context.translate(plan.manifest.artboard.width, 0);
@@ -585,11 +614,14 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       data-pet-size={plan.appearance.size}
       data-actor-id={plan.manifest.actorId}
       data-actor-animation={plan.animation.id}
+      data-sleep-token-frame-hidden={plan.animation.id === "action.sleep_loop" || plan.animation.id === "sleepy.idle" || plan.animation.id === "action.nap_here" ? "true" : "false"}
       data-actor-facing={plan.facing}
       data-actor-variant={props.actorVariant}
       data-actor-mirrored={plan.facing === "left" && animationSupportsAuthoredFacing(plan.animation.id) ? "true" : "false"}
       data-actor-cycle-duration-ms={props.animationCycleDurationMs}
       data-actor-started-at-ms={props.animationStartedAtMs}
+      data-actor-visual-normalization-scale={plan.visualNormalization.scale}
+      data-actor-visual-ground-anchor={`${plan.visualNormalization.anchorX},${plan.visualNormalization.anchorY}`}
       data-mood-badge-y={plan.moodBadgeRect?.y}
       data-mood-badge-height={plan.moodBadgeRect?.height}
     >

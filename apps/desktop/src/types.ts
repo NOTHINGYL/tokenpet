@@ -113,6 +113,8 @@ export type AccessoryId =
   | "study-glasses"
   | "sleep-cap"
   | "desk-mat"
+  | "round-rug"
+  | "star-blanket"
   | "nap-pillow"
   | "cloud-cushion"
   | "token-stand"
@@ -135,6 +137,11 @@ export type MoodBadgeSettings = {
   showMood: boolean;
   colorByState: boolean;
   hideInFocusMode: boolean;
+};
+
+export type PetIdentitySettings = {
+  name: string;
+  showNameOnHover: boolean;
 };
 
 export type AccessorySettings = {
@@ -188,6 +195,7 @@ export type MotionSettings = {
 };
 
 export type PetAppearanceSettings = {
+  accessoryDefaultsVersion: number;
   catTypeId: CatTypeId;
   catDetails: CatBreedDetails;
   themeId: PetThemeId;
@@ -198,6 +206,7 @@ export type PetAppearanceSettings = {
   bubbleScale: number;
   moodId: MoodLookId;
   moodBadge: MoodBadgeSettings;
+  identity: PetIdentitySettings;
   accessoryIds: AccessoryId[];
   accessorySettings: AccessorySettings;
   motionSettings: MotionSettings;
@@ -344,6 +353,7 @@ export type QuickPlaySession = {
   actorVariant: "orange" | "blue" | "violet" | null;
   pointerMode: "none" | "snack" | "dangle" | "yarn";
   resting: boolean;
+  restingUntil: number | null;
   failure: string | null;
 };
 export type PetDirectorEvent =

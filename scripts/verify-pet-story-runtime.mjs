@@ -10,6 +10,7 @@ const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
 const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
 const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
 const dangleToyExecutorBuildPath = join(root, "dist-electron/quick-play/executors/dangle-toy.js");
+const napHereExecutorBuildPath = join(root, "dist-electron/quick-play/executors/nap-here.js");
 const playCursorExecutorBuildPath = join(root, "dist-electron/quick-play/executors/play-cursor.js");
 const tossYarnExecutorBuildPath = join(root, "dist-electron/quick-play/executors/toss-yarn.js");
 
@@ -18,6 +19,7 @@ assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js
 assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(dangleToyExecutorBuildPath), "Dangle Toy executor build is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(napHereExecutorBuildPath), "Nap Here executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(playCursorExecutorBuildPath), "Play Cursor executor build is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(tossYarnExecutorBuildPath), "Toss Yarn executor build is missing; run npm run build:main before runtime QA");
 
@@ -26,6 +28,7 @@ const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).hr
 const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
 const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
 const dangleToyExecutor = await import(`${pathToFileURL(dangleToyExecutorBuildPath).href}?qa=${Date.now()}`);
+const napHereExecutor = await import(`${pathToFileURL(napHereExecutorBuildPath).href}?qa=${Date.now()}`);
 const playCursorExecutor = await import(`${pathToFileURL(playCursorExecutorBuildPath).href}?qa=${Date.now()}`);
 const tossYarnExecutor = await import(`${pathToFileURL(tossYarnExecutorBuildPath).href}?qa=${Date.now()}`);
 const directorBundle = await build({
@@ -534,7 +537,7 @@ verify("desktop mood badge stays anchored to the scaled actor", () => {
   const declared = { x: 408, y: 72, width: 208, height: 70, align: "center", maxTextLength: 10, maxFontSize: 44 };
   const manifest = { artboard: { width: 1024, height: 1024 }, footLineY: 832 };
   assert.deepEqual(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "preview"), declared);
-  assert.equal(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "desktop").y, 383);
+  assert.equal(actorLayout.resolveActorMoodBadgeRect(manifest, declared, "desktop").y, 332);
 });
 
 verify("Quick Play choreography keeps Pet exact-return across the full desktop", () => {
@@ -649,6 +652,22 @@ verify("Quick Play semantic timelines preserve strict action contracts", () => {
     danceSound: true,
     routeCurve: "retired",
   }), { danceSound: true });
+});
+
+const napExecutorTrace = [];
+const napExecutorResult = await napHereExecutor.executeNapHere({
+  phase: (phase) => napExecutorTrace.push(`phase:${phase}`),
+  delay: async (durationMs) => {
+    napExecutorTrace.push(`delay:${durationMs}`);
+    return true;
+  },
+  markResting: (durationMs) => napExecutorTrace.push(`rest:${durationMs}`),
+  complete: async () => { napExecutorTrace.push("complete"); },
+}, 1_300);
+verify("Nap Here executor owns a five-minute timed rest lease", () => {
+  assert.equal(napHereExecutor.NAP_HERE_DURATION_MS, 300_000);
+  assert.equal(napExecutorResult, true);
+  assert.deepEqual(napExecutorTrace, ["phase:settle", "delay:1300", "rest:300000", "complete"]);
 });
 
 verify("Feed snack travel owns two distance-locked four-footfall gaits", () => {

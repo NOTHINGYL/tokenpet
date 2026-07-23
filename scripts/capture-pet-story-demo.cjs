@@ -31,6 +31,7 @@ const emptyQuickPlaySession = {
   walkMotion: null,
   pointerMode: "none",
   resting: false,
+  restingUntil: null,
   failure: null,
 };
 
@@ -173,6 +174,7 @@ async function captureStep(step) {
     fallbackCanvases: document.querySelectorAll(".pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
     tokenMode: [...(document.querySelector(".pet-generated-actor-shell")?.classList ?? [])].find((name) => name.startsWith("pet-token-")) ?? null,
     actorAnimation: document.querySelector(".pet-generated-actor-shell")?.getAttribute("data-actor-animation") ?? null,
+    sleepTokenBubbleVisible: Boolean(document.querySelector('.pet-name-thought-token.is-visible[data-bubble-content-mode="token"]')),
     quickPlayAction: document.querySelector(".pet-stage")?.getAttribute("data-quick-play-action") ?? null,
     quickPlayPhase: document.querySelector(".pet-stage")?.getAttribute("data-quick-play-phase") ?? null,
     canvasWidth: document.querySelector(".pet-generated-actor-canvas")?.width ?? 0,
@@ -180,12 +182,14 @@ async function captureStep(step) {
   }));
   assert.equal(renderer.generatedCanvases, 1, `${step.id} must render exactly one generated actor canvas`);
   assert.equal(renderer.fallbackCanvases, 0, `${step.id} must not show the static fallback`);
-  const expectedTokenMode = step.id === "wake" ? "pet-token-hidden" : "pet-token-embedded";
+  const sleepVisual = renderer.actorAnimation === "action.sleep_loop";
+  const expectedTokenMode = step.id === "wake" || sleepVisual ? "pet-token-hidden" : "pet-token-embedded";
   assert.equal(
     renderer.tokenMode,
     expectedTokenMode,
-    `${step.id === "wake" ? "wake must show the dedicated chrome-free whole-cat sequence" : `${step.id} must retain the embedded token frame`}: ${JSON.stringify(renderer)}`,
+    `${step.id === "wake" ? "wake must show the dedicated chrome-free whole-cat sequence" : sleepVisual ? `${step.id} sleep must hide the embedded frame` : `${step.id} must retain the embedded token frame`}: ${JSON.stringify(renderer)}`,
   );
+  if (sleepVisual) assert.equal(renderer.sleepTokenBubbleVisible, true, `${step.id} sleep must retain the persistent token bubble: ${JSON.stringify(renderer)}`);
   return {
     ...step,
     file: `docs/screenshots/pet-story/demo-frames/${file}`,

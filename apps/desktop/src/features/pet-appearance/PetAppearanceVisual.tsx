@@ -18,6 +18,7 @@ type PetAppearanceVisualProps = {
   previewTimeMs?: number;
   animationStartedAtMs?: number;
   animationCycleDurationMs?: number;
+  showAccessories?: boolean;
   surface: "preview" | "desktop";
   onBubbleClick?: (event: SyntheticEvent) => void;
 };

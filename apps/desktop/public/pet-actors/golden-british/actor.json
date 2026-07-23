@@ -3,12 +3,12 @@
   "actorId": "golden-british",
   "displayName": "Golden British",
   "breedId": "golden-british",
-  "sourceVersion": "1.10.0-dance-detected-loop-registered-groove",
+  "sourceVersion": "1.11.0-focused-compact-frame-sleep-bubble",
   "lifecycleStage": "deskBuddy",
   "generatedBy": "@tokenpet/pet-asset-studio",
   "generatedAt": "2026-07-09T00:00:00.000Z",
-  "contentHash": "0cd36067d69e339bae2380a1b380c9edbc8b62300025da1c138899f015b30f7e",
-  "sourceAssetHash": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+  "contentHash": "6bb662028b0a98b81264d279a540300497a0abed379f0487607d68fe7e5f4273",
+  "sourceAssetHash": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
   "artboard": {
     "width": 1024,
     "height": 1024
@@ -82,7 +82,7 @@
             "height": 1024
           },
           "durationMs": 996,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "idle_breathe:1",
           "bodyTransform": {
             "origin": {
@@ -120,7 +120,7 @@
             "height": 1024
           },
           "durationMs": 220,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "blink:1"
         },
         {
@@ -135,7 +135,7 @@
             "height": 1024
           },
           "durationMs": 140,
-          "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
+          "sha256": "5855fe757158d000bb45e267995535ed12bd5b290a300f59ac15d0a1a66e2ccb",
           "sourceAssetId": "blink:2"
         },
         {
@@ -150,7 +150,7 @@
             "height": 1024
           },
           "durationMs": 240,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "blink:3"
         },
         {
@@ -165,7 +165,7 @@
             "height": 1024
           },
           "durationMs": 140,
-          "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
+          "sha256": "5855fe757158d000bb45e267995535ed12bd5b290a300f59ac15d0a1a66e2ccb",
           "sourceAssetId": "blink:4"
         },
         {
@@ -180,7 +180,7 @@
             "height": 1024
           },
           "durationMs": 460,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "blink:5"
         }
       ]
@@ -206,7 +206,7 @@
             "height": 1024
           },
           "durationMs": 1500,
-          "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
+          "sha256": "c1bf1588ad91042720446eeb294c23bd76f08834c1ced945e03663f79d28b982",
           "sourceAssetId": "sleep_loop:1",
           "bodyTransform": {
             "origin": {
@@ -242,7 +242,7 @@
             "height": 1024
           },
           "durationMs": 1200,
-          "sha256": "ba1a2529dd18c3814e51a2c5e2ca77360465228901243bf2206d9ec4a71181a9",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "focus_loop:1",
           "bodyTransform": {
             "origin": {
@@ -304,7 +304,7 @@
             "height": 1024
           },
           "durationMs": 170,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "hot_loop:2",
           "bodyTransform": {
             "origin": {
@@ -455,7 +455,7 @@
             "height": 1024
           },
           "durationMs": 160,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "click_purr:1",
           "bodyTransform": {
             "origin": {
@@ -505,7 +505,7 @@
             "height": 1024
           },
           "durationMs": 140,
-          "sha256": "533a4cd6cb05988afcf4625b626a4ff401e6ac47b897278065cc7dd7af75c7c6",
+          "sha256": "5855fe757158d000bb45e267995535ed12bd5b290a300f59ac15d0a1a66e2ccb",
           "sourceAssetId": "click_purr:3",
           "bodyTransform": {
             "origin": {
@@ -555,7 +555,7 @@
             "height": 1024
           },
           "durationMs": 240,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "click_purr:5",
           "bodyTransform": {
             "origin": {
@@ -2611,7 +2611,7 @@
             "height": 1024
           },
           "durationMs": 180,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "drop_bounce:3",
           "bodyTransform": {
             "origin": {
@@ -2661,7 +2661,7 @@
             "height": 1024
           },
           "durationMs": 250,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "drop_bounce:5",
           "bodyTransform": {
             "origin": {
@@ -3993,7 +3993,7 @@
             "height": 1024
           },
           "durationMs": 240,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "run_across:12",
           "bodyTransform": {
             "origin": {
@@ -4472,7 +4472,7 @@
             "height": 1024
           },
           "durationMs": 360,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "nap_here:1"
         },
         {
@@ -4487,7 +4487,7 @@
             "height": 1024
           },
           "durationMs": 940,
-          "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
+          "sha256": "c1bf1588ad91042720446eeb294c23bd76f08834c1ced945e03663f79d28b982",
           "sourceAssetId": "nap_here:2"
         }
       ]
@@ -4888,7 +4888,7 @@
             "height": 1024
           },
           "durationMs": 280,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "summon_to_screen:1",
           "bodyTransform": {
             "origin": {
@@ -4966,7 +4966,7 @@
             "height": 1024
           },
           "durationMs": 360,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "summon_to_screen:4",
           "bodyTransform": {
             "origin": {
@@ -5133,7 +5133,7 @@
             "height": 1024
           },
           "durationMs": 200,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "milestone_celebrate:5",
           "bodyTransform": {
             "origin": {
@@ -46440,7 +46440,7 @@
             "height": 1024
           },
           "durationMs": 1500,
-          "sha256": "aed07b02a638b4dcc4db3ff3441ad7bbcff6055b9469042152cca64e9400bed1",
+          "sha256": "c1bf1588ad91042720446eeb294c23bd76f08834c1ced945e03663f79d28b982",
           "sourceAssetId": "sleep_loop:1",
           "bodyTransform": {
             "origin": {
@@ -46479,7 +46479,7 @@
             "height": 1024
           },
           "durationMs": 1200,
-          "sha256": "ba1a2529dd18c3814e51a2c5e2ca77360465228901243bf2206d9ec4a71181a9",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "focus_loop:1",
           "bodyTransform": {
             "origin": {
@@ -46544,7 +46544,7 @@
             "height": 1024
           },
           "durationMs": 170,
-          "sha256": "88ac2def2341af712431ecfa47abbb2f5f4606e7530fc95f0a6aa93bdfaee531",
+          "sha256": "6f93df1be8e5eee4d5a5c89c8454be1bbc1858f395519c0ae1028e39ad056fd4",
           "sourceAssetId": "hot_loop:2",
           "bodyTransform": {
             "origin": {
@@ -46863,7 +46863,7 @@
   "reproducibility": {
     "generator": "@tokenpet/pet-asset-studio",
     "generatorVersion": "1.2.0-authored-root-motion",
-    "sourceSpecSha256": "3eb83b19a45c8edb68b8828a3abff3a482123c970af1a3b8917497af188da8eb",
-    "inputSetSha256": "665b1f405a0dadba21807a943ce248220407a12d4417233ab0c4a3b5acc5b83f"
+    "sourceSpecSha256": "17c4fb40aa3858e6d0d1f78a4756f0c26b0baf84385d241a895c6fdbac11ca39",
+    "inputSetSha256": "6b7c67b79674700697b23948dc887adfec91ae9031ecc24b56cf33db82e2672d"
   }
 }

@@ -33,8 +33,20 @@ for (const capture of report.captures) {
   const framePath = join(root, capture.file);
   verify(`demo frame ${capture.id}`, existsSync(framePath) && statSync(framePath).size > 10_000, "renderer capture exists and is non-trivial");
   verify(`approved actor ${capture.id}`, capture.renderer.generatedCanvases === 1 && capture.renderer.fallbackCanvases === 0, "capture contains exactly one generated actor and no fallback/placeholder");
-  const expectedTokenMode = capture.id === "wake" ? "pet-token-hidden" : "pet-token-embedded";
-  verify(`actor chrome ${capture.id}`, capture.renderer.tokenMode === expectedTokenMode && capture.renderer.canvasWidth === 1024 && capture.renderer.canvasHeight === 1024, capture.id === "wake" ? "Wake uses its chrome-free 1024px whole-cat sequence" : "capture uses the manifest-driven 1024px actor and embedded frame");
+  const sleepVisual = capture.renderer.actorAnimation === "action.sleep_loop";
+  const expectedTokenMode = capture.id === "wake" || sleepVisual ? "pet-token-hidden" : "pet-token-embedded";
+  verify(
+    `actor chrome ${capture.id}`,
+    capture.renderer.tokenMode === expectedTokenMode
+      && capture.renderer.canvasWidth === 1024
+      && capture.renderer.canvasHeight === 1024
+      && (!sleepVisual || capture.renderer.sleepTokenBubbleVisible === true),
+    capture.id === "wake"
+      ? "Wake uses its chrome-free 1024px whole-cat sequence"
+      : sleepVisual
+        ? "sleep uses the frame-free actor plus persistent token bubble"
+        : "capture uses the manifest-driven 1024px actor and embedded frame",
+  );
 }
 
 const tokenUpdate = report.captures.find((capture) => capture.id === "token-update");

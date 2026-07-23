@@ -57,6 +57,7 @@ const emptyQuickPlaySession = {
   targetPoint: null,
   pointerMode: "none",
   resting: false,
+  restingUntil: null,
   failure: null,
 };
 let quickPlaySession = clone(emptyQuickPlaySession);
@@ -687,6 +688,10 @@ async function verifyNoHorizontalOverflow(window, pageLabel) {
 }
 
 async function verifyDesktopPet() {
+  // Keep the baseline focused screenshot deterministic even when QA runs
+  // during the fixture's configured overnight quiet hours. Sleep is exercised
+  // explicitly below with its own persistent token/name bubble assertions.
+  settings.petStory.safety.quietHoursEnabled = false;
   const window = createWindow({ width: 260, height: 260, transparent: true });
   await load(window, "pet");
   await waitForActor(window);
@@ -701,6 +706,76 @@ async function verifyDesktopPet() {
   verify("desktop embedded token frame", actor.embedded, "Golden British uses the embedded token-frame render mode");
   await verifyNoHorizontalOverflow(window, "desktop pet");
   await capture(window, "desktop-pet.png", "Desktop pet");
+
+  const closeBeforeHover = await evaluate(window, () => {
+    const style = getComputedStyle(document.querySelector(".pet-close"));
+    return { opacity: style.opacity, pointerEvents: style.pointerEvents };
+  });
+  verify("Desktop close is hidden at rest", closeBeforeHover.opacity === "0" && closeBeforeHover.pointerEvents === "none", `the close control is visually and interactively absent before hover: ${JSON.stringify(closeBeforeHover)}`);
+  const hiddenBeforeHover = await evaluate(window, () => document.querySelector("[data-pet-name-bubble]")?.getAttribute("aria-hidden"));
+  verify("Desktop name bubble is hover-only", hiddenBeforeHover === "true", "the desktop name does not permanently occupy screen space");
+  await evaluate(window, () => document.querySelector(".pet-stage")?.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })));
+  await waitFor(window, () => document.querySelector("[data-pet-name-bubble]")?.classList.contains("is-visible"), [], "desktop name hover bubble");
+  await waitFor(window, () => getComputedStyle(document.querySelector(".pet-close")).opacity === "1", [], "desktop hover close");
+  await delay(380);
+  const hoverBubble = await evaluate(window, () => {
+    const bubble = document.querySelector(".pet-name-thought-circle")?.getBoundingClientRect();
+    const closeStyle = getComputedStyle(document.querySelector(".pet-close"));
+    return {
+      name: document.querySelector(".pet-name-thought-circle strong")?.textContent,
+      dots: document.querySelectorAll(".pet-name-thought-dot").length,
+      width: bubble?.width ?? 0,
+      height: bubble?.height ?? 0,
+      opacity: getComputedStyle(document.querySelector(".pet-name-thought-circle")).opacity,
+      closeOpacity: closeStyle.opacity,
+      closePointerEvents: closeStyle.pointerEvents,
+    };
+  });
+  verify("Desktop adaptive thought bubble", hoverBubble.name === "Mochi" && hoverBubble.dots === 2 && Math.abs(hoverBubble.width - hoverBubble.height) < 1 && Number(hoverBubble.opacity) > .99, `hover renders the persisted name in one circular cream bubble with exactly two staged dots: ${JSON.stringify(hoverBubble)}`);
+  verify("Desktop close appears on hover", hoverBubble.closeOpacity === "1" && hoverBubble.closePointerEvents === "auto", `hover reveals the close control and makes it clickable: ${JSON.stringify(hoverBubble)}`);
+  await capture(window, "desktop-pet-name-hover.png", "Desktop pet / Name hover");
+  await evaluate(window, () => document.querySelector(".pet-stage")?.dispatchEvent(new PointerEvent("pointerout", { bubbles: true })));
+  await waitFor(window, () => getComputedStyle(document.querySelector(".pet-close")).opacity === "0", [], "desktop close hidden after hover");
+
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({
+    activeAction: "nap_here",
+    startedAt: Date.now(),
+    phase: "stand",
+    phaseStartedAt: Date.now(),
+    pointerMode: "none",
+  }));
+  await waitForSelector(window, '[data-actor-animation="action.sleep_loop"]');
+  await waitFor(window, () => document.querySelector('[data-pet-name-bubble][data-bubble-content-mode="token"]')?.getAttribute("aria-hidden") === "false", [], "sleep token bubble");
+  const sleepPresentation = await evaluate(window, () => ({
+    animation: document.querySelector("[data-actor-animation]")?.dataset.actorAnimation,
+    tokenFrameHidden: document.querySelector("[data-sleep-token-frame-hidden]")?.dataset.sleepTokenFrameHidden,
+    tokenHotspots: document.querySelectorAll(".pet-actor-token-hotspot").length,
+    bubbleMode: document.querySelector("[data-pet-name-bubble]")?.dataset.bubbleContentMode,
+    bubbleContent: document.querySelector("[data-pet-name-bubble] strong")?.textContent,
+    bubbleVisible: document.querySelector("[data-pet-name-bubble]")?.getAttribute("aria-hidden"),
+    head: document.querySelector("[data-accessory-head]")?.dataset.accessoryHead,
+    ground: document.querySelector("[data-accessory-ground]")?.dataset.accessoryGround,
+    effect: document.querySelector("[data-accessory-effect]")?.dataset.accessoryEffect,
+  }));
+  verify(
+    "Sleepy frame-free token bubble",
+    sleepPresentation.animation === "action.sleep_loop"
+      && sleepPresentation.tokenFrameHidden === "true"
+      && sleepPresentation.tokenHotspots === 0
+      && sleepPresentation.bubbleMode === "token"
+      && /\d/u.test(sleepPresentation.bubbleContent ?? "")
+      && sleepPresentation.bubbleVisible === "false"
+      && sleepPresentation.head === "none"
+      && sleepPresentation.ground === "none"
+      && sleepPresentation.effect === "none",
+    `sleeping cat is ground-only while its persistent thought bubble owns the token value: ${JSON.stringify(sleepPresentation)}`,
+  );
+  await capture(window, "desktop-pet-sleep-bubble.png", "Desktop pet / Sleep token bubble");
+  await evaluate(window, () => document.querySelector(".pet-stage")?.dispatchEvent(new PointerEvent("pointerover", { bubbles: true })));
+  await waitFor(window, () => document.querySelector('[data-pet-name-bubble][data-bubble-content-mode="name"] strong')?.textContent === "Mochi", [], "sleep hover name swap");
+  record("Sleepy hover name swap", "the persistent token bubble changes to Mochi on hover when Show name on hover is enabled");
+  await evaluate(window, () => document.querySelector(".pet-stage")?.dispatchEvent(new PointerEvent("pointerout", { bubbles: true })));
+  await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({}));
 
   await evaluate(window, () => window.tokenpet.setScreenshotQuickPlaySession({
     activeAction: "dance",
@@ -778,6 +853,7 @@ async function verifyQuickPlay() {
       title: document.querySelector("h1")?.textContent,
       subtitle: document.querySelector(".quick-play-heading p")?.textContent,
       helper: document.querySelector("[data-action-id=play_cursor] small")?.textContent,
+      napHelper: document.querySelector("[data-action-id=nap_here] small")?.textContent,
       icons: document.querySelectorAll("[data-action-icon]").length,
       iconStates: actionButtons.map((button) => {
         const iconStyle = getComputedStyle(button.querySelector("[data-action-icon]"));
@@ -803,6 +879,7 @@ async function verifyQuickPlay() {
   verify("Quick Play v20 identity", structure.title === "Quick Play" && structure.subtitle === "Play, rest, or dance with your companion.", "the compact controller has the normative Dance-era title and subtitle");
   verify("Quick Play 3×3 action order", structure.ids.join(",") === quickPlayIds.join(","), `nine stable ids follow the v18 order: ${structure.ids.join(", ")}`);
   verify("Quick Play cursor helper", structure.helper === "10 sec", "Play cursor matches the concise v18 helper copy");
+  verify("Quick Play Nap helper", structure.napHelper === "5 min", "Nap here advertises its five-minute timed sleep beside the action label");
   verify("Quick Play exactly three controls", structure.controls.join(",") === "Always on top,Lock position,Mute pet sounds", `controls are ${structure.controls.join(", ")}`);
   verify("Quick Play unlocked actions", structure.disabled.length === 0, "all nine Golden British actions are available before dynamic gates");
   verify("Quick Play no repeated preview", !structure.repeatedPreview, "panel contains no duplicate cat preview");
@@ -972,57 +1049,178 @@ async function verifyAppearanceAndSubpages(window) {
     generatedCanvases: document.querySelectorAll(".pet-preview-card .pet-generated-actor-canvas").length,
     fallbackCanvas: Boolean(document.querySelector(".pet-preview-card .pet-actor-canvas-shell:not(.pet-generated-actor-shell)")),
     embedded: Boolean(document.querySelector(".pet-preview-card .pet-token-embedded")),
-    enabledExternalFrames: [...document.querySelectorAll(".token-bubble-card [data-token-frame-id]")]
-      .filter((button) => ["pillow", "compact", "cost", "floating"].includes(button.dataset.tokenFrameId) && !button.disabled)
-      .map((button) => button.dataset.tokenFrameId),
-    enabledSkinButtons: document.querySelectorAll(".skin-card button:not(:disabled)").length,
-    enabledAccessoryCards: document.querySelectorAll(".accessories-card [data-accessory-id]:not(:disabled)").length,
+    catChoices: document.querySelectorAll("[data-appearance-cat-type] [data-cat-id]").length,
+    captureCommands: document.querySelectorAll("[data-appearance-preview] [data-testid=capture-appearance-preview]").length,
+    previewResetOrUndo: [...document.querySelectorAll("[data-appearance-preview] button")]
+      .filter((button) => /reset|undo|save/iu.test(button.textContent ?? "")).length,
+    identityCards: document.querySelectorAll("[data-appearance-identity]").length,
+    identityInput: document.querySelector("[data-testid=pet-identity-name]")?.value,
+    identityToggle: document.querySelector("[data-testid=show-name-on-hover]")?.getAttribute("aria-pressed"),
+    identityMiniPreviews: document.querySelectorAll("[data-appearance-identity] [data-pet-name-bubble]").length,
+    previewNameBubbles: document.querySelectorAll("[data-appearance-preview] [data-pet-name-bubble].is-visible").length,
+    previewThoughtDots: document.querySelectorAll("[data-appearance-preview] .pet-name-thought-dot").length,
+    previewMoodBadge: document.querySelector("[data-appearance-preview-mood]")?.textContent?.trim(),
+    previewEffect: document.querySelector("[data-appearance-preview] .pet-accessory-compositor")?.getAttribute("data-accessory-effect"),
+    previewEffectOverlays: document.querySelectorAll("[data-appearance-preview] .pet-accessory-overlay-effect").length,
+    legacySkinCards: document.querySelectorAll("[data-appearance-skin], .skin-card").length,
+    displayRanges: [...document.querySelectorAll("[data-appearance-display] input[type=range]")].map((input) => ({
+      id: input.dataset.rangeId,
+      value: input.value,
+      disabled: input.disabled,
+      cursor: getComputedStyle(input).cursor,
+    })),
+    accessoryCategories: [...document.querySelectorAll("[data-appearance-accessories] [data-accessory-category]")]
+      .map((group) => ({ id: group.dataset.accessoryCategory, choices: group.querySelectorAll("[data-summary-choice]").length })),
+    moodControls: document.querySelectorAll(".appearance-v22 .mood-badge-card, .appearance-v22 .mood-looks-card, [data-testid=open-mood-looks]").length,
+    standaloneTokenFrame: document.querySelectorAll(".appearance-v22 .token-bubble-card").length,
+    summaryTokenFrame: document.querySelectorAll("[data-appearance-accessories] [data-accessory-category=tokenFrame]").length,
+    resetOwners: [...document.querySelectorAll(".appearance-v22 button")].filter((button) => /reset appearance/iu.test(button.textContent ?? "")).length,
+    workbench: (() => {
+      const root = document.querySelector(".appearance-v22");
+      const previewCard = document.querySelector("[data-appearance-preview]")?.getBoundingClientRect();
+      const display = document.querySelector("[data-appearance-display]")?.getBoundingClientRect();
+      const identity = document.querySelector("[data-appearance-identity]")?.getBoundingClientRect();
+      const accessories = document.querySelector("[data-appearance-accessories]")?.getBoundingClientRect();
+      const footer = document.querySelector("[data-appearance-footer]")?.getBoundingClientRect();
+      return root && previewCard && display && identity && accessories && footer ? {
+        scrollHeight: root.scrollHeight,
+        clientHeight: root.clientHeight,
+        previewWidth: previewCard.width,
+        previewHeight: previewCard.height,
+        sideWidth: display.width,
+        stacked: identity.top >= display.bottom,
+        accessoriesBelow: accessories.top >= previewCard.bottom,
+        footerBelow: footer.top >= accessories.bottom,
+      } : null;
+    })(),
   }));
   verify("Appearance shared actor", preview.generatedCanvases === 1 && !preview.fallbackCanvas, "Appearance preview uses exactly one generated actor renderer");
   verify("Appearance embedded token frame", preview.embedded, "Appearance preview uses the manifest embedded token mode without a second runtime frame");
-  verify("Appearance capability honesty", preview.enabledExternalFrames.length === 0 && preview.enabledSkinButtons === 0 && preview.enabledAccessoryCards === 0, "baked actor colors/accessories and unsupported external frames are not presented as usable");
+  verify("Appearance v22 Cat Type strip", preview.catChoices === 5, "the shallow selector exposes exactly the five reference cat choices plus View all");
+  verify("Appearance v22 preview command ownership", preview.captureCommands === 1 && preview.previewResetOrUndo === 0, "Pet Preview owns Capture preview only, with no duplicate Reset, Undo, or Save");
+  verify("Appearance v26 Pet Identity", preview.identityCards === 1 && preview.identityInput === "Mochi" && preview.identityToggle === "true" && preview.identityMiniPreviews === 0 && preview.legacySkinCards === 0, "the right stack contains the single live Pet Identity editor, defaults to Mochi/on, and has no redundant mini preview or retired Skin card");
+  verify("Appearance v26 held-hover preview", preview.previewNameBubbles === 1 && preview.previewThoughtDots === 2 && preview.previewMoodBadge === "focused", "the large Pet Preview holds hover state and renders the fixed current mood plus exactly one circular name bubble with two thought dots");
+  verify("Appearance default None effect", preview.previewEffect === "none" && preview.previewEffectOverlays === 0, "the selected None effect renders no automatic mood override in Pet Preview");
+  verify("Appearance Display range affordance", preview.displayRanges.length === 4 && preview.displayRanges.every((range) => !range.disabled && range.cursor === "pointer"), `all four enabled Display sliders use the hand cursor: ${JSON.stringify(preview.displayRanges)}`);
+  verify("Appearance default opacity", preview.displayRanges.find((range) => range.id === "opacity")?.value === "100", "a fresh or reset appearance starts at 100% opacity");
+  verify("Appearance v30 accessory summary", preview.accessoryCategories.length === 4 && preview.accessoryCategories.map((group) => group.id).join(",") === "neck,head,base,effects" && preview.accessoryCategories.every((group) => group.choices === 2), `Neck, Head, Ground, and Effects each expose exactly current/default + None: ${JSON.stringify(preview.accessoryCategories)}`);
+  verify("Appearance scope boundaries", preview.moodControls === 0 && preview.standaloneTokenFrame === 0 && preview.summaryTokenFrame === 0, "Mood controls and Token Frame are absent from the v30 Appearance workbench");
+  verify("Appearance reset ownership", preview.resetOwners === 1, "the footer is the page's sole Reset appearance owner");
+  verify("Appearance v26 geometry", Boolean(preview.workbench && preview.workbench.scrollHeight <= preview.workbench.clientHeight + 1 && preview.workbench.previewWidth > preview.workbench.sideWidth && preview.workbench.previewHeight > 280 && preview.workbench.stacked && preview.workbench.accessoriesBelow && preview.workbench.footerBelow), `full compact workbench fits without page scrolling: ${JSON.stringify(preview.workbench)}`);
   await verifyNoHorizontalOverflow(window, "Appearance");
   await capture(window, "console-appearance.png", "Console / Appearance");
 
-  const hiddenCopy = await evaluate(window, () => {
-    const button = document.querySelector(".token-bubble-card [data-token-frame-id=hidden]");
-    return button?.textContent.replace(/\s+/gu, " ").trim() ?? "";
-  });
-  verify("Golden Hidden copy is honest", /hide value/iu.test(hiddenCopy) && /baked frame remains/iu.test(hiddenCopy), `Hidden option says what changes and what remains: ${hiddenCopy}`);
-  await click(window, ".token-bubble-card [data-token-frame-id=hidden]", "Golden Hide value");
-  await waitFor(window, () => Boolean(document.querySelector(".pet-preview-card .pet-generated-actor-shell.pet-token-hidden")), [], "Golden hidden token mode");
-  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.tokenBubbleId === "hidden"), [], "Golden hidden token setting persistence");
-  const hiddenMode = await evaluate(window, async () => {
-    const canvas = document.querySelector(".pet-preview-card .pet-generated-actor-canvas");
+  const setIdentityName = async (value) => {
+    await evaluate(window, (nextValue) => {
+      const input = document.querySelector("[data-testid=pet-identity-name]");
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, nextValue);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  };
+  await setIdentityName("TokenPet猫猫");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.identity?.name === "TokenPet猫猫"), [], "10-grapheme Pet Identity persistence");
+  const longBubbleSize = await evaluate(window, () => document.querySelector("[data-appearance-preview] .pet-name-thought-circle")?.getBoundingClientRect().width ?? 0);
+  await setIdentityName("TokenPet猫猫呀");
+  await waitFor(window, () => document.querySelector("[data-testid=pet-identity-name]")?.getAttribute("aria-invalid") === "true", [], "Pet Identity over-limit validation");
+  await waitFor(window, () => {
+    const color = getComputedStyle(document.querySelector(".pet-identity-name-field")).borderTopColor;
+    const rgb = color.match(/[\d.]+/gu)?.slice(0, 3).map(Number) ?? [];
+    return rgb.length === 3 && rgb[0] >= 190 && rgb[0] > rgb[1] * 2.5 && rgb[0] > rgb[2] * 2.5;
+  }, [], "Pet Identity invalid red border paint");
+  const invalidIdentity = await evaluate(window, async () => ({
+    inputValue: document.querySelector("[data-testid=pet-identity-name]")?.value,
+    error: document.querySelector("#pet-identity-name-error")?.textContent,
+    redBorder: getComputedStyle(document.querySelector(".pet-identity-name-field")).borderTopColor,
+    persistedName: (await window.tokenpet.getScreenshotQaState()).settings.petAppearance.identity?.name,
+  }));
+  const invalidBorderRgb = invalidIdentity.redBorder.match(/[\d.]+/gu)?.slice(0, 3).map(Number) ?? [];
+  const invalidBorderIsRed = invalidBorderRgb.length === 3
+    && invalidBorderRgb[0] >= 190
+    && invalidBorderRgb[0] > invalidBorderRgb[1] * 2.5
+    && invalidBorderRgb[0] > invalidBorderRgb[2] * 2.5;
+  verify("Pet Identity 10-grapheme validation", invalidIdentity.inputValue === "TokenPet猫猫呀" && invalidIdentity.error === "最多10个字符" && invalidBorderIsRed && invalidIdentity.persistedName === "TokenPet猫猫", `the 11th grapheme remains visible only as a red invalid draft while the last valid name stays persisted: ${JSON.stringify(invalidIdentity)}`);
+  await capture(window, "console-appearance-name-invalid.png", "Console / Appearance / Pet name validation");
+
+  await setIdentityName("M");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.identity?.name === "M"), [], "short Pet Identity persistence");
+  const shortBubbleSize = await evaluate(window, () => document.querySelector("[data-appearance-preview] .pet-name-thought-circle")?.getBoundingClientRect().width ?? 0);
+  verify("Pet Identity adaptive thought bubble", longBubbleSize > shortBubbleSize + 10, `the circular bubble grows with valid name length (${shortBubbleSize}px short / ${longBubbleSize}px long)`);
+  await click(window, "[data-testid=show-name-on-hover]", "disable name on hover");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.identity?.showNameOnHover === false), [], "hide-name setting persistence");
+  const hiddenNamePreview = await evaluate(window, () => document.querySelector("[data-appearance-preview] [data-pet-name-bubble]")?.getAttribute("aria-hidden"));
+  verify("Pet Identity hover visibility toggle", hiddenNamePreview === "true", "turning Show name on hover off hides the held-hover result in the large preview and persists immediately");
+  await click(window, "[data-testid=show-name-on-hover]", "restore name on hover");
+  await setIdentityName("Mochi");
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.identity?.name === "Mochi" && state.settings.petAppearance.identity?.showNameOnHover === true), [], "Pet Identity default restore");
+
+  const setDisplayRange = async (rangeId, value) => {
+    await evaluate(window, ({ id, nextValue }) => {
+      const input = document.querySelector(`[data-range-id="${id}"]`);
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set;
+      setter.call(input, String(nextValue));
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, { id: rangeId, nextValue: value });
+  };
+  await setDisplayRange("shadow", 0);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.shadow === 0), [], "Shadow 0% persistence");
+  await delay(240);
+  const shadowOffFilter = await evaluate(window, () => getComputedStyle(document.querySelector("[data-appearance-preview] .pet-generated-actor-canvas")).filter);
+  await capture(window, "console-appearance-shadow-0.png", "Console / Appearance / Shadow 0%");
+  await setDisplayRange("shadow", 100);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.shadow === 1), [], "Shadow 100% persistence");
+  await delay(240);
+  const shadowOnFilter = await evaluate(window, () => getComputedStyle(document.querySelector("[data-appearance-preview] .pet-generated-actor-canvas")).filter);
+  verify("Appearance live Shadow control", shadowOffFilter !== shadowOnFilter && shadowOnFilter.includes("drop-shadow"), `the generated actor consumes the persisted slider value instead of reporting Baked (${shadowOffFilter} → ${shadowOnFilter})`);
+  await capture(window, "console-appearance-shadow-100.png", "Console / Appearance / Shadow 100%");
+  await setDisplayRange("shadow", 60);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.shadow === .6), [], "Shadow reference restore");
+
+  const originalPreviewSize = Number(preview.displayRanges.find((range) => range.id === "size")?.value ?? 100);
+  await setDisplayRange("size", 125);
+  await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.size === 1.25), [], "Appearance maximum Size persistence");
+  await delay(240);
+  const maximumSizePreviewFit = await evaluate(window, () => {
+    const stage = document.querySelector("[data-appearance-preview] .pet-preview-stage")?.getBoundingClientRect();
+    const canvas = document.querySelector("[data-appearance-preview] .pet-generated-actor-canvas");
+    const canvasRect = canvas?.getBoundingClientRect();
     const context = canvas?.getContext("2d");
-    const manifestUrl = new URL("./pet-actors/golden-british/actor.json", location.href);
-    const manifest = await fetch(manifestUrl).then((response) => response.json());
-    const slot = manifest.tokenSlot ?? manifest.dynamicSlots.tokenText;
-    const pixels = context?.getImageData(slot.x, slot.y, slot.width, slot.height).data ?? [];
-    let opaquePixels = 0;
-    let creamPixels = 0;
-    for (let index = 0; index < pixels.length; index += 4) {
-      if (pixels[index + 3] > 180) opaquePixels += 1;
-      if (pixels[index] > 180 && pixels[index + 1] > 160 && pixels[index + 2] > 110 && pixels[index + 3] > 180) creamPixels += 1;
+    if (!stage || !canvas || !canvasRect || !context) return null;
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    let left = canvas.width;
+    let top = canvas.height;
+    let right = -1;
+    let bottom = -1;
+    for (let y = 0; y < canvas.height; y += 1) {
+      for (let x = 0; x < canvas.width; x += 1) {
+        if (pixels[(y * canvas.width + x) * 4 + 3] <= 12) continue;
+        left = Math.min(left, x);
+        top = Math.min(top, y);
+        right = Math.max(right, x);
+        bottom = Math.max(bottom, y);
+      }
     }
+    if (right < left || bottom < top) return null;
+    const visible = {
+      left: canvasRect.left + left / canvas.width * canvasRect.width,
+      top: canvasRect.top + top / canvas.height * canvasRect.height,
+      right: canvasRect.left + (right + 1) / canvas.width * canvasRect.width,
+      bottom: canvasRect.top + (bottom + 1) / canvas.height * canvasRect.height,
+    };
     return {
-      generatedCanvases: document.querySelectorAll(".pet-preview-card .pet-generated-actor-canvas").length,
-      fallbackCanvases: document.querySelectorAll(".pet-preview-card .pet-actor-canvas-shell:not(.pet-generated-actor-shell)").length,
-      tokenHotspots: document.querySelectorAll(".pet-preview-card .pet-actor-token-hotspot").length,
-      opaquePixels,
-      creamPixels,
+      configuredSize: Number(document.querySelector("[data-appearance-preview] .pet-generated-actor-shell")?.dataset.petSize),
+      stage: { left: stage.left, top: stage.top, right: stage.right, bottom: stage.bottom },
+      visible,
+      contained: visible.left >= stage.left - 1 && visible.top >= stage.top - 1 && visible.right <= stage.right + 1 && visible.bottom <= stage.bottom + 1,
     };
   });
-  verify("Golden Hidden runtime semantics", hiddenMode.generatedCanvases === 1 && hiddenMode.fallbackCanvases === 0 && hiddenMode.tokenHotspots === 0, "Hidden removes the dynamic token value/hotspot without adding a second or fallback frame");
-  verify("Golden baked frame remains", hiddenMode.opaquePixels > 1_000 && hiddenMode.creamPixels > 1_000, `the manifest token slot still contains approved baked cream-frame pixels (${hiddenMode.creamPixels} cream / ${hiddenMode.opaquePixels} opaque)`);
-  await capture(window, "console-appearance-hidden-value.png", "Console / Appearance / Hide value");
-  await click(window, ".token-bubble-card [data-token-frame-id=embedded]", "restore Golden embedded frame");
-  await waitFor(window, () => Boolean(document.querySelector(".pet-preview-card .pet-generated-actor-shell.pet-token-embedded .pet-actor-token-hotspot")), [], "Golden embedded token mode restore");
-  record("Golden frame restore", "restoring Embedded returns exactly one dynamic token hotspot on the same generated actor");
+  verify("Appearance maximum Size preview containment", maximumSizePreviewFit?.configuredSize === .92 && maximumSizePreviewFit.contained === true, `the preview caps only its portrait scale and keeps the complete actor visible at desktop Size 125%: ${JSON.stringify(maximumSizePreviewFit)}`);
+  await capture(window, "console-appearance-size-125.png", "Console / Appearance / Size 125% fitted preview");
+  await setDisplayRange("size", originalPreviewSize);
+  await waitFor(window, (expectedSize) => window.tokenpet.getScreenshotQaState().then((state) => Math.round((state.settings.petAppearance.size ?? 1) * 100) === expectedSize), [originalPreviewSize], "Appearance Size restore");
 
   const subpages = [
     { trigger: "[data-testid=open-cat-type]", page: "cat-type", file: "console-cat-type.png", name: "Cat Type" },
-    { trigger: "[data-testid=open-mood-looks]", page: "mood-looks", file: "console-mood-looks.png", name: "Mood Looks" },
     { trigger: "[data-testid=open-accessories]", page: "accessories", file: "console-accessories.png", name: "Accessories" },
   ];
   for (const subpage of subpages) {
@@ -1038,6 +1236,7 @@ async function verifyAppearanceAndSubpages(window) {
       verify("Cat Type baked-detail gate", details.enabledRanges === 0 && details.enabledEyes === 0 && details.note.includes("baked"), "Golden fur, eye, and pattern controls are disabled and explained as baked actor art");
 
       const beforeCatChange = sharedStoryState(await qaStateFor(window));
+      const identityBeforeCatChange = (await qaStateFor(window)).settings.petAppearance.identity;
       await click(window, "[data-cat-id=ragdoll]", "select Ragdoll fallback");
       await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.catTypeId === "ragdoll"), [], "Ragdoll appearance persistence");
       await waitFor(window, () => Boolean(document.querySelector(".cat-type-page-preview-stage .pet-actor-canvas-root.is-ready")), [], "Ragdoll fallback renderer");
@@ -1068,6 +1267,7 @@ async function verifyAppearanceAndSubpages(window) {
       verify("Ragdoll approved static fallback", fallback.fallbackCanvases === 1 && fallback.generatedCanvases === 0 && fallback.hiddenTokenMode === 1 && fallback.tokenHotspots === 0 && fallback.opaqueSamples > 0, `Ragdoll uses only the approved non-empty ${fallback.width}×${fallback.height} fallbackStaticImage, with runtime token UI forced hidden: ${JSON.stringify(fallback)}`);
       verify("Ragdoll fallback does not crash", !window.webContents.isCrashed(), "switching from actor-ready Golden to Ragdoll keeps the renderer alive");
       verify("Cat type preserves shared story state", JSON.stringify(sharedStoryState(await qaStateFor(window))) === JSON.stringify(beforeCatChange), "journey stage, memories, mood thresholds, and milestone ids are unchanged after selecting Ragdoll");
+      verify("Cat type preserves Pet Identity", JSON.stringify((await qaStateFor(window)).settings.petAppearance.identity) === JSON.stringify(identityBeforeCatChange), "changing the cat image keeps the local name and Show name on hover preference");
       await capture(window, "console-cat-type-ragdoll-fallback.png", "Console / Cat Type / Ragdoll fallback");
 
       await click(window, "[data-cat-id=golden-british]", "restore Golden British actor");
@@ -1075,25 +1275,42 @@ async function verifyAppearanceAndSubpages(window) {
       await waitFor(window, () => Boolean(document.querySelector(".cat-type-page-preview-stage .pet-generated-actor-canvas-root.is-ready")), [], "Golden British generated actor restore");
       verify("Golden restore preserves shared story state", JSON.stringify(sharedStoryState(await qaStateFor(window))) === JSON.stringify(beforeCatChange), "journey stage, memories, mood thresholds, and milestone ids remain unchanged after switching back to Golden");
     }
-    if (subpage.page === "mood-looks") {
-      const moodLooks = await evaluate(window, () => ({
-        bakedControls: [...document.querySelectorAll(".mood-editor-card select:disabled, .mood-effects-card button:disabled")].length,
-        bakedLabels: [...document.querySelectorAll(".mood-editor-card strong, .mood-effects-card button, .mood-quick-actions button")].filter((label) => label.textContent.toLowerCase().includes("baked")).length,
-        previewOnlyLabels: [...document.querySelectorAll(".mood-editor-card strong")].filter((label) => label.textContent.includes("preview only")).length,
-      }));
-      verify("Mood Looks honest controls", moodLooks.bakedControls >= 7 && moodLooks.bakedLabels >= 7 && moodLooks.previewOnlyLabels === 1, "baked actor-owned controls/effects are disabled and the sole ephemeral Background wash control is explicitly preview-only");
-    }
     if (subpage.page === "accessories") {
       const accessories = await evaluate(window, () => ({
-        enabledExternalFrames: [...document.querySelectorAll(".token-frame-section [data-token-frame-id]")]
-          .filter((button) => ["pillow", "compact", "cost", "floating"].includes(button.dataset.tokenFrameId) && !button.disabled)
-          .map((button) => button.dataset.tokenFrameId),
-        enabledUnsupported: [...document.querySelectorAll("[data-accessory-choice-id]:not(:disabled)")]
-          .map((button) => button.dataset.accessoryChoiceId)
-          .filter((id) => !["none", "collar"].includes(id)),
+        categoryIds: [...document.querySelectorAll(".accessories-library-column [data-accessory-category]")].map((section) => section.dataset.accessoryCategory),
+        choiceCounts: [...document.querySelectorAll(".accessories-library-column [data-accessory-category]")].map((section) => section.querySelectorAll("[data-accessory-choice-id]").length),
+        planned: [...document.querySelectorAll("[data-accessory-choice-id]:disabled")].map((button) => button.dataset.accessoryChoiceId),
+        tokenFrames: document.querySelectorAll(".token-frame-section, [data-token-frame-id]").length,
+        detailCards: document.querySelectorAll(".accessory-details-card").length,
         capabilityLabels: document.querySelectorAll(".accessory-capability-label").length,
+        geometry: (() => {
+          const root = document.querySelector(".accessories-v28");
+          const preview = document.querySelector(".accessories-live-preview-card")?.getBoundingClientRect();
+          const library = document.querySelector(".accessories-library-column")?.getBoundingClientRect();
+          return root && preview && library ? {
+            scrollHeight: root.scrollHeight,
+            clientHeight: root.clientHeight,
+            previewWidth: preview.width,
+            libraryWidth: library.width,
+          } : null;
+        })(),
       }));
-      verify("Accessories capability gate", accessories.enabledExternalFrames.length === 0 && accessories.enabledUnsupported.length === 0 && accessories.capabilityLabels > 0, "unsupported frames/wearables are disabled and capability-labelled");
+      verify("Accessories v28 catalog structure", accessories.categoryIds.join(",") === "neck,head,base,effects" && accessories.choiceCounts.every((count) => count === 4) && accessories.tokenFrames === 0 && accessories.detailCards === 0, `only Neck, Head, Ground, and Effects remain, each with None plus three choices: ${JSON.stringify(accessories)}`);
+      verify("Accessories v28 capability gate", accessories.planned.sort().join(",") === ["bandana", "bow-tie", "study-glasses"].sort().join(",") && accessories.capabilityLabels >= 9, `only the three explicitly planned wearables are disabled: ${JSON.stringify(accessories.planned)}`);
+      verify("Accessories v28 geometry", Boolean(accessories.geometry && accessories.geometry.scrollHeight <= accessories.geometry.clientHeight + 1 && accessories.geometry.libraryWidth > accessories.geometry.previewWidth), `the four catalog rows fit without page scrolling beside a narrower live preview: ${JSON.stringify(accessories.geometry)}`);
+
+      await click(window, "[data-accessory-category=base] [data-accessory-choice-id=round-rug]", "select Round rug");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.accessorySettings.baseId === "round-rug"), [], "Round rug persistence");
+      await waitFor(window, () => document.querySelector(".accessories-live-preview-stage [data-accessory-ground=round-rug]"), [], "Round rug live rendering");
+      await click(window, "[data-accessory-category=effects] [data-accessory-choice-id=leaf-drift]", "select Leaf drift");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.accessorySettings.effectId === "leaf-drift"), [], "Leaf drift persistence");
+      await waitFor(window, () => document.querySelector(".accessories-live-preview-stage [data-accessory-effect=leaf-drift]"), [], "Leaf drift live rendering");
+      await click(window, "[data-accessory-category=head] [data-accessory-choice-id=halo]", "select Halo");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.accessorySettings.headId === "halo"), [], "Halo persistence");
+      await waitFor(window, () => document.querySelector(".accessories-live-preview-stage [data-accessory-head=halo]"), [], "Halo live rendering");
+      record("Accessories runtime selections", "Round rug, Leaf drift, and Halo persist and render through the shared actor compositor");
+      await click(window, "[data-testid=reset-accessories]", "restore minimal accessory defaults");
+      await waitFor(window, () => window.tokenpet.getScreenshotQaState().then((state) => state.settings.petAppearance.accessorySettings.neckId === "collar" && state.settings.petAppearance.accessorySettings.headId === "none" && state.settings.petAppearance.accessorySettings.baseId === "none" && state.settings.petAppearance.accessorySettings.effectId === "none"), [], "minimal accessory default restore");
     }
     await verifyNoHorizontalOverflow(window, subpage.name);
     await capture(window, subpage.file, `Console / ${subpage.name}`);
@@ -1129,6 +1346,15 @@ async function verifyActions(window, desktopPet) {
     generatedActors: document.querySelectorAll("[data-action-preview] .pet-generated-actor-canvas-root.is-ready").length,
     filmstripFrames: document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]").length,
     settingsFor: document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor,
+    accessories: (() => {
+      const compositor = document.querySelector("[data-action-preview] .pet-accessory-compositor");
+      return compositor ? {
+        visible: compositor.dataset.accessoriesVisible,
+        head: compositor.dataset.accessoryHead,
+        ground: compositor.dataset.accessoryGround,
+        effect: compositor.dataset.accessoryEffect,
+      } : null;
+    })(),
     layout: (() => {
       const preview = document.querySelector("[data-action-preview]")?.getBoundingClientRect();
       const settings = document.querySelector("[data-action-settings]")?.getBoundingClientRect();
@@ -1153,14 +1379,19 @@ async function verifyActions(window, desktopPet) {
   verify("Actions v19 selector", JSON.stringify(state.ids) === JSON.stringify(expectedActions) && state.captureCount === 0, `exact ordered eight-action selector, Capture excluded: ${JSON.stringify(state.ids)}`);
   verify("Actions v20 selector labels", JSON.stringify(state.labels) === JSON.stringify(["Pet", "Feed snack", "Play cursor", "Dangle toy", "Toss yarn", "Nap here", "Wake up", "Dance"]), `friendly labels: ${JSON.stringify(state.labels)}`);
   verify("Actions ready assets", state.disabled.length === 0 && state.brokenImages === 0, "all Golden British action previews are enabled and all selector/filmstrip art loaded");
-  verify("Actions default selection", state.selected === "dance" && state.settingsFor === "dance", "Dance is selected and its dedicated settings are visible by default");
+  verify("Actions default selection", state.selected === "walk_round_trip" && state.settingsFor === "walk_round_trip", "Pet is selected and its dedicated settings are visible whenever Actions opens");
   verify("Actions isolated preview renderer", state.previewOnly === "Preview only" && state.sharedActorId === "golden-british" && state.generatedActors === 1 && state.filmstripFrames >= 3, `preview uses the shared generated Golden actor and complete semantic filmstrip: ${JSON.stringify(state)}`);
+  verify("Actions preview suppresses Appearance accessories", state.accessories?.visible === "false" && state.accessories.head === "none" && state.accessories.ground === "none" && state.accessories.effect === "none", `the action-only actor ignores selected Head, Ground, and Effects: ${JSON.stringify(state.accessories)}`);
   verify("Actions v19 composition", state.layout && state.layout.previewWidth / state.layout.settingsWidth >= 1.55 && state.layout.stageHeight >= 285, `dominant preview / secondary settings composition: ${JSON.stringify(state.layout)}`);
   verify("Actions fits 1280×900 without vertical scrolling", state.layout && state.layout.contentScrollHeight <= state.layout.contentClientHeight + 1 && state.layout.footerBottom <= state.layout.contentBottom + 1, `entire selector, workbench, and footer fit the production Console viewport: ${JSON.stringify(state.layout)}`);
   verify("Actions retired modules removed", state.retiredModules.length === 0, `old director modules absent: ${JSON.stringify(state.retiredModules)}`);
   verify("Actions isolation copy", state.footer === "Preview changes apply instantly. Your desktop pet stays still.", `exact footer copy: ${state.footer}`);
 
-  // The production Dance preview starts its own reference track by default.
+  await click(window, "[data-action-id=dance]", "select Dance preview");
+  await waitFor(window, () => document.querySelector("[data-action-settings]")?.dataset.actionSettingsFor === "dance", [], "Dance settings");
+  await waitFor(window, () => document.querySelector("[data-action-preview-stage]")?.dataset.previewDancePhase === "dance_reference_clip", [], "Dance reference phase");
+
+  // The production Dance preview starts its own reference track when selected.
   // Stop that single intended stream before opening the isolated playback
   // probe; two simultaneous elements for the same AAC can leave the second
   // one waiting on the cold macOS audio device even though play() resolved.
@@ -1422,7 +1653,7 @@ async function verifyActions(window, desktopPet) {
     const shell = stage?.querySelector(".pet-generated-actor-shell");
     const root = stage?.querySelector(".pet-generated-actor-canvas-root");
     const stageRect = stage?.getBoundingClientRect();
-    const tokenRect = shell?.querySelector(".pet-actor-token-hotspot")?.getBoundingClientRect();
+    const tokenRect = stage?.querySelector(".pet-name-thought-token .pet-name-thought-circle")?.getBoundingClientRect();
     return {
       contract: stage?.dataset.previewNapContract,
       phase: stage?.dataset.previewNapPhase,
@@ -1431,7 +1662,8 @@ async function verifyActions(window, desktopPet) {
       keyframes: document.querySelectorAll("[data-action-filmstrip] [data-action-keyframe]").length,
       actorX: actor?.style.getPropertyValue("--actor-preview-x"),
       actorY: actor?.style.getPropertyValue("--actor-preview-y"),
-      tokenVisible: Boolean(shell && !shell.classList.contains("pet-token-hidden") && shell.querySelector(".pet-actor-token-hotspot")),
+      embeddedTokenHidden: Boolean(shell?.classList.contains("pet-token-hidden") && !shell.querySelector(".pet-actor-token-hotspot")),
+      tokenVisible: Boolean(stage?.querySelector('[data-pet-name-bubble][data-bubble-content-mode="token"][aria-hidden="false"]')),
       tokenFitsStage: Boolean(stageRect && tokenRect
         && tokenRect.left >= stageRect.left - 1
         && tokenRect.right <= stageRect.right + 1
@@ -1447,20 +1679,21 @@ async function verifyActions(window, desktopPet) {
   });
   verify(
     "Actions Nap Here preview shares the grounded fixed-token transition",
-    napPreview.contract === "grounded-direct-settle-fixed-token-frame"
+    napPreview.contract === "grounded-direct-settle-sleep-bubble"
       && napPreview.phase === "sleep_loop"
       && napPreview.animation === "action.sleep_loop"
       && /^sleep_loop-\d+$/.test(napPreview.frame ?? "")
       && napPreview.keyframes === 2
       && napPreview.actorX === "0%"
       && napPreview.actorY === "0%"
+      && napPreview.embeddedTokenHidden
       && napPreview.tokenVisible
       && napPreview.tokenFitsStage
       && napPreview.routeHidden
       && napPreview.homeHidden
       && napPreview.destinationHidden
       && napPreview.shadow !== "none",
-    `Ready and Asleep use registered poses without route chrome or token-frame translation: ${JSON.stringify(napPreview)}`,
+    `Ready and Asleep use registered poses without route chrome; the embedded frame stays hidden while the persistent token bubble remains in-stage: ${JSON.stringify(napPreview)}`,
   );
   await capture(window, "console-actions-nap-here.png", "Console / Actions / Nap Here grounded settle");
 

@@ -305,8 +305,14 @@ async function run() {
   const trayIcon = qa.getTrayIconInfo();
   verify(
     "Menu bar pet icon is launch-ready",
-    !trayIcon.empty && trayIcon.size.width > 0 && trayIcon.size.height > 0 && !trayIcon.template,
-    `icon ${trayIcon.size.width}×${trayIcon.size.height}; template=${trayIcon.template}`,
+    !trayIcon.empty
+      && trayIcon.size.width > 0
+      && trayIcon.size.height > 0
+      && !trayIcon.template
+      && trayIcon.titleMode === "dynamic-token-count"
+      && trayIcon.healthIntervalMs === 30_000
+      && trayIcon.recoversAfterSystemChange,
+    `icon ${trayIcon.size.width}×${trayIcon.size.height}; template=${trayIcon.template}; title=${trayIcon.titleMode}; health=${trayIcon.healthIntervalMs}ms`,
   );
 
   let pet = await waitForWindow(qa, "pet");
@@ -1018,11 +1024,18 @@ async function run() {
 
   qa.resetQuickPlayTrace();
   const napBounds = pet.getBounds();
+  const preNapDirectorState = qa.getReportedPetDirectorState();
   panel = await openQuickPlay();
   await click(panel, "[data-action-id=nap_here]");
   verify("Nap here keeps Quick Play open", safeWindow(qa, "popover")?.id === panel.id, "the panel remains visible during settle");
   await waitForQuickPlayEnd("nap_here");
   await waitFor(() => qa.getQuickPlaySession().resting === true, "persistent sleep state");
+  await execute(pet, "document.querySelector('.pet-stage')?.dispatchEvent(new PointerEvent('pointerout', { bubbles: true }))");
+  await waitFor(
+    () => execute(pet, "Boolean(document.querySelector('.pet-name-thought-token.is-visible[data-bubble-content-mode=token]'))"),
+    "Nap token bubble render",
+  );
+  const timedNapInfo = qa.getTimedNapInfo();
   const napDisabled = await execute(panel, "document.querySelector('[data-action-id=nap_here]')?.disabled === true");
   const napVisual = await execute(pet, `(() => {
     const stage = document.querySelector('.pet-stage');
@@ -1033,7 +1046,8 @@ async function run() {
       frame: canvas?.dataset.actorFrame,
       canvasAnimation: canvas ? getComputedStyle(canvas).animationName : null,
       resting: stage?.dataset.petResting,
-      tokenVisible: Boolean(document.querySelector('.pet-actor-token-hotspot')),
+      embeddedTokenVisible: Boolean(document.querySelector('.pet-actor-token-hotspot')),
+      sleepTokenBubbleVisible: Boolean(document.querySelector('.pet-name-thought-token.is-visible[data-bubble-content-mode="token"]')),
       shadow: root ? getComputedStyle(root).filter : null,
     };
   })()`);
@@ -1042,15 +1056,21 @@ async function run() {
   verify(
     "Nap settles once into persistent sleep without moving the actor canvas",
     napDisabled
+      && timedNapInfo.active
+      && timedNapInfo.durationMs === 300_000
+      && timedNapInfo.restoreAction === preNapDirectorState.action
+      && preNapDirectorState.resting === false
+      && timedNapInfo.remainingMs > 0
       && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds)
       && napVisual.animation === "action.sleep_loop"
       && /^sleep_loop-\d+$/.test(napVisual.frame ?? "")
       && (napVisual.canvasAnimation === "none" || napVisual.canvasAnimation === "")
       && napVisual.resting === "true"
-      && napVisual.tokenVisible
+      && !napVisual.embeddedTokenVisible
+      && napVisual.sleepTokenBubbleVisible
       && napVisual.shadow !== "none"
       && existsSync(napScreenshot),
-    `already-asleep Nap is disabled, bounds/token frame remain fixed, and no whole-canvas bounce survives: ${JSON.stringify(napVisual)}`,
+    `Nap owns a five-minute lease ${JSON.stringify(timedNapInfo)}, bounds remain fixed, the embedded frame is hidden, the token bubble is visible, and no whole-canvas bounce survives: ${JSON.stringify(napVisual)}`,
   );
   quickPlaySummaries.push({ action: "nap_here", startBounds: napBounds, endBounds: pet.getBounds(), trace: qa.getQuickPlayTrace(), resting: true });
 
@@ -1060,13 +1080,36 @@ async function run() {
   await waitForQuickPlayEnd("wake_up");
   await waitFor(() => qa.getQuickPlaySession().resting === false, "wake restored director state");
   const wakeTrace = qa.getQuickPlayTrace();
+  const wakeTimedNapInfo = qa.getTimedNapInfo();
+  const wakeRestoredDirectorState = qa.getReportedPetDirectorState();
   verify(
-    "Wake up follows the five-second phase contract",
+    "Wake up interrupts the timed Nap and restores the original state",
     ["stand", "outbound", "interact", "settle"].every((phase) => wakeTrace.some((entry) => entry.phase === phase))
+      && !wakeTimedNapInfo.active
+      && wakeRestoredDirectorState.resting === false
       && JSON.stringify(pet.getBounds()) === JSON.stringify(napBounds),
-    "production timeline remains exactly five seconds while the configured stretch hold redistributes the authored blink/roll/stretch/gather phases; QA uses an accelerated clock",
+    `the five-second Wake sequence cancels the Nap lease and returns to the non-resting Director state ${JSON.stringify(wakeRestoredDirectorState)}`,
   );
   quickPlaySummaries.push({ action: "wake_up", startBounds: napBounds, endBounds: pet.getBounds(), trace: wakeTrace, resting: false });
+
+  qa.setQuickPlayTimeScale(100);
+  await waitFor(() => execute(panel, "document.querySelector('[data-action-id=nap_here]')?.disabled === false"), "Nap re-enabled after Wake");
+  await click(panel, "[data-action-id=nap_here]");
+  await waitForQuickPlayEnd("nap_here");
+  await waitFor(() => qa.getQuickPlaySession().resting === true, "second timed Nap state");
+  const automaticNapInfo = qa.getTimedNapInfo();
+  await waitFor(() => qa.getQuickPlaySession().resting === false, "five-minute Nap automatic restore", 8_000);
+  const automaticNapRestoredDirectorState = qa.getReportedPetDirectorState();
+  verify(
+    "Nap automatically restores after five minutes",
+    automaticNapInfo.active
+      && automaticNapInfo.durationMs === 300_000
+      && automaticNapInfo.remainingMs > 0
+      && !qa.getTimedNapInfo().active
+      && automaticNapRestoredDirectorState.resting === false,
+    `the production 300000ms lease runs at the QA clock and restores the non-resting Director state ${JSON.stringify(automaticNapRestoredDirectorState)} without a second action`,
+  );
+  qa.setQuickPlayTimeScale(20);
 
   qa.resetQuickPlayTrace();
   const danceStart = pet.getBounds();
@@ -1075,6 +1118,7 @@ async function run() {
     ? readFileSync(dancePositionPath, "utf8")
     : null;
   qa.setQuickPlayTimeScale(1);
+  panel = await openQuickPlay();
   await click(panel, "[data-action-id=dance]");
   await waitForClosed(qa, "popover");
   await waitFor(() => qa.getQuickPlaySession().phase === "dance_reference_clip", "Dance video-reference phase");
@@ -1158,16 +1202,33 @@ async function run() {
     footer: document.querySelector('[data-actions-footer]')?.textContent?.trim(),
     actorId: document.querySelector('[data-action-preview] [data-actor-id]')?.dataset.actorId,
     captureCount: document.querySelectorAll('[data-action-id=capture_moment]').length,
+    accessories: (() => {
+      const compositor = document.querySelector('[data-action-preview] .pet-accessory-compositor');
+      return compositor ? {
+        visible: compositor.dataset.accessoriesVisible,
+        head: compositor.dataset.accessoryHead,
+        ground: compositor.dataset.accessoryGround,
+        effect: compositor.dataset.accessoryEffect,
+      } : null;
+    })(),
   }))()`);
   verify(
-    "Console Actions v20 Dance workbench is interactive",
+    "Console Actions v20 workbench defaults to Pet",
     JSON.stringify(actionWorkbench.ids) === JSON.stringify(["walk_round_trip", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance"])
-      && actionWorkbench.selected === "dance"
+      && actionWorkbench.selected === "walk_round_trip"
       && actionWorkbench.previewOnly === "Preview only"
       && actionWorkbench.footer === "Preview changes apply instantly. Your desktop pet stays still."
       && actionWorkbench.actorId === "golden-british"
       && actionWorkbench.captureCount === 0,
     `the exact eight-action isolated workbench uses the shared generated actor: ${JSON.stringify(actionWorkbench)}`,
+  );
+  verify(
+    "Console Actions preview suppresses Appearance accessories",
+    actionWorkbench.accessories?.visible === "false"
+      && actionWorkbench.accessories.head === "none"
+      && actionWorkbench.accessories.ground === "none"
+      && actionWorkbench.accessories.effect === "none",
+    `the action-only preview ignores the saved Head, Ground, and Effects selections: ${JSON.stringify(actionWorkbench.accessories)}`,
   );
 
   await click(consoleWindow, "[data-action-id=toss_yarn]");
@@ -1260,6 +1321,14 @@ async function run() {
   await waitFor(() => qa.getSettings().petStory.lastAction?.nonce === hotActionRequest.nonce, "hot_loop action request");
   await delay(180);
   const smallHotChrome = await readPetChromeLayout(pet, "hot_loop");
+  const smallHotEffect = await execute(pet, `(() => {
+    const compositor = document.querySelector('.pet-accessory-compositor-desktop');
+    return {
+      effect: compositor?.dataset.accessoryEffect ?? null,
+      source: compositor?.dataset.accessoryEffectSource ?? null,
+      overlays: compositor?.querySelectorAll('.pet-accessory-overlay-effect').length ?? 0,
+    };
+  })()`);
 
   await setPetSize(pet, 1.25);
   const idleActionRequest = { id: "idle_breathe", nonce: Date.now() + 1 };
@@ -1284,6 +1353,11 @@ async function run() {
       && largeIdleChrome.close.top < smallHotChrome.close.top
       && largeIdleChrome.close.width > smallHotChrome.close.width,
     `small hot ${JSON.stringify(smallHotChrome)}; large idle ${JSON.stringify(largeIdleChrome)}`,
+  );
+  verify(
+    "Desktop mood never overrides the selected Appearance effect",
+    smallHotEffect.effect === "none" && smallHotEffect.source === "selected" && smallHotEffect.overlays === 0,
+    `the default None selection remains visually empty during hot/focus transitions: ${JSON.stringify(smallHotEffect)}`,
   );
   await setPetSize(pet, 1);
 

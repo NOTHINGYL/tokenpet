@@ -13,7 +13,10 @@ export function resolveActorMoodBadgeRect(
   if (surface !== "desktop") return declaredRect;
 
   const footLineY = manifest.footLineY ?? manifest.artboard.height * 0.82;
-  const desiredBottom = footLineY - manifest.artboard.height * 0.37;
+  // Keep the desktop badge above the real focused-ear alpha. The compact v31
+  // actor starts higher than the legacy frame, so the old 37% foot-line
+  // offset let the badge overlap both ears during idle/hot transitions.
+  const desiredBottom = footLineY - manifest.artboard.height * 0.42;
   const closeToActorY = Math.round(desiredBottom - declaredRect.height);
   return {
     ...declaredRect,

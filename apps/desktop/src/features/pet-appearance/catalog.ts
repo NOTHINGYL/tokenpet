@@ -363,6 +363,8 @@ export type AccessoryOption = {
   offsetY?: number;
   bodyTypeVariants?: Partial<Record<CatBodyType, AccessoryKitVariant>>;
   perCatOverrides?: Partial<Record<CatTypeId, AccessoryPlacementOverride>>;
+  capability?: "golden" | "universal" | "planned";
+  supportedAnimations?: "all" | "idle-and-preview";
 };
 
 export type AccessoryChoiceOption = {
@@ -375,7 +377,7 @@ export type AccessoryChoiceOption = {
 export const accessoryCatalog: AccessoryOption[] = [
   {
     id: "collar" as AccessoryId,
-    label: "Collar",
+    label: "Bell collar",
     category: "neck",
     attachTo: "neck",
     layer: "frontCat",
@@ -395,6 +397,8 @@ export const accessoryCatalog: AccessoryOption[] = [
       persian: { scale: 0.84 },
       sphynx: { scale: 0.76, offsetY: 0.02 },
     },
+    capability: "golden",
+    supportedAnimations: "all",
   },
   {
     id: "ribbon" as AccessoryId,
@@ -428,6 +432,8 @@ export const accessoryCatalog: AccessoryOption[] = [
       "fluffy-sitting": { defaultScale: 0.82, offsetY: 0.005 },
       "slim-sitting": { defaultScale: 0.78 },
     },
+    capability: "planned",
+    supportedAnimations: "idle-and-preview",
   },
   {
     id: "tiny-scarf" as AccessoryId,
@@ -460,6 +466,8 @@ export const accessoryCatalog: AccessoryOption[] = [
       "fluffy-sitting": { defaultScale: 0.84, offsetY: 0.055 },
       "slim-sitting": { defaultScale: 0.78, offsetY: 0.035 },
     },
+    capability: "planned",
+    supportedAnimations: "idle-and-preview",
   },
   {
     id: "focus-crown" as AccessoryId,
@@ -476,6 +484,8 @@ export const accessoryCatalog: AccessoryOption[] = [
       "fluffy-sitting": { defaultScale: 0.7, offsetY: -0.235 },
       "slim-sitting": { defaultScale: 0.66, offsetY: -0.25 },
     },
+    capability: "golden",
+    supportedAnimations: "idle-and-preview",
   },
   {
     id: "halo" as AccessoryId,
@@ -492,6 +502,8 @@ export const accessoryCatalog: AccessoryOption[] = [
       "fluffy-sitting": { defaultScale: 0.92 },
       "slim-sitting": { defaultScale: 0.88 },
     },
+    capability: "universal",
+    supportedAnimations: "idle-and-preview",
   },
   {
     id: "study-glasses" as AccessoryId,
@@ -504,6 +516,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     badge: "Unlocked",
     defaultScale: 0.8,
     offsetY: 0.02,
+    capability: "planned",
+    supportedAnimations: "idle-and-preview",
   },
   {
     id: "sleep-cap" as AccessoryId,
@@ -529,11 +543,41 @@ export const accessoryCatalog: AccessoryOption[] = [
     category: "base",
     attachTo: "base",
     layer: "behindCat",
-    image: appearanceAsset("accessories/desk-mat.png"),
-    layers: { back: appearanceAsset("accessories/desk-mat.png") },
-    badge: "Locked",
+    image: appearanceAsset("accessories/desk-mat-v28.png"),
+    layers: { back: appearanceAsset("accessories/desk-mat-v28.png") },
+    badge: "All cats",
     defaultScale: 0.86,
     offsetY: 0.045,
+    capability: "universal",
+    supportedAnimations: "all",
+  },
+  {
+    id: "round-rug" as AccessoryId,
+    label: "Round rug",
+    category: "base",
+    attachTo: "base",
+    layer: "behindCat",
+    image: appearanceAsset("accessories/round-rug.png"),
+    layers: { back: appearanceAsset("accessories/round-rug.png") },
+    badge: "All cats",
+    defaultScale: 0.94,
+    offsetY: 0.05,
+    capability: "universal",
+    supportedAnimations: "all",
+  },
+  {
+    id: "star-blanket" as AccessoryId,
+    label: "Star blanket",
+    category: "base",
+    attachTo: "base",
+    layer: "behindCat",
+    image: appearanceAsset("accessories/star-blanket.png"),
+    layers: { back: appearanceAsset("accessories/star-blanket.png") },
+    badge: "All cats",
+    defaultScale: 0.94,
+    offsetY: 0.05,
+    capability: "universal",
+    supportedAnimations: "all",
   },
   {
     id: "nap-pillow" as AccessoryId,
@@ -582,6 +626,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     badge: "Unlocked",
     defaultScale: 1.18,
     offsetY: 0.03,
+    capability: "universal",
+    supportedAnimations: "all",
   },
   {
     id: "star-trail" as AccessoryId,
@@ -608,6 +654,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     defaultScale: 1.02,
     offsetX: 0.02,
     offsetY: 0.02,
+    capability: "universal",
+    supportedAnimations: "all",
   },
   {
     id: "hot-sparks" as AccessoryId,
@@ -620,6 +668,8 @@ export const accessoryCatalog: AccessoryOption[] = [
     badge: "Unlocked",
     defaultScale: 0.86,
     offsetY: -0.08,
+    capability: "universal",
+    supportedAnimations: "all",
   },
 ];
 
@@ -654,25 +704,25 @@ export const accessorySections: Array<{
     id: "neck",
     label: "Neck",
     detail: "Pick one",
-    options: [noAccessoryOption, accessoryChoice("collar"), accessoryChoice("bow-tie"), accessoryChoice("tiny-scarf"), accessoryChoice("bandana")],
+    options: [noAccessoryOption, accessoryChoice("collar"), accessoryChoice("bow-tie"), accessoryChoice("bandana")],
   },
   {
     id: "head",
     label: "Head",
     detail: "Pick one",
-    options: [noAccessoryOption, accessoryChoice("focus-crown"), accessoryChoice("halo"), accessoryChoice("study-glasses"), accessoryChoice("sleep-cap")],
+    options: [noAccessoryOption, accessoryChoice("halo"), accessoryChoice("focus-crown"), accessoryChoice("study-glasses")],
   },
   {
     id: "base",
-    label: "Base",
-    detail: "Pick one",
-    options: [noAccessoryOption, accessoryChoice("desk-mat"), accessoryChoice("nap-pillow"), accessoryChoice("cloud-cushion"), accessoryChoice("token-stand")],
+    label: "Ground",
+    detail: "Flat underlays",
+    options: [noAccessoryOption, accessoryChoice("desk-mat"), accessoryChoice("round-rug"), accessoryChoice("star-blanket")],
   },
   {
     id: "effects",
     label: "Effects",
-    detail: "Pick one",
-    options: [noAccessoryOption, accessoryChoice("sparkle-aura"), accessoryChoice("star-trail"), accessoryChoice("leaf-drift"), accessoryChoice("hot-sparks")],
+    detail: "Ambient particles",
+    options: [noAccessoryOption, accessoryChoice("sparkle-aura"), accessoryChoice("leaf-drift"), accessoryChoice("hot-sparks")],
   },
 ];
 

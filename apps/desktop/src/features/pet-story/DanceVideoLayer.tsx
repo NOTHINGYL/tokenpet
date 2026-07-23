@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { CSSProperties } from "react";
 
 const DANCE_VIDEO_SOURCE = "pet-video/dance-golden-style.webm";
 const DANCE_VIDEO_DURATION_SECONDS = 10.133;
@@ -12,6 +13,7 @@ export function DanceVideoLayer(props: {
   playing: boolean;
   startedAtMs?: number;
   sourceTimeMs?: number;
+  scale?: number;
   surface: "desktop" | "preview";
   onReadyChange?: (ready: boolean) => void;
 }) {
@@ -94,6 +96,8 @@ export function DanceVideoLayer(props: {
       data-dance-video-layer
       data-dance-video-source={DANCE_VIDEO_SOURCE}
       data-dance-video-audio="separate-detected-loop-reference"
+      data-dance-video-scale={props.scale ?? 1}
+      style={{ "--dance-video-scale": String(props.scale ?? 1) } as CSSProperties}
       aria-hidden="true"
     >
       <video

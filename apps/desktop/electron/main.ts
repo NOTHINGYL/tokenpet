@@ -1,9 +1,9 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, screen, Tray } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, screen, Tray } from "electron";
 import type { Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayActorDirection, QuickPlayPhase, QuickPlaySession, UsageSnapshot } from "./types.js";
+import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayActorDirection, QuickPlayPhase, QuickPlaySession } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
@@ -52,6 +52,7 @@ import {
   executeNapHere,
   executePet,
   executePlayCursor,
+  NAP_HERE_DURATION_MS,
   PLAY_CURSOR_DURATION_MS,
   executeTossYarn,
   executeWakeUp,
@@ -77,6 +78,9 @@ let menuBarWindow: BrowserWindow | null = null;
 let consoleWindow: BrowserWindow | null = null;
 let quickPlayOverlayWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+let trayHealthTimer: NodeJS.Timeout | null = null;
+let trayTokenTitle = "";
+let isQuitting = false;
 let cursorTrackingTimer: NodeJS.Timeout | null = null;
 let lastStoryReconcileAt = 0;
 const pendingDirectorEvents: PetDirectorEvent[] = [];
@@ -96,10 +100,13 @@ let quickPlaySession: QuickPlaySession = {
   actorVariant: null,
   pointerMode: "none",
   resting: false,
+  restingUntil: null,
   failure: null,
 };
 let quickPlaySessionTimer: NodeJS.Timeout | null = null;
 let reportedPetDirectorState: { action: PetActionId; resting: boolean } = { action: "idle_breathe", resting: false };
+let timedNapTimer: NodeJS.Timeout | null = null;
+let timedNapState: { restoreAction: PetActionId; startedAt: number; expiresAt: number; durationMs: number } | null = null;
 type QuickPlayRuntime = {
   id: number;
   action: Exclude<QuickPlayActionId, "capture_moment">;
@@ -218,7 +225,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   alwaysOnTop: true,
   petTheme: "gold",
   petScale: 1,
-  petOpacity: 0.92,
+  petOpacity: 1,
   petAppearance: defaultPetAppearance,
   petStory: defaultPetStory,
 };
@@ -237,6 +244,8 @@ const MENUBAR_SIZE = {
   width: 500,
   height: 360,
 };
+
+const TRAY_HEALTH_INTERVAL_MS = 30_000;
 
 const PET_WINDOW_SIZE = {
   width: 260,
@@ -302,6 +311,10 @@ function verifyBridge(window: BrowserWindow, label: string) {
 }
 
 function quitTokenPet() {
+  isQuitting = true;
+  stopTrayHealthMonitoring();
+  clearTimedNapTimer();
+  timedNapState = null;
   cancelPetTraversal();
   finishQuickPlaySession(undefined, true);
   if (cursorTrackingTimer) {
@@ -312,6 +325,8 @@ function quitTokenPet() {
   closeUsableWindow(consoleWindow);
   closeUsableWindow(popoverWindow);
   closeUsableWindow(petWindow);
+  if (tray && !tray.isDestroyed()) tray.destroy();
+  tray = null;
   app.quit();
 }
 
@@ -516,13 +531,52 @@ function createTrayIcon() {
   return image;
 }
 
-function updateTray(snapshot?: UsageSnapshot) {
-  if (!tray) return;
-
-  tray.setToolTip("TokenPet");
+function applyTrayPresentation(target: Tray) {
+  target.setImage(createTrayIcon());
+  target.setToolTip("TokenPet");
   if (process.platform === "darwin") {
-    tray.setTitle(snapshot ? compactNumber(snapshot.todayTokens) : "");
+    target.setTitle(trayTokenTitle);
   }
+}
+
+function ensureTray(options: { recreate?: boolean } = {}) {
+  if (isMainProcessQa || isQuitting || !app.isReady()) return;
+  const usableTray = tray && !tray.isDestroyed() ? tray : null;
+  if (!usableTray || options.recreate) {
+    try {
+      createTray();
+    } catch (error) {
+      tray = null;
+      console.warn("[tokenpet] failed to restore menu bar pet", error);
+    }
+    return;
+  }
+  applyTrayPresentation(usableTray);
+}
+
+function recoverTrayAfterSystemChange() {
+  ensureTray({ recreate: true });
+}
+
+function startTrayHealthMonitoring() {
+  if (isMainProcessQa || trayHealthTimer) return;
+  powerMonitor.on("resume", recoverTrayAfterSystemChange);
+  screen.on("display-added", recoverTrayAfterSystemChange);
+  screen.on("display-removed", recoverTrayAfterSystemChange);
+  screen.on("display-metrics-changed", recoverTrayAfterSystemChange);
+  trayHealthTimer = setInterval(() => ensureTray(), TRAY_HEALTH_INTERVAL_MS);
+  trayHealthTimer.unref();
+}
+
+function stopTrayHealthMonitoring() {
+  if (trayHealthTimer) {
+    clearInterval(trayHealthTimer);
+    trayHealthTimer = null;
+  }
+  powerMonitor.removeListener("resume", recoverTrayAfterSystemChange);
+  screen.removeListener("display-added", recoverTrayAfterSystemChange);
+  screen.removeListener("display-removed", recoverTrayAfterSystemChange);
+  screen.removeListener("display-metrics-changed", recoverTrayAfterSystemChange);
 }
 
 function emitPetDirectorEvent(event: PetDirectorEvent) {
@@ -544,7 +598,8 @@ function flushPendingDirectorEvents() {
 
 async function loadAndPublishUsage(options: { force?: boolean } = {}) {
   const snapshot = await loadUsageSnapshot(options);
-  updateTray(snapshot);
+  trayTokenTitle = compactNumber(snapshot.todayTokens);
+  ensureTray();
   const now = Date.now();
   if (options.force || lastStoryReconcileAt === 0 || now - lastStoryReconcileAt >= 60_000) {
     lastStoryReconcileAt = now;
@@ -560,15 +615,16 @@ async function loadAndPublishUsage(options: { force?: boolean } = {}) {
 }
 
 function createTray() {
-  tray?.destroy();
-  tray = new Tray(createTrayIcon());
-  updateTray();
+  if (tray && !tray.isDestroyed()) tray.destroy();
+  const nextTray = new Tray(createTrayIcon());
+  tray = nextTray;
+  applyTrayPresentation(nextTray);
 
-  tray.on("click", () => {
+  nextTray.on("click", () => {
     toggleMenuBarWindow();
   });
 
-  tray.on("right-click", () => {
+  nextTray.on("right-click", () => {
     Menu.buildFromTemplate([
       {
         label: "Open Summary",
@@ -914,15 +970,80 @@ function emptyQuickPlaySession(): QuickPlaySession {
     phase: "idle",
     phaseStartedAt: null,
     startBounds: null,
-    startDirectorState: null,
+    startDirectorState: timedNapState?.restoreAction ?? reportedPetDirectorState.action,
     targetPoint: null,
     walkMotion: null,
     actorDirection: null,
     actorVariant: null,
     pointerMode: "none",
     resting: reportedPetDirectorState.resting,
+    restingUntil: timedNapState?.expiresAt ?? null,
     failure: null,
   };
+}
+
+function clearTimedNapTimer() {
+  if (timedNapTimer) {
+    clearTimeout(timedNapTimer);
+    timedNapTimer = null;
+  }
+}
+
+function restoreTimedNap(options: { publish?: boolean } = {}) {
+  const timedNap = timedNapState;
+  if (!timedNap) return false;
+  clearTimedNapTimer();
+  timedNapState = null;
+  reportedPetDirectorState = { action: timedNap.restoreAction, resting: false };
+  quickPlaySession = {
+    ...quickPlaySession,
+    resting: false,
+    restingUntil: null,
+    startDirectorState: timedNap.restoreAction,
+  };
+  if (options.publish !== false) publishQuickPlaySession();
+  return true;
+}
+
+function beginTimedNap(restoreAction: PetActionId, durationMs = NAP_HERE_DURATION_MS) {
+  clearTimedNapTimer();
+  const startedAt = Date.now();
+  const wallDurationMs = Math.max(1, durationMs / quickPlayTimeScale);
+  timedNapState = {
+    restoreAction,
+    startedAt,
+    expiresAt: startedAt + wallDurationMs,
+    durationMs,
+  };
+  reportedPetDirectorState = { action: "sleep_loop", resting: true };
+  quickPlaySession = {
+    ...quickPlaySession,
+    resting: true,
+    restingUntil: timedNapState.expiresAt,
+    startDirectorState: restoreAction,
+  };
+  publishQuickPlaySession();
+  timedNapTimer = setTimeout(() => {
+    timedNapTimer = null;
+    restoreTimedNap();
+  }, wallDurationMs);
+  timedNapTimer.unref();
+}
+
+function interruptRestForQuickPlayAction() {
+  if (restoreTimedNap({ publish: false })) return true;
+  if (!reportedPetDirectorState.resting) return false;
+  const restoreAction = reportedPetDirectorState.action === "sleep_loop"
+    ? "idle_breathe"
+    : reportedPetDirectorState.action;
+  reportedPetDirectorState = { action: restoreAction, resting: false };
+  quickPlaySession = {
+    ...quickPlaySession,
+    resting: false,
+    restingUntil: null,
+    startDirectorState: restoreAction,
+  };
+  return true;
 }
 
 function updateQuickPlayPhase(phase: QuickPlayPhase, targetPoint = quickPlaySession.targetPoint) {
@@ -1612,7 +1733,10 @@ async function runQuickPlayRuntime(runtime: QuickPlayRuntime) {
     await executeNapHere({
       phase: updateQuickPlayPhase,
       delay: (durationMs) => quickPlayDelay(runtime, durationMs),
-      markResting: () => { reportedPetDirectorState = { action: "sleep_loop", resting: true }; },
+      markResting: (durationMs) => beginTimedNap(
+        quickPlaySession.startDirectorState ?? reportedPetDirectorState.action,
+        durationMs,
+      ),
       complete: () => completeQuickPlayRuntime(runtime),
     }, timeline.durationMs);
     return;
@@ -1694,6 +1818,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
     actorVariant: action === "toss_yarn" ? actionConfig("toss_yarn").yarnColor : null,
     pointerMode,
     resting: reportedPetDirectorState.resting,
+    restingUntil: timedNapState?.expiresAt ?? null,
     failure: null,
   };
   publishQuickPlaySession();
@@ -2072,7 +2197,10 @@ if (!hasSingleInstanceLock) {
       quitTokenPet();
       return;
     }
-    if (app.isReady()) revealPetForLaunch();
+    if (app.isReady()) {
+      ensureTray();
+      revealPetForLaunch();
+    }
   });
 }
 
@@ -2083,7 +2211,10 @@ export const tokenPetReady = hasSingleInstanceLock ? app.whenReady().then(() => 
     app.dock?.hide();
   }
 
-  if (!isMainProcessQa) createTray();
+  if (!isMainProcessQa) {
+    createTray();
+    startTrayHealthMonitoring();
+  }
   startCursorTracking();
   if (settings.petVisible) {
     createPetWindow();
@@ -2091,6 +2222,7 @@ export const tokenPetReady = hasSingleInstanceLock ? app.whenReady().then(() => 
   if (!isMainProcessQa) void loadAndPublishUsage({ force: true });
 
   app.on("activate", () => {
+    ensureTray();
     if (!settings.petVisible) return;
     if (!isUsableWindow(petWindow)) createPetWindow();
     else showPetOnCurrentWorkspace(petWindow);
@@ -2110,10 +2242,31 @@ export const mainProcessQa = {
   },
   getTrayIconInfo() {
     const image = createTrayIcon();
-    return { empty: image.isEmpty(), size: image.getSize(), template: image.isTemplateImage() };
+    return {
+      empty: image.isEmpty(),
+      size: image.getSize(),
+      template: image.isTemplateImage(),
+      titleMode: "dynamic-token-count",
+      healthIntervalMs: TRAY_HEALTH_INTERVAL_MS,
+      recoversAfterSystemChange: true,
+    };
   },
   getQuickPlaySession() {
     return currentQuickPlaySession();
+  },
+  getTimedNapInfo() {
+    return timedNapState
+      ? {
+          active: true,
+          restoreAction: timedNapState.restoreAction,
+          durationMs: timedNapState.durationMs,
+          expiresAt: timedNapState.expiresAt,
+          remainingMs: Math.max(0, timedNapState.expiresAt - Date.now()),
+        }
+      : { active: false, restoreAction: null, durationMs: NAP_HERE_DURATION_MS, expiresAt: null, remainingMs: 0 };
+  },
+  getReportedPetDirectorState() {
+    return { ...reportedPetDirectorState };
   },
   getCaptureCount() {
     return mainProcessQaCaptureCount;
@@ -2229,9 +2382,18 @@ ipcMain.handle("quick-play:get-session", () => currentQuickPlaySession());
 
 ipcMain.on("pet:director-state", (_event, state: { action?: PetActionId; resting?: boolean }) => {
   if (state && typeof state.action === "string" && typeof state.resting === "boolean") {
+    // Automatic renderer events cannot shorten an explicit five-minute Nap.
+    // The timer expiry or an accepted Quick Play action clears timedNapState
+    // before reporting the awake state.
+    if (timedNapState && state.resting === false) return;
     reportedPetDirectorState = { action: state.action, resting: state.resting };
     if (quickPlaySession.activeAction === null) {
-      quickPlaySession = { ...quickPlaySession, resting: state.resting, startDirectorState: state.action };
+      quickPlaySession = {
+        ...quickPlaySession,
+        resting: state.resting,
+        restingUntil: timedNapState?.expiresAt ?? null,
+        startDirectorState: timedNapState?.restoreAction ?? state.action,
+      };
       publishQuickPlaySession();
     }
   }
@@ -2295,12 +2457,14 @@ ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetAct
   }
   const quickAction = action as QuickPlayActionId;
   if (quickAction === "capture_moment") {
+    if (interruptRestForQuickPlayAction()) publishQuickPlaySession();
     void capturePetMoment();
     return { accepted: true };
   }
   if (quickPlaySession.activeAction) return { accepted: false, reason: "active" as const };
   if (settings.petStory.lockPosition && quickPlayPositionActions.has(quickAction)) return { accepted: false, reason: "locked" as const };
   if (quickAction === "nap_here" && reportedPetDirectorState.resting) return { accepted: true, reason: "already-resting" as const };
+  if (quickAction !== "nap_here") interruptRestForQuickPlayAction();
   beginQuickPlaySession(quickAction as Exclude<QuickPlayActionId, "capture_moment">);
   return { accepted: true };
 });

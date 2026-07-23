@@ -17,7 +17,7 @@ const actions: QuickPlayAction[] = [
   { label: "Play cursor", id: "play_cursor", closesPanel: true, helper: "10 sec" },
   { label: "Dangle toy", id: "drag_dangle", closesPanel: true, movesPet: true },
   { label: "Toss yarn", id: "toss_yarn", closesPanel: true, movesPet: true },
-  { label: "Nap here", id: "nap_here", closesPanel: false },
+  { label: "Nap here", id: "nap_here", closesPanel: false, helper: "5 min" },
   { label: "Wake up", id: "wake_up", closesPanel: false },
   { label: "Dance", id: "dance", closesPanel: true },
   { label: "Capture", id: "capture_moment", closesPanel: false },
@@ -36,6 +36,7 @@ const emptySession: QuickPlaySession = {
   actorVariant: null,
   pointerMode: "none",
   resting: false,
+  restingUntil: null,
   failure: null,
 };
 
@@ -122,7 +123,11 @@ export function PopoverApp() {
               key={action.id}
               type="button"
               data-action-id={action.id}
-              aria-label={action.id === "play_cursor" ? `${action.label}. Tracks your cursor for 10 seconds.` : action.label}
+              aria-label={action.id === "play_cursor"
+                ? `${action.label}. Tracks your cursor for 10 seconds.`
+                : action.id === "nap_here"
+                  ? `${action.label}. Sleeps here for 5 minutes.`
+                  : action.label}
               disabled={disabled}
               title={reason}
               onClick={() => void trigger(action)}

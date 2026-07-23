@@ -2,6 +2,8 @@ import type { CSSProperties } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PetAppearanceVisual } from "../features/pet-appearance/PetAppearanceVisual";
 import { normalizePetAppearance } from "../features/pet-appearance/appearanceState";
+import { getTokenBubbleLabel } from "../features/pet-appearance/appearanceView";
+import { PetNameBubble } from "../features/pet-appearance/PetNameBubble";
 import { DanceVideoLayer } from "../features/pet-story/DanceVideoLayer";
 import {
   completePetDirectorAction,
@@ -117,13 +119,14 @@ export function PetApp() {
   const { usage } = useUsage();
   const { settings } = useAppSettings();
   const [dragging, setDragging] = useState(false);
+  const [petHovered, setPetHovered] = useState(false);
   const [summoning, setSummoning] = useState(false);
   const [batteryLow, setBatteryLow] = useState(false);
   const [pointerOffset, setPointerOffset] = useState({ x: 0, y: 0 });
   const [cursorTracking, setCursorTracking] = useState<CursorTrackingVisual | null>(null);
   const [quickPlaySession, setQuickPlaySession] = useState<QuickPlaySession>({
     activeAction: null, startedAt: null, phase: "idle", phaseStartedAt: null, startBounds: null,
-    startDirectorState: null, targetPoint: null, walkMotion: null, actorDirection: null, actorVariant: null, pointerMode: "none", resting: false, failure: null,
+    startDirectorState: null, targetPoint: null, walkMotion: null, actorDirection: null, actorVariant: null, pointerMode: "none", resting: false, restingUntil: null, failure: null,
   });
   const appearance = normalizePetAppearance(settings);
   const story = settings.petStory ?? defaultPetStory;
@@ -137,7 +140,10 @@ export function PetApp() {
   const handledActionNonceRef = useRef<number | null>(null);
   const quickPlayActiveRef = useRef(false);
   const quickPlayPreviousActionRef = useRef<QuickPlaySession["activeAction"]>(null);
+  const quickPlayPreviousRestingRef = useRef(false);
   const quickPlaySnapshotRef = useRef<{ action: PetActionId; state: PetDirectorState } | null>(null);
+  const timedNapRestoreRef = useRef<{ action: PetActionId; state: PetDirectorState } | null>(null);
+  const timedNapActiveRef = useRef(false);
   const quickPlayAppliedEndRef = useRef<string | null>(null);
   const previousMoodRef = useRef(mood);
   const observedUsageRef = useRef<{ status: string; allTimeTokens: number } | null>(null);
@@ -163,6 +169,10 @@ export function PetApp() {
   const dispatchDirectorEvent = useCallback(
     (event: PetDirectorEvent) => {
       if (quickPlayActiveRef.current && event.type !== "quickPlay.action") return false;
+      if (
+        timedNapActiveRef.current
+        && ["ambient.blink", "ambient.rest", "ambient.wake", "mood.thresholdCrossed", "token.delta"].includes(event.type)
+      ) return false;
       if (!interactionAllowed(event, story)) return false;
       if (
         event.type === "pointer.click"
@@ -320,10 +330,14 @@ export function PetApp() {
 
   useEffect(() => {
     let disposed = false;
+    const applySession = (session: QuickPlaySession) => {
+      timedNapActiveRef.current = session.restingUntil !== null;
+      setQuickPlaySession(session);
+    };
     void window.tokenpet?.getQuickPlaySession?.().then((session) => {
-      if (!disposed) setQuickPlaySession(session);
+      if (!disposed) applySession(session);
     });
-    const unsubscribe = window.tokenpet?.onQuickPlaySessionChanged?.(setQuickPlaySession);
+    const unsubscribe = window.tokenpet?.onQuickPlaySessionChanged?.(applySession);
     return () => {
       disposed = true;
       unsubscribe?.();
@@ -337,13 +351,40 @@ export function PetApp() {
   useEffect(() => {
     const action = quickPlaySession.activeAction;
     const previousAction = quickPlayPreviousActionRef.current;
+    const previousResting = quickPlayPreviousRestingRef.current;
     quickPlayActiveRef.current = action !== null;
+    timedNapActiveRef.current = quickPlaySession.restingUntil !== null;
+
+    const cloneSnapshot = (snapshot: { action: PetActionId; state: PetDirectorState }) => ({
+      action: snapshot.action,
+      state: { ...snapshot.state, lastPlayedAt: { ...snapshot.state.lastPlayedAt } },
+    });
+    const awakeSnapshotFromCurrent = () => {
+      const actionToRestore = quickPlaySession.startDirectorState ?? directorRef.current.moodLoop;
+      return {
+        action: actionToRestore,
+        state: {
+          ...directorRef.current,
+          currentAction: actionToRestore,
+          resting: false,
+          activePriority: 0,
+          activeUntil: 0,
+          lastPlayedAt: { ...directorRef.current.lastPlayedAt },
+        },
+      };
+    };
 
     if (action && previousAction === null) {
-      quickPlaySnapshotRef.current = {
-        action: directorAction,
-        state: { ...directorRef.current, lastPlayedAt: { ...directorRef.current.lastPlayedAt } },
-      };
+      const interruptedRest = !quickPlaySession.resting
+        && (directorRef.current.resting || timedNapRestoreRef.current !== null);
+      const source = interruptedRest
+        ? timedNapRestoreRef.current ?? awakeSnapshotFromCurrent()
+        : {
+            action: directorAction,
+            state: { ...directorRef.current, lastPlayedAt: { ...directorRef.current.lastPlayedAt } },
+          };
+      quickPlaySnapshotRef.current = cloneSnapshot(source);
+      if (interruptedRest) timedNapRestoreRef.current = null;
       quickPlayAppliedEndRef.current = null;
     }
 
@@ -355,6 +396,7 @@ export function PetApp() {
       clearCompletionTimer();
       let nextState = { ...snapshot.state, lastPlayedAt: { ...snapshot.state.lastPlayedAt } };
       if (quickPlaySession.phase === "complete" && action === "nap_here") {
+        timedNapRestoreRef.current = cloneSnapshot(snapshot);
         nextState = { ...nextState, currentAction: "sleep_loop", resting: true, activePriority: 0, activeUntil: 0 };
       } else if (quickPlaySession.phase === "complete" && action === "wake_up") {
         nextState = { ...nextState, currentAction: nextState.moodLoop, resting: false, activePriority: 0, activeUntil: 0 };
@@ -364,6 +406,35 @@ export function PetApp() {
       quickPlayAppliedEndRef.current = terminalKey;
     }
 
+    if (
+      !action
+      && quickPlaySession.resting
+      && quickPlaySession.restingUntil !== null
+      && timedNapRestoreRef.current === null
+    ) {
+      const restore = awakeSnapshotFromCurrent();
+      timedNapRestoreRef.current = cloneSnapshot(restore);
+      const sleepState = {
+        ...directorRef.current,
+        currentAction: "sleep_loop" as const,
+        resting: true,
+        activePriority: 0,
+        activeUntil: 0,
+        lastPlayedAt: { ...directorRef.current.lastPlayedAt },
+      };
+      clearCompletionTimer();
+      directorRef.current = sleepState;
+      setDirectorAction("sleep_loop");
+    }
+
+    if (!action && previousResting && !quickPlaySession.resting) {
+      const restore = cloneSnapshot(timedNapRestoreRef.current ?? awakeSnapshotFromCurrent());
+      clearCompletionTimer();
+      directorRef.current = restore.state;
+      setDirectorAction(restore.action);
+      timedNapRestoreRef.current = null;
+    }
+
     if (!action && previousAction && snapshot && quickPlayAppliedEndRef.current === null) {
       clearCompletionTimer();
       directorRef.current = { ...snapshot.state, lastPlayedAt: { ...snapshot.state.lastPlayedAt } };
@@ -371,7 +442,8 @@ export function PetApp() {
     }
     if (!action && previousAction) quickPlaySnapshotRef.current = null;
     quickPlayPreviousActionRef.current = action;
-  }, [clearCompletionTimer, directorAction, quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.phaseStartedAt]);
+    quickPlayPreviousRestingRef.current = quickPlaySession.resting;
+  }, [clearCompletionTimer, directorAction, quickPlaySession.activeAction, quickPlaySession.phase, quickPlaySession.phaseStartedAt, quickPlaySession.resting, quickPlaySession.restingUntil, quickPlaySession.startDirectorState]);
 
   useEffect(() => {
     const { activeAction, phase } = quickPlaySession;
@@ -514,7 +586,10 @@ export function PetApp() {
     () => {
       const companionScale = Math.min(Math.max(appearance.size, 0.75), 1.25);
       const closeSize = Math.round(24 + (companionScale - 0.75) * 8);
-      const closeCenterX = 130 + 78 * companionScale;
+      // Keep the chrome tucked against the authored cat silhouette. The clean
+      // idle frame no longer carries the old guide-arrow pixels on its right,
+      // so the button needs to follow the actual ear/body edge instead.
+      const closeCenterX = 130 + 72 * companionScale;
       const closeCenterY = 172 - 66 * companionScale;
       return ({
         "--pet-scale": appearance.size.toString(),
@@ -606,10 +681,6 @@ export function PetApp() {
     return undefined;
   }, [quickPlaySession.activeAction, quickPlaySession.actorDirection, quickPlaySession.currentBounds, quickPlaySession.phase, quickPlaySession.startBounds, quickPlaySession.targetPoint]);
 
-  const actorAppearance = useMemo(() => quickPlaySession.activeAction === "drag_dangle"
-    ? { ...appearance, size: appearance.size * .84 }
-    : appearance, [appearance, quickPlaySession.activeAction]);
-
   const authoredLocomotionActive = (
     quickPlaySession.activeAction === "walk_round_trip"
     || quickPlaySession.activeAction === "token_snack"
@@ -637,10 +708,16 @@ export function PetApp() {
         headAngleDegrees: 0, withinAttention: false, earFollow: false, stage: "settle" as const,
       }
       : cursorTracking ?? undefined;
+  const renderedAction = quickPlayActorAction ?? directorAction;
+  const sleepVisual = renderedAction === "sleep_loop" || renderedAction === "nap_here";
+  const sleepBubbleShowsName = sleepVisual && petHovered && appearance.identity.showNameOnHover;
+  const sleepBubbleContent = sleepBubbleShowsName
+    ? appearance.identity.name
+    : getTokenBubbleLabel("pill", usage) ?? "0";
 
   return (
     <main
-      className={`pet-stage pet-theme-${appearance.themeId} pet-state-${mood} ${dragging ? "is-dragging" : ""} ${summoning ? "is-summoning" : ""}`}
+      className={`pet-stage pet-theme-${appearance.themeId} pet-state-${mood} ${petHovered ? "is-hovered" : ""} ${dragging ? "is-dragging" : ""} ${summoning ? "is-summoning" : ""}`}
       data-quick-play-action={quickPlaySession.activeAction ?? "none"}
       data-quick-play-phase={quickPlaySession.phase}
       data-pet-resting={quickPlaySession.resting ? "true" : "false"}
@@ -648,6 +725,8 @@ export function PetApp() {
       data-wake-sparkle={story.actionSettings.byAction.wake_up?.wakeSparkle === false ? "false" : "true"}
       style={stageStyle}
       onDoubleClick={openQuickPlay}
+      onPointerEnter={() => setPetHovered(true)}
+      onPointerLeave={() => setPetHovered(false)}
       onPointerDown={startDrag}
       onPointerMove={moveDrag}
       onPointerUp={endDrag}
@@ -655,10 +734,10 @@ export function PetApp() {
     >
       <div className="pet-drag-region" aria-label="Drag TokenPet">
         {!danceReferenceActive || !danceVideoReady ? <PetAppearanceVisual
-          appearance={actorAppearance}
+          appearance={appearance}
           usage={usage}
           moodId={mood}
-          storyActionId={quickPlayActorAction ?? directorAction}
+          storyActionId={renderedAction}
           facing={quickPlayFacing}
           actorVariant={quickPlaySession.actorVariant ?? undefined}
           animationNonce={authoredLocomotionActive
@@ -682,6 +761,7 @@ export function PetApp() {
           reduceMotion={story.reduceMotion || (story.safety.batteryLowPause && batteryLow)}
           pointerOffset={story.followCursor || quickPlaySession.activeAction === "play_cursor" ? pointerOffset : undefined}
           cursorTracking={playCursorTracking}
+          showAccessories={quickPlaySession.activeAction === null}
           surface="desktop"
           onBubbleClick={openQuickPlay}
         /> : null}
@@ -689,10 +769,19 @@ export function PetApp() {
           active={danceReferenceActive}
           playing={danceReferenceActive}
           startedAtMs={quickPlaySession.phaseStartedAt ?? undefined}
+          scale={appearance.size}
           surface="desktop"
           onReadyChange={setDanceVideoReady}
         />
       </div>
+      <PetNameBubble
+        name={appearance.identity.name}
+        content={sleepVisual ? sleepBubbleContent : undefined}
+        contentMode={sleepVisual && !sleepBubbleShowsName ? "token" : "name"}
+        visible={sleepVisual || petHovered && !dragging && appearance.identity.showNameOnHover}
+        surface="desktop"
+        reduceMotion={story.reduceMotion}
+      />
       <button className="pet-close" type="button" aria-label="Hide TokenPet" onPointerDown={close} onClick={close}>
         x
       </button>

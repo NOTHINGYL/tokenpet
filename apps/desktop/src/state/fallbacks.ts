@@ -76,7 +76,7 @@ export const fallbackSettings: AppSettings = {
   alwaysOnTop: true,
   petTheme: "gold",
   petScale: 1,
-  petOpacity: 0.92,
+  petOpacity: 1,
   petAppearance: defaultPetAppearance,
   petStory: defaultPetStory,
 };

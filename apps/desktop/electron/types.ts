@@ -117,6 +117,8 @@ export type AccessoryId =
   | "study-glasses"
   | "sleep-cap"
   | "desk-mat"
+  | "round-rug"
+  | "star-blanket"
   | "nap-pillow"
   | "cloud-cushion"
   | "token-stand"
@@ -139,6 +141,11 @@ export type MoodBadgeSettings = {
   showMood: boolean;
   colorByState: boolean;
   hideInFocusMode: boolean;
+};
+
+export type PetIdentitySettings = {
+  name: string;
+  showNameOnHover: boolean;
 };
 
 export type AccessorySettings = {
@@ -192,6 +199,7 @@ export type MotionSettings = {
 };
 
 export type PetAppearanceSettings = {
+  accessoryDefaultsVersion: number;
   catTypeId: CatTypeId;
   catDetails: CatBreedDetails;
   themeId: PetThemeId;
@@ -202,6 +210,7 @@ export type PetAppearanceSettings = {
   bubbleScale: number;
   moodId: MoodLookId;
   moodBadge: MoodBadgeSettings;
+  identity: PetIdentitySettings;
   accessoryIds: AccessoryId[];
   accessorySettings: AccessorySettings;
   motionSettings: MotionSettings;
@@ -239,7 +248,7 @@ export type QuickPlayActionId = "walk_round_trip" | "token_snack" | "play_cursor
 export type QuickPlayPhase = "idle" | "awaiting-placement" | "rolling" | "stand" | "outbound" | "arrive" | "lick" | "bite" | "chew" | "swallow" | "eat" | "pause" | "tracking" | "alert" | "stalk" | "crouch" | "pounce" | "play" | "pursuit" | "release" | "interact" | "pickup" | "carry" | "drop" | "return" | "settle" | "dance_rise" | "dance_reference_clip" | "dance_restore" | "complete" | "failed";
 export type QuickPlayWalkMotion = { startedAt: number; durationMs: number; stepDurationMs: number; cycleDurationMs: number; stepCount: number; stepDistancePx: number; footfallsPerCycle: number; rootStepKeyframes: number[] };
 export type QuickPlayActorDirection = "left" | "right" | "front" | "back" | "front-left" | "front-right" | "back-left" | "back-right";
-export type QuickPlaySession = { activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null; startedAt: number | null; phase: QuickPlayPhase; phaseStartedAt: number | null; startBounds: { x: number; y: number; width: number; height: number } | null; currentBounds?: { x: number; y: number; width: number; height: number } | null; startDirectorState: PetActionId | null; targetPoint: { x: number; y: number } | null; walkMotion: QuickPlayWalkMotion | null; actorDirection: QuickPlayActorDirection | null; actorVariant: "orange" | "blue" | "violet" | null; pointerMode: "none" | "snack" | "dangle" | "yarn"; resting: boolean; failure: string | null };
+export type QuickPlaySession = { activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null; startedAt: number | null; phase: QuickPlayPhase; phaseStartedAt: number | null; startBounds: { x: number; y: number; width: number; height: number } | null; currentBounds?: { x: number; y: number; width: number; height: number } | null; startDirectorState: PetActionId | null; targetPoint: { x: number; y: number } | null; walkMotion: QuickPlayWalkMotion | null; actorDirection: QuickPlayActorDirection | null; actorVariant: "orange" | "blue" | "violet" | null; pointerMode: "none" | "snack" | "dangle" | "yarn"; resting: boolean; restingUntil: number | null; failure: string | null };
 export type PetDirectorEvent = { type: "actor.actionRequested"; action: PetActionId } | { type: "ambient.blink" } | { type: "ambient.rest"; reason: "inactivity" | "night" } | { type: "ambient.wake"; reason: "startup" | "day" | "activity" } | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId } | { type: "pointer.click" } | { type: "pointer.dragStart" } | { type: "pointer.drop" } | { type: "quickPlay.action"; action: QuickPlayActionId } | { type: "token.delta"; tokens: number; burnRate: "quiet" | "steady" | "hot" | "overdrive" } | { type: "milestone.reached"; milestone: string } | { type: "lifecycle.stageChanged"; stage: PetLifeStage } | { type: "day.digestReady" };
 
 export type CcusageDailyRow = {

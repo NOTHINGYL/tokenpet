@@ -153,7 +153,7 @@ export const actionDefinitions: Record<ActionsPreviewId, ActionDefinition> = {
   },
   nap_here: {
     id: "nap_here", label: "Nap here", icon: `${iconRoot}/nap-here.png`, durationMs: 1_300,
-    contract: "grounded settle · fixed token frame · no restart while asleep", propLabel: "sleep state", propMark: "Zz",
+    contract: "grounded settle · persistent token bubble · no restart while asleep", propLabel: "sleep state", propMark: "Zz",
     phaseLabels: ["Ready", "Asleep"],
     authoredPhaseActions: ["idle_breathe", "sleep_loop"],
     settings: [
@@ -334,7 +334,7 @@ export function ActionsWorkbench(props: {
   usage: UsageSnapshot;
   patch: (patch: Partial<PetStorySettings>) => void;
 }) {
-  const [selectedAction, setSelectedAction] = useState<ActionsPreviewId>("dance");
+  const [selectedAction, setSelectedAction] = useState<ActionsPreviewId>("walk_round_trip");
   const [elapsedMs, setElapsedMs] = useState(0);
   const elapsedMsRef = useRef(0);
   const [playing, setPlaying] = useState(true);
@@ -550,14 +550,19 @@ export function ActionsWorkbench(props: {
           };
         })()
         : baseStage;
-  const actorPreviewAppearance = {
+  const actorPreviewAppearance: PetAppearanceSettings = {
     ...props.appearance,
     size: selectedAction === "walk_round_trip" || selectedAction === "nap_here" || selectedAction === "dance" ? .78 : Math.min(1.08, Math.max(.9, props.appearance.size)),
     tokenBubbleId: selectedAction === "nap_here" ? props.appearance.tokenBubbleId : "hidden" as const,
     moodBadge: { ...props.appearance.moodBadge, showMood: false },
-    accessorySettings: selectedAction === "nap_here"
-      ? props.appearance.accessorySettings
-      : { ...props.appearance.accessorySettings, tokenFrameId: "hidden" as const },
+    accessorySettings: {
+      ...props.appearance.accessorySettings,
+      tokenFrameId: "hidden",
+      neckId: "none",
+      headId: "none",
+      baseId: "none",
+      effectId: "none",
+    },
   };
   const cursorTarget = {
     x: Math.min(1, Math.max(-1, (stage.cursorX - 50) / 31)),
@@ -716,7 +721,7 @@ export function ActionsWorkbench(props: {
             data-preview-toss-yarn-phase={selectedAction === "toss_yarn" ? sampled.frame.actorActionId : undefined}
             data-preview-toss-yarn-contract={selectedAction === "toss_yarn" ? "offline-eight-direction-mouth-carry-exact-return" : undefined}
             data-preview-nap-phase={selectedAction === "nap_here" ? sampled.frame.actorActionId : undefined}
-            data-preview-nap-contract={selectedAction === "nap_here" ? "grounded-direct-settle-fixed-token-frame" : undefined}
+            data-preview-nap-contract={selectedAction === "nap_here" ? "grounded-direct-settle-sleep-bubble" : undefined}
             data-preview-nap-shadow={selectedAction === "nap_here" && settings.sleepShadow !== false ? "true" : "false"}
             data-preview-wake-up-phase={selectedAction === "wake_up" ? sampled.frame.actorActionId : undefined}
             data-preview-wake-up-contract={selectedAction === "wake_up" ? "offline-five-second-whole-frame-stretch" : undefined}
@@ -731,11 +736,12 @@ export function ActionsWorkbench(props: {
               <span className="action-preview-destination" style={{ left: `${stage.cursorX}%`, top: `${stage.cursorY}%` }} aria-hidden="true">⌖</span>
             </> : null}
             <div className="action-preview-actor" style={{ "--actor-preview-x": `${stage.actorX}%`, "--actor-preview-y": `${stage.actorY}%` } as CSSProperties}>
-              {!danceVideoActive || !danceVideoReady ? <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} surface="preview" /> : null}
+              {!danceVideoActive || !danceVideoReady ? <PetAppearanceVisual appearance={actorPreviewAppearance} usage={props.usage} storyActionId={sampled.frame.actorActionId} actorVariant={selectedAction === "toss_yarn" ? yarnColor : undefined} facing={selectedAction === "drag_dangle" && sampled.frame.actorActionId === "dangle_return_walk" ? "left" : selectedAction === "drag_dangle" ? "right" : undefined} previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs} cursorTracking={cursorPreviewTracking} reduceMotion={false} showAccessories={false} surface="preview" /> : null}
               <DanceVideoLayer
                 active={danceVideoActive}
                 playing={playing}
                 sourceTimeMs={danceVideoTimeMs}
+                scale={actorPreviewAppearance.size}
                 surface="preview"
                 onReadyChange={setDanceVideoReady}
               />

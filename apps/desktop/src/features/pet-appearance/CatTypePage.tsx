@@ -152,10 +152,11 @@ export function CatTypePage(props: CatTypePageProps) {
   const selectCat = (catTypeId: CatTypeId) => {
     const golden = catTypeId === "golden-british";
     props.onPatchAppearance({
+      accessoryDefaultsVersion: 2,
       catTypeId,
       tokenBubbleId: golden ? "pill" : "hidden",
       catDetails: getDefaultCatDetails(catTypeId),
-      accessoryIds: [],
+      accessoryIds: golden ? ["collar"] : [],
       accessorySettings: {
         ...props.appearance.accessorySettings,
         tokenFrameId: golden ? "embedded" : "hidden",
@@ -169,10 +170,11 @@ export function CatTypePage(props: CatTypePageProps) {
 
   const resetCatType = () => {
     props.onPatchAppearance({
+      accessoryDefaultsVersion: 2,
       catTypeId: "golden-british",
       tokenBubbleId: "pill",
       catDetails: getDefaultCatDetails("golden-british"),
-      accessoryIds: [],
+      accessoryIds: ["collar"],
       accessorySettings: {
         ...props.appearance.accessorySettings,
         tokenFrameId: "embedded",

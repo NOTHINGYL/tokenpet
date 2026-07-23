@@ -27,7 +27,8 @@ type IconName =
   | "star"
   | "clock"
   | "laptop"
-  | "flame";
+  | "flame"
+  | "edit";
 
 const iconPaths: Record<IconName, string[]> = {
   appearance: [
@@ -129,6 +130,7 @@ const iconPaths: Record<IconName, string[]> = {
   clock: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z", "M12 7v5l3 2"],
   laptop: ["M5 6h14v10H5V6Z", "M3 19h18"],
   flame: ["M12 21c-3.2 0-5.8-2.4-5.8-5.6 0-2.7 1.5-4.8 3.8-6.8.2 2.1 1.2 3.2 2.2 4.1.8-2.5.1-5.2-1.8-8.1 4.7 2.2 7.4 6.1 7.4 10.5 0 3.3-2.6 5.9-5.8 5.9Z"],
+  edit: ["M4 20h4l10.8-10.8a2.1 2.1 0 0 0-4-4L4 16v4Z", "m13.5 6.5 4 4"],
 };
 
 export function PetIcon(props: { name: IconName; className?: string }) {

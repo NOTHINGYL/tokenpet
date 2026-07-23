@@ -364,7 +364,10 @@ export function createDistanceLockedWalkPlan(distancePx: number, pacePercent = 1
   const distance = Math.max(0, Number.isFinite(distancePx) ? distancePx : 0);
   const pace = clamp(Number.isFinite(pacePercent) ? pacePercent : 100, 60, 140);
   const scaledStepDistance = rootMotion.nominalStepDistancePx * clamp(Number.isFinite(actorScale) ? actorScale : 1, 0.7, 1.4);
-  const stepCount = Math.max(rootMotion.footfallsPerCycle, Math.round(distance / scaledStepDistance));
+  // A nominal stride is an upper bound, not a rounding target. Rounding down
+  // can make the final footfalls slightly longer than the authored contact
+  // distance and reintroduce visible sliding on unlucky diagonal routes.
+  const stepCount = Math.max(rootMotion.footfallsPerCycle, Math.ceil(distance / scaledStepDistance));
   const stepDurationMs = Math.round(NATURAL_WALK_STEP_DURATION_MS * 100 / pace);
   return {
     distancePx: distance,

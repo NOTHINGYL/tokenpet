@@ -1,7 +1,7 @@
 export { executeDance } from "./dance.js";
 export { executeDangleToy } from "./dangle-toy.js";
 export { executeFeedSnack } from "./feed-snack.js";
-export { executeNapHere } from "./nap-here.js";
+export { executeNapHere, NAP_HERE_DURATION_MS } from "./nap-here.js";
 export { executePet } from "./pet.js";
 export { executePlayCursor, PLAY_CURSOR_DURATION_MS, PLAY_CURSOR_SETTLE_MS } from "./play-cursor.js";
 export { executeTossYarn } from "./toss-yarn.js";

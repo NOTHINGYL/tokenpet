@@ -209,6 +209,13 @@ function verifyReachableUi() {
   const electronMainSource = read("apps/desktop/electron/main.ts");
   const quickPlayOverlaySource = read("apps/desktop/src/views/QuickPlayOverlayApp.tsx");
   const quickPlayOverlayStyles = read("apps/desktop/src/styles/quick-play-overlay.css");
+  const appearanceSource = read("apps/desktop/src/features/pet-appearance/AppearancePanel.tsx");
+  const petNameBubbleSource = read("apps/desktop/src/features/pet-appearance/PetNameBubble.tsx");
+  const petIdentitySource = read("apps/desktop/src/features/pet-appearance/petIdentity.ts");
+  const catTypePickerSource = read("apps/desktop/src/features/pet-appearance/CatTypePicker.tsx");
+  const appearanceStateSource = read("apps/desktop/src/features/pet-appearance/appearanceState.ts");
+  const accessoriesSource = read("apps/desktop/src/features/pet-appearance/AccessoriesPage.tsx");
+  const accessoryCatalogSource = read("apps/desktop/src/features/pet-appearance/catalog.ts");
   for (const actionId of quickPlayIds) {
     verify(`Quick Play stable id ${actionId}`, popoverSource.includes(`id: "${actionId}"`), "friendly action maps to its stable implementation id");
   }
@@ -216,6 +223,7 @@ function verifyReachableUi() {
   verify("Quick Play no duplicate actor preview", !/PetAppearanceVisual|PetRenderer|GeneratedPetActorCanvas/u.test(popoverSource), "Quick Play contains no repeated cat preview");
   verify("Quick Play v20 removes dashboard modules", !/TokenPet|All good|quick-status|Play Mode|Mini Toys|Last interaction|Follow cursor|Reduce motion|Quiet mode/u.test(popoverSource), "Quick Play source contains only the compact v20 controller modules");
   verify("Quick Play cursor helper copy", popoverSource.includes("Tracks your cursor for 10 seconds."), "the required 10-second helper is visible in source");
+  verify("Quick Play Nap helper copy", popoverSource.includes('{ label: "Nap here", id: "nap_here", closesPanel: false, helper: "5 min" }') && popoverSource.includes("Sleeps here for 5 minutes."), "Nap Here visibly advertises the bounded five-minute rest");
   verify("Wake Up keeps Quick Play open", popoverSource.includes('{ label: "Wake up", id: "wake_up", closesPanel: false }'), "Wake Up follows the v20 keep-open contract");
   verify("Dance closes Quick Play immediately", popoverSource.includes('{ label: "Dance", id: "dance", closesPanel: true }'), "Dance begins only after the compact panel closes");
   verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
@@ -233,6 +241,63 @@ function verifyReachableUi() {
   verify("Dangle tracks the rendered fish instead of the rod handle", quickPlayOverlaySource.includes('type: "move"') && quickPlayOverlaySource.includes("onFishPosition") && electronMainSource.includes('input.type === "move"') && electronMainSource.includes("currentBounds: isUsableWindow(petWindow) ? petWindow.getBounds() : null") && electronMainSource.includes("dangleTargetCrossedTravelDirection"), "the spring-rendered fish publishes its global point, facing compares it with live actor bounds, and stale travel is interrupted before it can become backward pursuit");
   const v20Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "dance", "capture-moment", "control-pin", "control-lock", "control-mute"];
   verify("Quick Play v20 normative artwork", v20Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local artwork from the normative v20 design");
+  verify(
+    "Appearance v30 exact module ownership",
+    appearanceSource.includes("appearance-v22-workbench")
+      && appearanceSource.includes("appearance-accessories-summary")
+      && catTypePickerSource.includes("appearance-cat-type-strip")
+      && ["neck", "head", "base", "effects"].every((category) => appearanceSource.includes(category))
+      && !appearanceSource.includes("TokenFrameSummary")
+      && !appearanceSource.includes("MoodBadgeCard")
+      && !appearanceSource.includes("MoodLooksCard")
+      && !appearanceSource.includes("MoodLooksPage")
+      && appearanceSource.includes("PetIdentityCard")
+      && !appearanceSource.includes("SkinCard")
+      && !appearanceSource.includes("pet-preview-actions"),
+    "Appearance is the v30 five-cat strip + natural held-hover preview + Display/Pet Identity stack + Neck/Head/Ground/Effects two-cell summary, with Token Frame and duplicate preview commands removed",
+  );
+  verify(
+    "Pet Identity 10-grapheme contract",
+    petIdentitySource.includes("MAX_PET_NAME_GRAPHEMES = 10")
+      && appearanceSource.includes("最多10个字符")
+      && appearanceSource.includes("showNameOnHover")
+      && petNameBubbleSource.includes("pet-name-thought-dot-large")
+      && petNameBubbleSource.includes("pet-name-thought-dot-small")
+      && read("apps/desktop/src/views/PetApp.tsx").includes("PetNameBubble"),
+    "one grapheme-aware setting drives the console held-hover preview and the real desktop hover bubble; invalid drafts stay local and the bubble owns exactly two thought dots",
+  );
+  verify(
+    "Appearance Display controls are live",
+    appearanceStateSource.includes("opacity: 1,")
+      && read("apps/desktop/electron/appearance.ts").includes("opacity: 1,")
+      && appearanceSource.includes('label="Shadow"')
+      && !appearanceSource.includes('valueLabel={generatedGolden ? "Baked"')
+      && read("apps/desktop/src/styles/console.css").includes("input:not(:disabled)::-webkit-slider-thumb { cursor: pointer; }")
+      && read("apps/desktop/src/styles/pet.css").includes("calc(.24 * var(--pet-visual-shadow))")
+      && read("apps/desktop/src/features/pet-appearance/previewExport.ts").includes(".24 * appearance.shadow"),
+    "Opacity defaults to 100%, every enabled range advertises pointer interaction, and Shadow reaches generated/fallback runtime canvases plus exported previews",
+  );
+  verify(
+    "Appearance v31 minimal accessory defaults",
+    appearanceStateSource.includes('neckId: "collar"')
+      && appearanceStateSource.includes('headId: "none"')
+      && appearanceStateSource.includes('baseId: "none"')
+      && appearanceStateSource.includes('effectId: "none"')
+      && appearanceStateSource.includes('accessoryIds: ["collar"]')
+      && appearanceStateSource.includes("migratePreviousAmbientDefaults")
+      && appearanceSource.includes("Capture preview")
+      && appearanceSource.includes("Reset appearance"),
+    "Bell collar is the sole reset default; Head, Ground, and Effects migrate/reset to None while Capture stays preview-local and Reset stays footer-owned",
+  );
+  verify(
+    "Accessories v28 four-category catalog",
+    !accessoriesSource.includes("TokenFrameSection")
+      && !accessoriesSource.includes("AccessoriesDetails")
+      && ["Bell collar", "Bow tie", "Bandana", "Halo", "Focus crown", "Study glasses", "Desk mat", "Round rug", "Star blanket", "Sparkle aura", "Leaf drift", "Hot sparks"].every((label) => accessoryCatalogSource.includes(`label: "${label}"`))
+      && fileIsNonEmpty(join(root, "apps/desktop/public/assets/pets/appearance/accessories/round-rug.png"))
+      && fileIsNonEmpty(join(root, "apps/desktop/public/assets/pets/appearance/accessories/star-blanket.png")),
+    "the expanded catalog owns exactly Neck, Head, Ground, and Effects; planned wearables stay gated and both new transparent ground assets are present",
+  );
 
   const appearanceVisual = read("apps/desktop/src/features/pet-appearance/PetAppearanceVisual.tsx");
   const compositor = read("apps/desktop/src/features/pet-appearance/PetCompositor.tsx");
@@ -252,6 +317,50 @@ function verifyReachableUi() {
   const fallbackState = read("apps/desktop/src/state/fallbacks.ts");
   verify("shared actor renderer chain", appearanceVisual.includes("<PetCompositor") && compositor.includes("<PetRenderer") && renderer.includes("<GeneratedPetActorCanvas"), "appearance visual resolves through the shared manifest-driven renderer");
   verify("desktop shared renderer", desktop.includes("<PetAppearanceVisual"), "desktop pet uses the shared appearance/actor renderer");
+  verify(
+    "Sleepy owns a frame-free persistent token bubble",
+    generatedRenderer.includes('animation.id === "action.sleep_loop"')
+      && generatedRenderer.includes('data-sleep-token-frame-hidden')
+      && desktop.includes('getTokenBubbleLabel("pill", usage)')
+      && desktop.includes('contentMode={sleepVisual && !sleepBubbleShowsName ? "token" : "name"}')
+      && compositor.includes('const isSleepVisual')
+      && compositor.includes('getAccessory(effectId)')
+      && compositor.includes('data-accessory-effect-source="selected"')
+      && !compositor.includes('mood-override')
+      && !compositor.includes('ambientEffectId'),
+    "sleep_loop suppresses the embedded Token frame, every mood respects the selected Appearance effect, and the persistent token bubble swaps to the pet name only while hover naming is enabled",
+  );
+  verify(
+    "Quick Play suppresses ambient appearance accessories",
+    appearanceVisual.includes("showAccessories?: boolean")
+      && compositor.includes("props.showAccessories !== false")
+      && compositor.includes('data-accessories-visible={showAccessories ? "true" : "false"}')
+      && desktop.includes("showAccessories={quickPlaySession.activeAction === null}"),
+    "all eight animated Quick Play actions temporarily hide Ground, Effects, and Head layers without mutating the saved accessory selection, then restore them at idle",
+  );
+  verify(
+    "Desktop close is hover-only",
+    desktop.includes('petHovered ? "is-hovered" : ""')
+      && petStyles.includes(".pet-stage.is-hovered .pet-close")
+      && /\.pet-close\s*\{[\s\S]*?opacity:\s*0;[\s\S]*?pointer-events:\s*none;/u.test(petStyles)
+      && /\.pet-stage\.is-hovered \.pet-close,[\s\S]*?opacity:\s*1;[\s\S]*?pointer-events:\s*auto;/u.test(petStyles),
+    "the desktop close control is absent at rest, appears only while the pet is hovered, and remains keyboard-visible through focus-within",
+  );
+  verify(
+    "Quick Play uses one planted visual-size system",
+    generatedRenderer.includes("actionVisualNormalization")
+      && generatedRenderer.includes('animationId.startsWith("action.dangle_")')
+      && generatedRenderer.includes('animationId.startsWith("action.toss_yarn_")')
+      && generatedRenderer.includes("scale: .62, anchorX: 512, anchorY: 818")
+      && generatedRenderer.includes("data-actor-visual-normalization-scale")
+      && generatedRenderer.includes("data-actor-visual-ground-anchor")
+      && !desktop.includes("appearance.size * .84")
+      && desktop.includes("scale={appearance.size}")
+      && actions.includes("scale={actorPreviewAppearance.size}")
+      && danceVideoLayer.includes("data-dance-video-scale")
+      && petStyles.includes("scale(var(--dance-video-scale, 1))"),
+    "Pet, Feed, Cursor, Nap, Wake and Dance keep their approved baseline footprint; oversized Dangle/Yarn art is reduced to 62% around the shared 512/818 paw anchor, and Dance follows Cat Size",
+  );
   const petWalkAssetPrep = read("tools/pet-asset-studio/scripts/prepare-pet-walk-assets.py");
   verify("Pet selects registered eight-direction walk and look clips", desktop.includes("petWalkDirectionalAction") && desktop.includes('replaceAll("-", "_")') && electronMainSource.includes("setPetActorDirection") && electronMainSource.includes("petWalkLocomotionAction") && electronMainSource.includes("dangleActorDirection(from, to)") && petWalkAssetPrep.includes("whole-frame") && petWalkAssetPrep.includes('"runtimeTransform": "none"'), "stand, outbound, destination look, reverse return, and settle use the vector-selected native/offline-mirrored raster without runtime facing transforms");
   const feedExecutor = read("apps/desktop/electron/quick-play/executors/feed-snack.ts");
@@ -263,7 +372,28 @@ function verifyReachableUi() {
   verify("console shared renderer", story.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
   verify("Actions v20 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v20 preview actions and excludes Capture from its selector");
+  verify("Actions defaults to the first Pet action", actions.includes('useState<ActionsPreviewId>("walk_round_trip")') && !actions.includes('useState<ActionsPreviewId>("dance")'), "each Actions workbench mount starts with Pet and its settings instead of retaining Dance");
   verify("Actions v20 isolated runtime", actions.includes("Preview changes apply instantly. Your desktop pet stays still.") && actions.includes('previewTimeMs={selectedAction === "play_cursor" ? elapsedMs : sampled.actorTimeMs}') && !/window\.tokenpet|dispatchPetAction|PetDirectorAction/u.test(actions), "the workbench owns only a controlled preview clock and never calls desktop movement/action APIs");
+  verify(
+    "Actions preview suppresses saved Appearance accessories",
+    actions.includes("showAccessories={false}")
+      && actions.includes('neckId: "none"')
+      && actions.includes('headId: "none"')
+      && actions.includes('baseId: "none"')
+      && actions.includes('effectId: "none"'),
+    "all eight action previews use the clean Quick Play presentation without mutating or rendering the saved accessory selection",
+  );
+  verify(
+    "Menu bar pet keeps its dynamic token count and self-heals",
+    electronMainSource.includes("target.setTitle(trayTokenTitle)")
+      && electronMainSource.includes("trayTokenTitle = compactNumber(snapshot.todayTokens)")
+      && electronMainSource.includes("TRAY_HEALTH_INTERVAL_MS = 30_000")
+      && electronMainSource.includes('powerMonitor.on("resume", recoverTrayAfterSystemChange)')
+      && electronMainSource.includes('screen.on("display-metrics-changed", recoverTrayAfterSystemChange)')
+      && electronMainSource.includes("ensureTray({ recreate: true })")
+      && electronMainSource.includes("compactNumber(snapshot.todayTokens)"),
+    "the macOS status item preserves the colored cat plus live compact token title, recreates after wake/display changes, and periodically repairs a destroyed Tray",
+  );
   verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes('resolveAnimation(manifest, "walk_round_trip_walk_front_right")') && actions.includes("offline-eight-direction-vector-selected-distance-locked") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses the diagonal sandbox with the production front-right action/root curve, a contained actor artboard, and pointer cursors on Settings controls");
   verify("Actions Feed preview mirrors the production asset sequence", actions.includes("feedPhaseDurations") && actions.includes("data-preview-feed-phase") && actions.includes("offline-eight-direction-single-prop-consume-exact-return") && actions.includes("feed_snack_arrive_front_right") && actions.includes("feed_snack_bite_front_right") && actions.includes("feed_snack_chew_front_right") && actions.includes("feed_snack_swallow_front_right") && actions.includes("feed_snack_return_run_back_left") && actions.includes("data-preview-snack-stage") && actions.includes("snack-${String(settings.snackStyle") && consoleStyles.includes(".action-preview-token_snack .pet-generated-actor-shell"), "Console visibly previews a direction-matched diagonal Feed route with the production rasters, root motion and continuous selected snack handoff");
   const playCursorRoles = ["neutral", "notice", "eye_left", "eye_right", "eye_up", "eye_down", "head_left", "head_right", "head_up", "head_down", "ear_left", "ear_right", "ear_up", "ear_down", "blink", "settle"];
@@ -288,17 +418,29 @@ function verifyReachableUi() {
     "desktop and Console Preview share chase/pickup/carry/drop actions, baked yarn-colour variants, authored props, and distance-locked root motion",
   );
   const nap = manifest.animations["action.nap_here"];
+  const napExecutorSource = read("apps/desktop/electron/quick-play/executors/nap-here.ts");
   verify(
-    "Nap Here settles on the fixed token frame without a jump",
+    "Nap Here settles into the frame-free sleep pose without a jump",
     nap?.frames.length === 2
       && JSON.stringify(nap.frames.map((frame) => frame.src)) === JSON.stringify(["frames/idle_breathe.png", "frames/sleep_loop.png"])
       && nap.frames.reduce((total, frame) => total + frame.durationMs, 0) === 1_300
       && nap.frames.every((frame) => !frame.bodyTransform && !frame.src.includes("nap_here.png"))
       && desktop.includes("data-pet-resting")
-      && actions.includes("grounded-direct-settle-fixed-token-frame")
+      && actions.includes("grounded-direct-settle-sleep-bubble")
       && !petStyles.includes("quick-nap-breathe")
       && !petStyles.includes("quick-nap-z"),
-    "desktop and Console share a grounded idle-to-sleep sequence; neither a floating cushion frame nor whole-canvas translate animation can move the token frame",
+    "desktop and Console share a grounded idle-to-sleep sequence with a persistent token bubble and no floating cushion or whole-canvas translation",
+  );
+  verify(
+    "Nap Here owns an interruptible five-minute rest lease",
+    napExecutorSource.includes("NAP_HERE_DURATION_MS = 5 * 60 * 1_000")
+      && napExecutorSource.includes("ports.markResting(NAP_HERE_DURATION_MS)")
+      && electronMainSource.includes("beginTimedNap(")
+      && electronMainSource.includes("restoreTimedNap({ publish: false })")
+      && electronMainSource.includes('if (quickAction !== "nap_here") interruptRestForQuickPlayAction()')
+      && desktop.includes("timedNapRestoreRef")
+      && desktop.includes("previousResting && !quickPlaySession.resting"),
+    "Nap restores automatically after 300000ms; any accepted different Quick Play action consumes the lease and restores the pre-Nap Director snapshot after that action",
   );
   const wakePhaseCounts = { wake_up_blink: 4, wake_up_roll: 4, wake_up_stretch: 8, wake_up_gather: 8 };
   verify(

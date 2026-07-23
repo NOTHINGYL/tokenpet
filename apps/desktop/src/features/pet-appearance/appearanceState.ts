@@ -18,6 +18,7 @@ import type {
   TokenFrameId,
 } from "../../types";
 import { catEyeColors, getDefaultCatDetails } from "./catalog";
+import { DEFAULT_PET_NAME, truncatePetName } from "./petIdentity";
 
 export const catTypeIds: CatTypeId[] = [
   "golden-british",
@@ -64,6 +65,8 @@ export const accessoryIds: AccessoryId[] = [
   "study-glasses",
   "sleep-cap",
   "desk-mat",
+  "round-rug",
+  "star-blanket",
   "nap-pillow",
   "cloud-cushion",
   "token-stand",
@@ -138,16 +141,21 @@ export const defaultMotionSettings: MotionSettings = {
 };
 
 export const defaultPetAppearance: PetAppearanceSettings = {
+  accessoryDefaultsVersion: 2,
   catTypeId: "golden-british",
   catDetails: getDefaultCatDetails("golden-british"),
   themeId: "gold",
   tokenBubbleId: "pill",
   size: 1,
-  opacity: 0.92,
+  opacity: 1,
   shadow: 0.6,
   bubbleScale: 1,
   moodId: "focused",
   moodBadge: defaultMoodBadgeSettings,
+  identity: {
+    name: DEFAULT_PET_NAME,
+    showNameOnHover: true,
+  },
   accessoryIds: ["collar"],
   accessorySettings: defaultAccessorySettings,
   motionSettings: defaultMotionSettings,
@@ -178,7 +186,7 @@ function inferAccessorySettingsFromIds(ids: AccessoryId[]): Pick<AccessorySettin
   return {
     neckId: firstKnown(["collar", "ribbon", "bow-tie", "tiny-scarf", "bandana"], defaultAccessorySettings.neckId),
     headId: firstKnown(["focus-crown", "halo", "study-glasses", "sleep-cap"]),
-    baseId: firstKnown(["desk-mat", "nap-pillow", "cloud-cushion", "token-stand"]),
+    baseId: firstKnown(["desk-mat", "round-rug", "star-blanket", "nap-pillow", "cloud-cushion", "token-stand"]),
     effectId: firstKnown(["sparkle-aura", "star-trail", "leaf-drift", "hot-sparks"]),
   };
 }
@@ -263,19 +271,39 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
   const source = settings.petAppearance ?? ({} as Partial<PetAppearanceSettings>);
   const catTypeId = pickKnown(source.catTypeId, catTypeIds, defaultPetAppearance.catTypeId);
   const normalizedAccessoryIds = normalizeAccessories(source.accessoryIds);
-  const normalizedAccessorySettings = normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds);
+  const storedAccessorySettings = normalizeAccessorySettings(source.accessorySettings, normalizedAccessoryIds);
+  const migratePreviousAmbientDefaults = Number(source.accessoryDefaultsVersion ?? 1) < 2
+    && storedAccessorySettings.neckId === "collar"
+    && storedAccessorySettings.headId === "focus-crown"
+    && storedAccessorySettings.baseId === "desk-mat"
+    && storedAccessorySettings.effectId === "sparkle-aura";
+  const normalizedAccessorySettings = migratePreviousAmbientDefaults
+    ? { ...storedAccessorySettings, headId: "none" as const, baseId: "none" as const, effectId: "none" as const }
+    : storedAccessorySettings;
   const actorReady = catTypeId === "golden-british";
   const hideGoldenValue = normalizedAccessorySettings.tokenFrameId === "hidden" || source.tokenBubbleId === "hidden";
+  const readyGroundIds: AccessoryChoiceId[] = ["none", "desk-mat", "round-rug", "star-blanket"];
+  const readyEffectIds: AccessoryChoiceId[] = ["none", "sparkle-aura", "leaf-drift", "hot-sparks"];
+  const readyHeadIds: AccessoryChoiceId[] = actorReady ? ["none", "halo", "focus-crown"] : ["none", "halo"];
   const capabilitySafeAccessorySettings: AccessorySettings = {
     ...normalizedAccessorySettings,
     tokenFrameId: actorReady ? (hideGoldenValue ? "hidden" : "embedded") : "hidden",
-    neckId: actorReady ? "collar" : "none",
-    headId: "none",
-    baseId: "none",
-    effectId: "none",
+    neckId: actorReady && ["collar", "none"].includes(normalizedAccessorySettings.neckId)
+      ? normalizedAccessorySettings.neckId
+      : actorReady ? defaultAccessorySettings.neckId : "none",
+    headId: readyHeadIds.includes(normalizedAccessorySettings.headId)
+      ? normalizedAccessorySettings.headId
+      : actorReady ? defaultAccessorySettings.headId : "none",
+    baseId: readyGroundIds.includes(normalizedAccessorySettings.baseId)
+      ? normalizedAccessorySettings.baseId
+      : defaultAccessorySettings.baseId,
+    effectId: readyEffectIds.includes(normalizedAccessorySettings.effectId)
+      ? normalizedAccessorySettings.effectId
+      : defaultAccessorySettings.effectId,
   };
 
   return {
+    accessoryDefaultsVersion: 2,
     catTypeId,
     catDetails: normalizeCatDetails(source.catDetails, catTypeId),
     themeId: pickKnown(source.themeId ?? settings.petTheme, petThemeIds, defaultPetAppearance.themeId),
@@ -289,7 +317,15 @@ export function normalizePetAppearance(settings: Partial<AppSettings>): PetAppea
       ...defaultMoodBadgeSettings,
       ...(source.moodBadge ?? {}),
     },
-    accessoryIds: actorReady ? ["collar"] : [],
+    identity: {
+      name: typeof source.identity?.name === "string" ? truncatePetName(source.identity.name) : DEFAULT_PET_NAME,
+      showNameOnHover: typeof source.identity?.showNameOnHover === "boolean" ? source.identity.showNameOnHover : true,
+    },
+    accessoryIds: actorReady
+      ? ([capabilitySafeAccessorySettings.neckId, capabilitySafeAccessorySettings.headId, capabilitySafeAccessorySettings.baseId, capabilitySafeAccessorySettings.effectId]
+          .filter((id): id is AccessoryId => id !== "none"))
+      : ([capabilitySafeAccessorySettings.headId, capabilitySafeAccessorySettings.baseId, capabilitySafeAccessorySettings.effectId]
+          .filter((id): id is AccessoryId => id !== "none")),
     accessorySettings: capabilitySafeAccessorySettings,
     motionSettings: normalizeMotionSettings(source.motionSettings),
   };
