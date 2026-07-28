@@ -6,15 +6,19 @@ import { getTokenBubbleLabel } from "../features/pet-appearance/appearanceView";
 import { PetNameBubble } from "../features/pet-appearance/PetNameBubble";
 import { DanceVideoLayer } from "../features/pet-story/DanceVideoLayer";
 import {
+  ambientRestAllowedForMood,
   completePetDirectorAction,
+  createMoodStabilizerState,
   createPetDirectorState,
   defaultPetStory,
   directPetEvent,
   lifecycleFromUsage,
-  moodAction,
-  moodFromUsage,
+  MOOD_REACTION_REPLAY_INTERVAL_MS,
+  moodSteadyAction,
+  moodSignalFromUsage,
+  resolveMood,
   selectAmbientPetEvent,
-  thresholdCrossingEvent,
+  stabilizeMood,
   type PetDirectorState,
 } from "../features/pet-story/PetDirector";
 import {
@@ -27,7 +31,7 @@ import {
 } from "../features/pet-story/soundCueEngine";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { useUsage } from "../hooks/useUsage";
-import type { CursorTrackingVisual, PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
+import type { CursorTrackingVisual, MoodLookId, PetActionId, PetDirectorEvent, QuickPlaySession } from "../types";
 
 type PointerGesture = {
   pointerId: number;
@@ -130,11 +134,18 @@ export function PetApp() {
   });
   const appearance = normalizePetAppearance(settings);
   const story = settings.petStory ?? defaultPetStory;
-  const mood = moodFromUsage(usage, story.moodThresholds);
-  const directorRef = useRef(createPetDirectorState(mood));
-  const [directorAction, setDirectorAction] = useState<PetActionId>(() => moodAction(mood));
+  const moodThresholds = story.moodThresholdProfiles[story.moodSignalWindow];
+  const moodSignal = moodSignalFromUsage(usage, story.moodSignalWindow);
+  const [mood, setMood] = useState<MoodLookId>(() => resolveMood(moodSignal, moodThresholds));
+  const moodStabilizerRef = useRef(createMoodStabilizerState(mood));
+  const moodRuntimeInputRef = useRef({ signal: moodSignal, thresholds: moodThresholds, window: story.moodSignalWindow });
+  moodRuntimeInputRef.current = { signal: moodSignal, thresholds: moodThresholds, window: story.moodSignalWindow };
+  const directorRef = useRef(createPetDirectorState(mood, story.moodPresentation));
+  const [directorAction, setDirectorAction] = useState<PetActionId>(() => moodSteadyAction(mood));
   const [danceVideoReady, setDanceVideoReady] = useState(false);
+  const [moodBadgePulseActive, setMoodBadgePulseActive] = useState(false);
   const completionTimerRef = useRef<number | null>(null);
+  const moodBadgePulseTimerRef = useRef<number | null>(null);
   const clickTimerRef = useRef<number | null>(null);
   const pointerGestureRef = useRef<PointerGesture | null>(null);
   const handledActionNonceRef = useRef<number | null>(null);
@@ -145,7 +156,7 @@ export function PetApp() {
   const timedNapRestoreRef = useRef<{ action: PetActionId; state: PetDirectorState } | null>(null);
   const timedNapActiveRef = useRef(false);
   const quickPlayAppliedEndRef = useRef<string | null>(null);
-  const previousMoodRef = useRef(mood);
+  const previousMoodRef = useRef<MoodLookId | null>(null);
   const observedUsageRef = useRef<{ status: string; allTimeTokens: number } | null>(null);
   const ambientRef = useRef({
     lastActivityAt: Date.now(),
@@ -169,9 +180,10 @@ export function PetApp() {
   const dispatchDirectorEvent = useCallback(
     (event: PetDirectorEvent) => {
       if (quickPlayActiveRef.current && event.type !== "quickPlay.action") return false;
+      if (event.type === "ambient.rest" && !ambientRestAllowedForMood(mood)) return false;
       if (
         timedNapActiveRef.current
-        && ["ambient.blink", "ambient.rest", "ambient.wake", "mood.thresholdCrossed", "token.delta"].includes(event.type)
+        && ["ambient.blink", "ambient.rest", "ambient.wake", "mood.thresholdCrossed", "mood.reactionPulse", "token.delta"].includes(event.type)
       ) return false;
       if (!interactionAllowed(event, story)) return false;
       if (
@@ -224,19 +236,87 @@ export function PetApp() {
 
       return true;
     },
-    [appearance.catTypeId, batteryLow, clearCompletionTimer, story],
+    [appearance.catTypeId, batteryLow, clearCompletionTimer, mood, story],
   );
 
   useEffect(() => {
+    const loop = moodSteadyAction(mood);
     const burnRate = mood === "overdrive" ? "overdrive" : mood === "hot" ? "hot" : mood === "focused" ? "steady" : "quiet";
-    dispatchDirectorEvent({ type: "token.delta", tokens: 0, burnRate });
-    const crossing = thresholdCrossingEvent(previousMoodRef.current, mood, story.reactionRules.oneShotOnThreshold);
-    if (crossing) dispatchDirectorEvent(crossing);
-    if (previousMoodRef.current === "overdrive" && mood !== "overdrive" && story.reactionRules.coolDownAfterOverdrive) {
-      dispatchDirectorEvent({ type: "actor.actionRequested", action: "cool_down" });
+    dispatchDirectorEvent({ type: "token.delta", tokens: 0, burnRate, mood, loop });
+    const moodChanged = previousMoodRef.current !== mood;
+    if (moodChanged) {
+      if (moodBadgePulseTimerRef.current !== null) window.clearTimeout(moodBadgePulseTimerRef.current);
+      if (story.moodControls.entryPulse && story.moodControls.badgeVisible) {
+        setMoodBadgePulseActive(true);
+        moodBadgePulseTimerRef.current = window.setTimeout(() => {
+          setMoodBadgePulseActive(false);
+          moodBadgePulseTimerRef.current = null;
+        }, story.reduceMotion ? 120 : 400);
+      } else {
+        setMoodBadgePulseActive(false);
+      }
+    } else if (!story.moodControls.entryPulse || !story.moodControls.badgeVisible) {
+      setMoodBadgePulseActive(false);
+    }
+    if (moodChanged && (mood === "hot" || mood === "overdrive")) {
+      dispatchDirectorEvent({ type: "mood.reactionPulse", mood });
     }
     previousMoodRef.current = mood;
-  }, [dispatchDirectorEvent, mood, story.reactionRules.coolDownAfterOverdrive, story.reactionRules.oneShotOnThreshold]);
+  }, [dispatchDirectorEvent, mood, story.moodControls, story.moodPresentation, story.reduceMotion]);
+
+  useEffect(() => {
+    if (mood !== "hot" && mood !== "overdrive") return;
+    const timer = window.setInterval(() => {
+      if (quickPlayActiveRef.current || timedNapActiveRef.current) return;
+      dispatchDirectorEvent({ type: "mood.reactionPulse", mood });
+    }, MOOD_REACTION_REPLAY_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [dispatchDirectorEvent, mood]);
+
+  useEffect(() => () => {
+    if (moodBadgePulseTimerRef.current !== null) window.clearTimeout(moodBadgePulseTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    const tick = () => {
+      const input = moodRuntimeInputRef.current;
+      const result = stabilizeMood(moodStabilizerRef.current, input.signal, input.thresholds, Date.now());
+      moodStabilizerRef.current = result.state;
+      if (result.changed) setMood(result.mood);
+    };
+    const timer = window.setInterval(tick, 1_000);
+    tick();
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    // Stability delays protect real usage fluctuations, but explicit editor
+    // configuration is intentional. Switching the signal window or moving a
+    // threshold must immediately recompute the desktop mood and badge.
+    const immediateMood = resolveMood(moodSignal, moodThresholds);
+    moodStabilizerRef.current = createMoodStabilizerState(immediateMood, Date.now());
+    if (!quickPlayActiveRef.current && !timedNapActiveRef.current) {
+      const loop = moodSteadyAction(immediateMood);
+      clearCompletionTimer();
+      directorRef.current = {
+        ...directorRef.current,
+        currentAction: loop,
+        moodLoop: loop,
+        previousMoodLoop: directorRef.current.moodLoop,
+        resting: immediateMood === "sleepy",
+        activePriority: 0,
+        activeUntil: 0,
+      };
+      setDirectorAction(loop);
+    }
+    setMood(immediateMood);
+  }, [
+    clearCompletionTimer,
+    story.moodSignalWindow,
+    moodThresholds.focused,
+    moodThresholds.hot,
+    moodThresholds.overdrive,
+  ]);
 
   useEffect(() => {
     if (usage.status === "loading") return;
@@ -269,6 +349,7 @@ export function PetApp() {
         behaviorMode: story.behaviorMode,
         quietMode: story.quietMode,
         reduceMotion: story.reduceMotion || (story.safety.batteryLowPause && batteryLow),
+        nightModeEnabled: story.safety.quietHoursEnabled,
         nightStart: story.safety.quietHoursStart,
         nightEnd: story.safety.quietHoursEnd,
       });
@@ -286,7 +367,7 @@ export function PetApp() {
       window.clearTimeout(startupTimer);
       window.clearInterval(interval);
     };
-  }, [batteryLow, dispatchDirectorEvent, story.behaviorMode, story.quietMode, story.reduceMotion, story.safety.batteryLowPause, story.safety.quietHoursEnd, story.safety.quietHoursStart, usage]);
+  }, [batteryLow, dispatchDirectorEvent, story.behaviorMode, story.quietMode, story.reduceMotion, story.safety.batteryLowPause, story.safety.quietHoursEnabled, story.safety.quietHoursEnd, story.safety.quietHoursStart, usage]);
 
   useEffect(() => {
     if (!story.safety.batteryLowPause) {
@@ -713,7 +794,7 @@ export function PetApp() {
   const sleepBubbleShowsName = sleepVisual && petHovered && appearance.identity.showNameOnHover;
   const sleepBubbleContent = sleepBubbleShowsName
     ? appearance.identity.name
-    : getTokenBubbleLabel("pill", usage) ?? "0";
+    : getTokenBubbleLabel("pill", usage, moodSignal) ?? "0";
 
   return (
     <main
@@ -736,7 +817,12 @@ export function PetApp() {
         {!danceReferenceActive || !danceVideoReady ? <PetAppearanceVisual
           appearance={appearance}
           usage={usage}
+          tokenValue={moodSignal}
           moodId={mood}
+          moodBadgeVisible={story.moodControls.badgeVisible}
+          moodBadgeColor={story.moodPresentation[mood].badgeColor}
+          moodBadgeStyle={story.moodControls.badgeStyle}
+          moodBadgePulse={moodBadgePulseActive}
           storyActionId={renderedAction}
           facing={quickPlayFacing}
           actorVariant={quickPlaySession.actorVariant ?? undefined}

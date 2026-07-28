@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-27T08:37:54.166Z",
+  "fixture": "synthetic local demo data; no private user data",
+  "renderer": "TokenPet production renderer captured through Electron",
+  "deterministicExport": {
+    "actions": [
+      {
+        "id": "walk_round_trip",
+        "label": "Pet"
+      },
+      {
+        "id": "token_snack",
+        "label": "Feed snack"
+      },
+      {
+        "id": "play_cursor",
+        "label": "Play cursor"
+      },
+      {
+        "id": "drag_dangle",
+        "label": "Dangle toy"
+      },
+      {
+        "id": "toss_yarn",
+        "label": "Toss yarn"
+      },
+      {
+        "id": "nap_here",
+        "label": "Nap here"
+      },
+      {
+        "id": "wake_up",
+        "label": "Wake up"
+      },
+      {
+        "id": "dance",
+        "label": "Dance"
+      }
+    ],
+    "note": "Every action is sampled across its complete source timeline into a fixed 2.4 second showcase segment."
+  },
+  "assets": [
+    {
+      "kind": "screenshot",
+      "surface": "Desktop companion",
+      "file": "docs/readme/desktop-companion.png",
+      "source": "docs/screenshots/pet-story/desktop-pet.png",
+      "width": 520,
+      "height": 520,
+      "bytes": 76734,
+      "sha256": "4dcd8357f2a7a29fb7dad142cc530f4415bdbda086840391afb75c3938d37052"
+    },
+    {
+      "kind": "screenshot",
+      "surface": "Quick Play",
+      "file": "docs/readme/quick-play.png",
+      "source": "docs/screenshots/pet-story/quick-play-unlocked.png",
+      "width": 560,
+      "height": 960,
+      "bytes": 253305,
+      "sha256": "eeaea294fe037e72398a4319800ef7ef0ec106637f0548eee211d3b36c5c14e5"
+    },
+    {
+      "kind": "screenshot",
+      "surface": "Console overview",
+      "file": "docs/readme/console-overview.png",
+      "source": "docs/screenshots/pet-story/console-overview.png",
+      "width": 2560,
+      "height": 1800,
+      "bytes": 407091,
+      "sha256": "5a46b5a9bd7e0ea88dbd83e516ced1d64e154484b01b19c7a6cdf4e31d8bc48e"
+    },
+    {
+      "kind": "screenshot",
+      "surface": "Pet appearance",
+      "file": "docs/readme/console-appearance.png",
+      "source": "docs/screenshots/pet-story/console-appearance.png",
+      "width": 2560,
+      "height": 1800,
+      "bytes": 557768,
+      "sha256": "4a69577cd7fc5ed491cff200a7b3a893efeb86c751d5f5379166b338e857f75d"
+    },
+    {
+      "kind": "screenshot",
+      "surface": "Mood and reactions",
+      "file": "docs/readme/console-mood-reactions.png",
+      "source": "docs/screenshots/pet-story/console-mood-reactions.png",
+      "width": 2560,
+      "height": 1800,
+      "bytes": 459065,
+      "sha256": "663e99b2eb012b40f82bafaabb58cedd19874b06e533b10c3942fd2e554bb2f9"
+    },
+    {
+      "kind": "animation",
+      "surface": "Eight Quick Play actions",
+      "file": "docs/readme/tokenpet-actions-showcase.gif",
+      "width": 720,
+      "durationMs": 19200,
+      "frameRate": 10,
+      "frameCount": 192,
+      "loop": true,
+      "bytes": 1900612,
+      "sha256": "c42e7853dc182e6c3e02a21ec2a1497fd54ecc395877003f1892bd433fc3266c",
+      "segments": [
+        {
+          "id": "walk_round_trip",
+          "label": "Pet",
+          "firstFrame": 1,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 3904
+        },
+        {
+          "id": "token_snack",
+          "label": "Feed snack",
+          "firstFrame": 25,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 10268
+        },
+        {
+          "id": "play_cursor",
+          "label": "Play cursor",
+          "firstFrame": 49,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 10000
+        },
+        {
+          "id": "drag_dangle",
+          "label": "Dangle toy",
+          "firstFrame": 73,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 8396
+        },
+        {
+          "id": "toss_yarn",
+          "label": "Toss yarn",
+          "firstFrame": 97,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 7206
+        },
+        {
+          "id": "nap_here",
+          "label": "Nap here",
+          "firstFrame": 121,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 1300
+        },
+        {
+          "id": "wake_up",
+          "label": "Wake up",
+          "firstFrame": 145,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 5000
+        },
+        {
+          "id": "dance",
+          "label": "Dance",
+          "firstFrame": 169,
+          "frameCount": 24,
+          "showcaseDurationMs": 2400,
+          "sourceDurationMs": 11093
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import goldenBritishActorManifestJson from "../../../public/pet-actors/golden-british/actor.json";
 import type { PetActorCapability, PetActorManifest } from "../../../../../packages/pet-asset-schema/src";
 import type {
+  MoodActorLoop,
   MoodLookId,
   MotionActionId,
   PetActionId,
@@ -11,6 +12,48 @@ import type {
   PetStorySettings,
   UsageSnapshot,
 } from "../../types";
+import {
+  createMoodStabilizerState,
+  defaultMoodControls,
+  defaultMoodPresentation,
+  defaultMoodPreviewValues,
+  defaultMoodThresholdProfiles,
+  moodLookIds,
+  moodSignalFromUsage,
+  moodSignalWindows,
+  moodThresholdFromLogRatio,
+  moodThresholdSpan,
+  moodThresholdToLogRatio,
+  normalizeMoodPresentation,
+  normalizeMoodControls,
+  normalizeMoodThresholdProfile,
+  previewValueForMood,
+  resolveMood,
+  stabilizeMood,
+  updateMoodThreshold,
+} from "./moodRuntime";
+
+export {
+  createMoodStabilizerState,
+  defaultMoodControls,
+  defaultMoodPresentation,
+  defaultMoodPreviewValues,
+  defaultMoodThresholdProfiles,
+  moodLookIds,
+  moodSignalFromUsage,
+  moodSignalWindows,
+  moodThresholdFromLogRatio,
+  moodThresholdSpan,
+  moodThresholdToLogRatio,
+  normalizeMoodPresentation,
+  normalizeMoodControls,
+  normalizeMoodThresholdProfile,
+  previewValueForMood,
+  resolveMood,
+  stabilizeMood,
+  updateMoodThreshold,
+};
+export type { MoodStabilizerResult, MoodStabilizerState } from "./moodRuntime";
 
 export const defaultJourneyState: PetJourneyState = {
   schemaVersion: 1,
@@ -26,7 +69,12 @@ export const defaultJourneyState: PetJourneyState = {
 
 export const defaultPetStory: PetStorySettings = {
   behaviorMode: "balanced",
-  moodThresholds: { focused: 50_000, hot: 1_000_000, overdrive: 1_000_000_000 },
+  moodThresholds: defaultMoodThresholdProfiles.live,
+  moodSignalWindow: "live",
+  moodThresholdProfiles: defaultMoodThresholdProfiles,
+  moodPreviewValues: defaultMoodPreviewValues,
+  moodPresentation: defaultMoodPresentation,
+  moodControls: defaultMoodControls,
   quietMode: false,
   followCursor: false,
   lockPosition: false,
@@ -221,18 +269,31 @@ export function resolveAction(actorId: string, requested: PetActionId, reduceMot
 export function moodFromUsage(
   usage: UsageSnapshot,
   thresholds: { focused: number; hot: number; overdrive: number },
+  window: import("../../types").MoodSignalWindow = "today",
 ): MoodLookId {
-  const rate = usage.todayTokens;
-  if (usage.burnRate.toLowerCase().includes("overdrive") || rate >= thresholds.overdrive) return "overdrive";
-  if (usage.burnRate.toLowerCase().includes("hot") || rate >= thresholds.hot) return "hot";
-  if (rate >= thresholds.focused || usage.burnRate.toLowerCase().includes("steady")) return "focused";
-  return "sleepy";
+  return resolveMood(moodSignalFromUsage(usage, window), thresholds);
 }
 
-export function moodAction(mood: MoodLookId): PetActionId {
-  if (mood === "sleepy") return "sleep_loop";
-  if (mood === "focused") return "focus_loop";
-  return `${mood}_loop`;
+export function moodAction(
+  mood: MoodLookId,
+  _presentation: PetStorySettings["moodPresentation"] = defaultMoodPresentation,
+): MoodActorLoop {
+  return defaultMoodPresentation[mood].actorLoop;
+}
+
+export const MOOD_REACTION_DURATION_MS = 10_000;
+export const MOOD_REACTION_REPLAY_INTERVAL_MS = 5 * 60_000;
+
+/**
+ * Focus is the normal awake posture. Hot and Overdrive are bounded reaction
+ * clips layered over it; only Sleepy owns a persistent sleeping posture.
+ */
+export function moodSteadyAction(mood: MoodLookId): MoodActorLoop {
+  return mood === "sleepy" ? "sleep_loop" : "focus_loop";
+}
+
+export function ambientRestAllowedForMood(mood: MoodLookId) {
+  return mood === "sleepy";
 }
 
 export function lifecycleFromUsage(usage: UsageSnapshot): PetLifeStage {
@@ -265,6 +326,7 @@ export type PetAmbientSchedulerInput = {
   behaviorMode: PetBehaviorMode;
   quietMode: boolean;
   reduceMotion: boolean;
+  nightModeEnabled?: boolean;
   nightStart?: string;
   nightEnd?: string;
 };
@@ -312,7 +374,8 @@ export function isPetNightTime(minuteOfDay: number, start = "22:00", end = "07:0
  */
 export function selectAmbientPetEvent(input: PetAmbientSchedulerInput): PetAmbientSuggestion | null {
   if (input.lifecycleStage === "egg") return null;
-  const night = isPetNightTime(input.minuteOfDay, input.nightStart, input.nightEnd);
+  const night = input.nightModeEnabled !== false
+    && isPetNightTime(input.minuteOfDay, input.nightStart, input.nightEnd);
   const idleFor = Math.max(0, input.now - input.lastActivityAt);
   const restAttemptDue = input.now - input.lastRestAttemptAt >= 30_000;
 
@@ -348,8 +411,13 @@ export function selectAmbientPetEvent(input: PetAmbientSchedulerInput): PetAmbie
   return null;
 }
 
-export function thresholdCrossingEvent(previous: MoodLookId, next: MoodLookId, enabled: boolean): PetDirectorEvent | null {
-  return enabled && previous !== next ? { type: "mood.thresholdCrossed", previous, mood: next } : null;
+export function thresholdCrossingEvent(
+  previous: MoodLookId,
+  next: MoodLookId,
+  enabled: boolean,
+  loop?: import("../../types").MoodActorLoop,
+): PetDirectorEvent | null {
+  return enabled && previous !== next ? { type: "mood.thresholdCrossed", previous, mood: next, ...(loop ? { loop } : {}) } : null;
 }
 
 export type PetDirectorDecision = ResolvedPetAction & {
@@ -369,8 +437,11 @@ export type PetDirectorState = {
   lastPlayedAt: Partial<Record<PetActionId, number>>;
 };
 
-export function createPetDirectorState(mood: MoodLookId = "focused"): PetDirectorState {
-  const loop = moodAction(mood);
+export function createPetDirectorState(
+  mood: MoodLookId = "focused",
+  _presentation: PetStorySettings["moodPresentation"] = defaultMoodPresentation,
+): PetDirectorState {
+  const loop = moodSteadyAction(mood);
   return {
     currentAction: loop,
     moodLoop: loop,
@@ -390,6 +461,7 @@ type DirectorRequest = {
   moodLoop?: PetActionId;
   sideEffect?: "summon" | "capture" | "traverse";
   ignoreCooldown?: boolean;
+  preserveAction?: boolean;
 };
 
 function requestForEvent(event: PetDirectorEvent): DirectorRequest {
@@ -403,18 +475,33 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
     return { action: "wake_up", priority: directorPriority.moodLoop, durationMs: 1_350, persistent: "wake" };
   }
   if (event.type === "mood.thresholdCrossed") {
-    const loop = moodAction(event.mood);
+    const steadyLoop = moodSteadyAction(event.mood);
     const action: PetActionId = event.mood === "focused"
       ? "focus_start"
       : event.mood === "sleepy"
         ? "settle_down"
-        : loop;
+        : moodAction(event.mood);
     return {
       action,
       priority: directorPriority.moodLoop,
-      durationMs: event.mood === "overdrive" ? 3_200 : 1_600,
-      moodLoop: event.mood === "overdrive" ? "hot_loop" : loop,
+      durationMs: event.mood === "hot" || event.mood === "overdrive"
+        ? MOOD_REACTION_DURATION_MS
+        : 1_600,
+      moodLoop: steadyLoop,
+      persistent: event.mood === "sleepy" ? "rest" : "wake",
       ignoreCooldown: true,
+      preserveAction: event.mood === "hot" || event.mood === "overdrive",
+    };
+  }
+  if (event.type === "mood.reactionPulse") {
+    return {
+      action: moodAction(event.mood),
+      priority: directorPriority.moodLoop,
+      durationMs: MOOD_REACTION_DURATION_MS,
+      moodLoop: moodSteadyAction(event.mood),
+      persistent: "wake",
+      ignoreCooldown: true,
+      preserveAction: true,
     };
   }
   if (event.type === "actor.actionRequested") {
@@ -452,12 +539,16 @@ function requestForEvent(event: PetDirectorEvent): DirectorRequest {
   }
   if (event.type === "day.digestReady") return { action: "daily_digest", priority: directorPriority.milestone, durationMs: 1_800 };
   if (event.type === "token.delta") {
-    const nextMood: MoodLookId = event.burnRate === "overdrive" ? "overdrive" : event.burnRate === "hot" ? "hot" : event.burnRate === "steady" ? "focused" : "sleepy";
-    const loop = moodAction(nextMood);
-    if (nextMood === "overdrive") {
-      return { action: loop, priority: directorPriority.moodLoop, durationMs: 3_200, moodLoop: "hot_loop" };
-    }
-    return { action: loop, priority: directorPriority.moodLoop, durationMs: 0, moodLoop: loop };
+    const nextMood: MoodLookId = event.mood
+      ?? (event.burnRate === "overdrive" ? "overdrive" : event.burnRate === "hot" ? "hot" : event.burnRate === "steady" ? "focused" : "sleepy");
+    const loop = moodSteadyAction(nextMood);
+    return {
+      action: loop,
+      priority: directorPriority.moodLoop,
+      durationMs: 0,
+      moodLoop: loop,
+      persistent: nextMood === "sleepy" ? "rest" : "wake",
+    };
   }
 
   const action = event.action;
@@ -494,7 +585,7 @@ export function directPetEvent(
 
   if (request.moodLoop) {
     nextState = { ...nextState, previousMoodLoop: state.moodLoop, moodLoop: request.moodLoop };
-    if (state.resting) return { state: nextState, decision: null };
+    if (state.resting && request.persistent !== "wake") return { state: nextState, decision: null };
   }
 
   const activeIsBlocking = state.activeUntil > now && state.activePriority > request.priority;
@@ -509,8 +600,8 @@ export function directPetEvent(
   }
 
   let behaviorAction = request.action;
-  if (options.behaviorMode === "gentle" && behaviorAction === "overdrive_loop") behaviorAction = "hot_loop";
-  if (options.behaviorMode === "focusFriendly" && ["hot_loop", "overdrive_loop"].includes(behaviorAction)) behaviorAction = "focus_loop";
+  if (!request.preserveAction && options.behaviorMode === "gentle" && behaviorAction === "overdrive_loop") behaviorAction = "hot_loop";
+  if (!request.preserveAction && options.behaviorMode === "focusFriendly" && ["hot_loop", "overdrive_loop"].includes(behaviorAction)) behaviorAction = "focus_loop";
   if (options.behaviorMode === "focusFriendly" && ["milestone_celebrate", "level_up"].includes(behaviorAction)) behaviorAction = "click_purr";
   if (options.quietMode && ["hatch", "milestone_celebrate", "level_up"].includes(behaviorAction)) behaviorAction = state.moodLoop;
   const resolvedForMode = resolveAction(options.actorId, behaviorAction, options.reduceMotion);

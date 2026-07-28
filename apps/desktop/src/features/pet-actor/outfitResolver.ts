@@ -38,6 +38,10 @@ export function resolveActorOutfit(appearance: PetAppearanceSettings, skin: CatS
   };
 }
 
-export function getActorTokenLabel(appearance: PetAppearanceSettings, usage: Parameters<typeof getTokenBubbleLabel>[1]) {
-  return getTokenBubbleLabel(getEffectiveTokenBubbleId(appearance), usage);
+export function getActorTokenLabel(
+  appearance: PetAppearanceSettings,
+  usage: Parameters<typeof getTokenBubbleLabel>[1],
+  tokenValue?: number,
+) {
+  return getTokenBubbleLabel(getEffectiveTokenBubbleId(appearance), usage, tokenValue);
 }

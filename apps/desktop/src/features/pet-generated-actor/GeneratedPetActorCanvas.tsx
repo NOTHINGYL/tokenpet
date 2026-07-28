@@ -8,9 +8,10 @@ import type {
   PetActorRect,
   PetActorTokenMode,
 } from "../../../../../packages/pet-asset-schema/src";
-import type { CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { CursorTrackingVisual, MoodBadgeStyle, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { getEffectiveTokenBubbleId, getMoodLabel, getTokenBubbleLabel, getTokenFrameOption, moodToneClass, shouldShowMoodBadge } from "../pet-appearance/appearanceView";
 import type { PetActorProps, PetSurface } from "../pet-actor/actorTypes";
+import { drawMoodSemanticIcon, moodHotIconAssetPath, resolveMoodBadgeTone } from "../pet-story/moodVisuals";
 import { resolveActorMoodBadgeRect } from "./actorLayout";
 
 type GeneratedActorImageMap = Map<string, HTMLImageElement>;
@@ -26,6 +27,9 @@ type GeneratedActorRenderPlan = {
   tokenLabel: string | null;
   tokenRect: PetActorRect | null;
   moodBadgeRect: PetActorRect | null;
+  moodBadgeColor: string | null;
+  moodBadgeStyle: MoodBadgeStyle;
+  moodBadgePulse: boolean;
   className: string;
   styleVars: Record<string, string>;
   reduceMotion: boolean;
@@ -78,6 +82,10 @@ function resolveFrameUrl(actorId: string, frame: PetActorFrameAsset) {
   return new URL(`pet-actors/${actorId}/${frame.src}`, window.location.href).toString();
 }
 
+function moodHotIconUrl() {
+  return new URL(moodHotIconAssetPath, window.location.href).toString();
+}
+
 function loadImage(src: string) {
   const existing = imageCache.get(src);
   if (existing) return existing;
@@ -95,6 +103,7 @@ function loadImage(src: string) {
 
 async function loadGeneratedActorImages(manifest: PetActorManifest) {
   const frameSources = new Set<string>();
+  frameSources.add(moodHotIconUrl());
   Object.values(manifest.animations).forEach((animation) => {
     animation.frames.forEach((frame) => frameSources.add(resolveFrameUrl(manifest.actorId, frame)));
     Object.values(animation.variants ?? {}).forEach((frames) => {
@@ -209,9 +218,13 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     || animation.id === "action.nap_here";
   const tokenMode = isChromeFreeStoryAction || isSleepVisual ? "hidden" : resolveTokenMode(props.appearance, manifest);
   const tokenBubbleId = getEffectiveTokenBubbleId(props.appearance);
-  const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage);
+  const tokenLabel = tokenMode === "hidden" ? null : getTokenBubbleLabel(tokenBubbleId, props.usage, props.tokenValue);
   const tokenRect = tokenLabel ? resolveTokenRect(manifest, tokenMode) : null;
-  const declaredMoodBadgeRect = !isChromeFreeStoryAction && shouldShowMoodBadge(props.appearance, moodId) ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge) : null;
+  const displayMoodBadge = props.moodBadgeVisible ?? shouldShowMoodBadge(props.appearance, moodId);
+  const declaredMoodBadgeRect = !isChromeFreeStoryAction
+    && displayMoodBadge
+    ? (manifest.moodBadgeSlot ?? manifest.dynamicSlots.moodBadge)
+    : null;
   const moodBadgeRect = declaredMoodBadgeRect ? resolveActorMoodBadgeRect(manifest, declaredMoodBadgeRect, props.surface) : null;
   const tokenCenterX = tokenRect ? tokenRect.x + tokenRect.width / 2 : 0;
   const tokenCenterY = tokenRect ? tokenRect.y + tokenRect.height / 2 : 0;
@@ -227,6 +240,9 @@ function createRenderPlan(manifest: PetActorManifest, props: PetActorProps): Gen
     tokenLabel,
     tokenRect,
     moodBadgeRect,
+    moodBadgeColor: props.moodBadgeColor ?? null,
+    moodBadgeStyle: props.moodBadgeStyle ?? "iconLabel",
+    moodBadgePulse: props.moodBadgePulse === true,
     className: `pet-appearance-visual pet-generated-actor-shell pet-appearance-visual-${props.surface} pet-theme-${props.appearance.themeId} pet-mood-${
       moodToneClass[moodId]
     } ${props.appearance.moodBadge.colorByState ? "pet-mood-color-state" : ""} pet-cat-${manifest.actorId} pet-token-${tokenMode} pet-bubble-${tokenBubbleId}`,
@@ -311,31 +327,83 @@ function drawTokenText(context: CanvasRenderingContext2D, plan: GeneratedActorRe
   context.restore();
 }
 
-function drawMoodBadge(context: CanvasRenderingContext2D, plan: GeneratedActorRenderPlan, time: number) {
+function drawMoodBadge(context: CanvasRenderingContext2D, plan: GeneratedActorRenderPlan, images: GeneratedActorImageMap, time: number) {
   if (!plan.moodBadgeRect) return;
 
-  const rect = { ...plan.moodBadgeRect, y: plan.moodBadgeRect.y + (plan.reduceMotion ? 0 : Math.sin(time * 2.1) * 4) };
-  const palette: Record<MoodLookId, { bg: string; stroke: string; text: string }> = {
-    sleepy: { bg: "rgba(239, 246, 255, 0.96)", stroke: "rgba(49, 84, 120, 0.18)", text: "#315478" },
-    focused: { bg: "rgba(225, 246, 232, 0.96)", stroke: "rgba(47, 148, 97, 0.18)", text: "#176c3a" },
-    hot: { bg: "rgba(255, 237, 213, 0.96)", stroke: "rgba(179, 90, 2, 0.18)", text: "#a34308" },
-    overdrive: { bg: "rgba(255, 228, 230, 0.96)", stroke: "rgba(200, 48, 48, 0.2)", text: "#b42318" },
-  };
-  const tone = plan.appearance.moodBadge.colorByState ? palette[plan.moodId] : palette.focused;
+  const sourceRect = { ...plan.moodBadgeRect, y: plan.moodBadgeRect.y + (plan.reduceMotion ? 0 : Math.sin(time * 2.1) * 4) };
+  const rect = plan.moodBadgeStyle === "iconOnly"
+    ? { ...sourceRect, x: sourceRect.x + (sourceRect.width - sourceRect.height) / 2, width: sourceRect.height }
+    : sourceRect;
+  const tone = resolveMoodBadgeTone(
+    plan.moodId,
+    plan.appearance.moodBadge.colorByState,
+    plan.moodBadgeColor ?? undefined,
+  );
   const label = getMoodLabel(plan.moodId);
+  const fontSize = (plan.manifest.moodBadgeSlot ?? plan.manifest.dynamicSlots.moodBadge).maxFontSize;
 
   context.save();
+  if (plan.moodBadgePulse) {
+    const duration = plan.reduceMotion ? .12 : .4;
+    const progress = Math.max(0, Math.min(1, time / duration));
+    context.globalAlpha *= Math.min(1, .7 + progress * .55);
+    if (!plan.reduceMotion && time < duration) {
+      const scale = progress < .55
+        ? .94 + (.12 * progress / .55)
+        : 1.06 - (.06 * (progress - .55) / .45);
+      context.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      context.scale(scale, scale);
+      context.translate(-(rect.x + rect.width / 2), -(rect.y + rect.height / 2));
+    }
+  }
   drawRoundRect(context, rect, rect.height / 2);
-  context.fillStyle = tone.bg;
+  context.fillStyle = tone.background;
   context.fill();
   context.lineWidth = 3;
-  context.strokeStyle = tone.stroke;
+  context.strokeStyle = tone.border;
   context.stroke();
-  context.fillStyle = tone.text;
-  context.textAlign = "center";
+  context.fillStyle = tone.foreground;
+  context.textAlign = "left";
   context.textBaseline = "middle";
-  context.font = `850 ${(plan.manifest.moodBadgeSlot ?? plan.manifest.dynamicSlots.moodBadge).maxFontSize}px Inter, system-ui, sans-serif`;
-  context.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2 + 1);
+  let fittedFontSize = fontSize;
+  context.font = `850 ${fittedFontSize}px Inter, system-ui, sans-serif`;
+  let iconSize = fittedFontSize * 0.72;
+  if (plan.moodBadgeStyle === "iconOnly") {
+    drawMoodSemanticIcon(
+      context,
+      plan.moodId,
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+      Math.min(rect.width, rect.height) * .48,
+      tone.foreground,
+      images.get(moodHotIconUrl()),
+    );
+    context.restore();
+    return;
+  }
+  let gap = fittedFontSize * 0.22;
+  let textWidth = context.measureText(label).width;
+  const availableWidth = Math.max(1, rect.width - 22);
+  const naturalWidth = iconSize + gap + textWidth;
+  if (naturalWidth > availableWidth) {
+    fittedFontSize = Math.max(22, fittedFontSize * availableWidth / naturalWidth);
+    context.font = `850 ${fittedFontSize}px Inter, system-ui, sans-serif`;
+    iconSize = fittedFontSize * 0.72;
+    gap = fittedFontSize * 0.22;
+    textWidth = context.measureText(label).width;
+  }
+  const contentWidth = iconSize + gap + textWidth;
+  const contentStart = rect.x + (rect.width - contentWidth) / 2;
+  drawMoodSemanticIcon(
+    context,
+    plan.moodId,
+    contentStart + iconSize / 2,
+    rect.y + rect.height / 2,
+    iconSize,
+    tone.foreground,
+    images.get(moodHotIconUrl()),
+  );
+  context.fillText(label, contentStart + iconSize + gap, rect.y + rect.height / 2 + 1);
   context.restore();
 }
 
@@ -504,7 +572,7 @@ function renderGeneratedPetActorCanvas(
   context.restore();
 
   if (plan.tokenMode !== "embedded") drawTokenText(context, plan);
-  drawMoodBadge(context, plan, time);
+  drawMoodBadge(context, plan, images, time);
 
   context.restore();
 
@@ -622,8 +690,13 @@ export function GeneratedPetActorCanvas(props: PetActorProps & { fallback?: Reac
       data-actor-started-at-ms={props.animationStartedAtMs}
       data-actor-visual-normalization-scale={plan.visualNormalization.scale}
       data-actor-visual-ground-anchor={`${plan.visualNormalization.anchorX},${plan.visualNormalization.anchorY}`}
+      data-token-label={plan.tokenLabel ?? undefined}
       data-mood-badge-y={plan.moodBadgeRect?.y}
       data-mood-badge-height={plan.moodBadgeRect?.height}
+      data-mood-badge-icon={plan.moodBadgeRect ? plan.moodId : undefined}
+      data-mood-badge-color={plan.moodBadgeRect ? plan.moodBadgeColor ?? undefined : undefined}
+      data-mood-badge-style={plan.moodBadgeRect ? plan.moodBadgeStyle : undefined}
+      data-mood-badge-pulse={plan.moodBadgeRect && plan.moodBadgePulse ? "true" : "false"}
     >
       <span
         className={`pet-visual-cat-wrap pet-actor-canvas-root pet-generated-actor-canvas-root ${images ? "is-ready" : "is-loading"}`}

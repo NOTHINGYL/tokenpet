@@ -3,7 +3,9 @@ const { join, resolve } = require("node:path");
 
 const root = resolve(__dirname, "../../..");
 const ffmpegPath = require("ffmpeg-static");
-const videoPath = join(root, "assets/source/pet-actors/golden-british/story-actions/dance-video-v3/dance-golden-style.webm");
+// Validate the exact production file shipped to Electron. Private authoring
+// inputs are intentionally not required by a clean public checkout.
+const videoPath = join(root, "apps/desktop/public/pet-video/dance-golden-style.webm");
 const width = 512;
 const height = 512;
 const frameBytes = width * height * 4;

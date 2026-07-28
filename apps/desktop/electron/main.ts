@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { AppSettings, PetActionId, PetDirectorEvent, QuickPlayActionId, QuickPlayActorDirection, QuickPlayPhase, QuickPlaySession } from "./types.js";
 import { defaultPetAppearance, normalizePetAppearance, syncLegacyAppearanceFields } from "./appearance.js";
+import { moodSignalFromUsage } from "./mood.js";
 import { defaultPetStory, normalizePetStory, reconcilePetStory } from "./story.js";
 import { loadUsageSnapshot } from "./usage.js";
 import {
@@ -598,7 +599,7 @@ function flushPendingDirectorEvents() {
 
 async function loadAndPublishUsage(options: { force?: boolean } = {}) {
   const snapshot = await loadUsageSnapshot(options);
-  trayTokenTitle = compactNumber(snapshot.todayTokens);
+  trayTokenTitle = compactNumber(moodSignalFromUsage(snapshot, settings.petStory.moodSignalWindow));
   ensureTray();
   const now = Date.now();
   if (options.force || lastStoryReconcileAt === 0 || now - lastStoryReconcileAt >= 60_000) {
@@ -668,6 +669,8 @@ function menuBarPosition() {
 
 function createMenuBarWindow() {
   if (isUsableWindow(menuBarWindow)) {
+    const { x, y } = menuBarPosition();
+    menuBarWindow.setPosition(x, y, false);
     menuBarWindow.show();
     menuBarWindow.focus();
     return;
@@ -690,6 +693,7 @@ function createMenuBarWindow() {
     alwaysOnTop: true,
     acceptFirstMouse: true,
     skipTaskbar: true,
+    show: false,
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -701,10 +705,22 @@ function createMenuBarWindow() {
 
   createdWindow.setAlwaysOnTop(true, "floating");
   verifyBridge(createdWindow, "menubar");
-  void loadWindow(createdWindow, "menubar");
+  let canAutoDismiss = false;
+  void loadWindow(createdWindow, "menubar").then(() => {
+    if (!isUsableWindow(createdWindow) || menuBarWindow !== createdWindow) return;
+    const position = menuBarPosition();
+    createdWindow.setPosition(position.x, position.y, false);
+    createdWindow.show();
+    createdWindow.focus();
+    // macOS may briefly transfer focus through the status item while the panel
+    // is being presented. Ignore only that initial synthetic blur.
+    setTimeout(() => {
+      if (isUsableWindow(createdWindow) && menuBarWindow === createdWindow) canAutoDismiss = true;
+    }, 180);
+  });
 
   createdWindow.on("blur", () => {
-    closeUsableWindow(createdWindow);
+    if (canAutoDismiss) closeUsableWindow(createdWindow);
   });
 
   createdWindow.on("closed", () => {
@@ -714,7 +730,8 @@ function createMenuBarWindow() {
 
 function toggleMenuBarWindow() {
   if (isUsableWindow(menuBarWindow)) {
-    menuBarWindow.close();
+    if (menuBarWindow.isVisible()) menuBarWindow.close();
+    else createMenuBarWindow();
     return;
   }
 
@@ -1832,6 +1849,7 @@ function beginQuickPlaySession(action: Exclude<QuickPlayActionId, "capture_momen
 }
 
 function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
+  const previousMoodSignalWindow = settings.petStory.moodSignalWindow;
   if (key === "launchAtLogin") {
     setLaunchAtLogin(Boolean(value));
   }
@@ -1887,6 +1905,9 @@ function setSetting<K extends keyof AppSettings>(key: K, value: AppSettings[K]) 
   const nextSettings = currentSettings();
   writeStoredSettings();
   publishSettings(nextSettings);
+  if (key === "petStory" && settings.petStory.moodSignalWindow !== previousMoodSignalWindow) {
+    void loadAndPublishUsage();
+  }
   return nextSettings;
 }
 

@@ -2,7 +2,6 @@ import { useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type {
   AppSettings,
-  MoodLookId,
   PetActionId,
   PetAppearanceSettings,
   PetLifeStage,
@@ -11,12 +10,12 @@ import type {
   UsageSnapshot,
 } from "../../types";
 import { compactNumber } from "../../utils/format";
-import { moodLooks } from "../pet-appearance/catalog";
 import { PetAppearanceVisual } from "../pet-appearance/PetAppearanceVisual";
 import { PetIcon } from "../pet-appearance/icons";
 import { normalizePetAppearance } from "../pet-appearance/appearanceState";
-import { defaultPetStory, lifecycleFromUsage, moodFromUsage } from "./PetDirector";
+import { defaultPetStory, lifecycleFromUsage } from "./PetDirector";
 import { ActionsWorkbench } from "./ActionsWorkbench";
+import { MoodReactionsPanel } from "./MoodReactionsPanel";
 import { playPetSoundCue, type PetSoundCueId } from "./soundCueEngine";
 
 type Section = "actions" | "mood" | "sound" | "journey";
@@ -48,13 +47,6 @@ const actionThumbnails: Partial<Record<PetActionId, string>> = {
   milestone_celebrate: "pet-actors/golden-british/frames/milestone_celebrate.png",
 };
 
-const moodMeta: Array<{ id: MoodLookId; label: string; loop: PetActionId; dot: string }> = [
-  { id: "sleepy", label: "Sleepy", loop: "sleep_loop", dot: "blue" },
-  { id: "focused", label: "Focused", loop: "focus_loop", dot: "green" },
-  { id: "hot", label: "Hot", loop: "hot_loop", dot: "gold" },
-  { id: "overdrive", label: "Overdrive", loop: "overdrive_loop", dot: "red" },
-];
-
 const stageMeta: Array<{ id: PetLifeStage; label: string; unlock: string }> = [
   { id: "egg", label: "Token Egg", unlock: "Hatch" },
   { id: "newKitten", label: "New Kitten", unlock: "Click purr" },
@@ -69,68 +61,6 @@ function Toggle(props: { checked: boolean; onChange: (checked: boolean) => void;
       <span><strong>{props.children}</strong>{props.detail ? <small>{props.detail}</small> : null}</span>
       <i className={`pet-switch ${props.checked ? "on" : ""}`} aria-hidden="true" />
     </button>
-  );
-}
-
-function MoodPanel(props: Props & { story: PetStorySettings; appearance: PetAppearanceSettings; patch: (patch: Partial<PetStorySettings>) => void; trigger: (id: PetActionId) => void }) {
-  const actorReady = props.appearance.catTypeId === "golden-british";
-  const liveMood = moodFromUsage(props.usage, props.story.moodThresholds);
-  const [previewMood, setPreviewMood] = useState<MoodLookId>(liveMood);
-  const previewLook = moodLooks.find((look) => look.id === previewMood) ?? moodLooks[0];
-  const previewAppearance = { ...props.appearance, moodId: previewMood, moodBadge: { ...props.appearance.moodBadge, showMood: false } };
-  const setThreshold = (key: keyof PetStorySettings["moodThresholds"], value: number) => props.patch({ moodThresholds: { ...props.story.moodThresholds, [key]: Math.max(0, value) } });
-  const previewScenario = (mood: MoodLookId, loop: PetActionId) => { setPreviewMood(mood); props.trigger(loop); };
-
-  return (
-    <div className="story-page mood-reactions-page" data-pet-page="mood">
-      <div className="mood-story-grid">
-        <section className="story-card reaction-preview-card">
-          <div className="story-card-title"><h2>Live Reaction Preview</h2><PetIcon name="info" /></div>
-          <span className={`reaction-mood-badge ${previewMood}`}><i className={`mood-dot ${previewLook.dotClassName}`} />{previewLook.label}</span>
-          <div className="reaction-preview-stage"><PetAppearanceVisual appearance={previewAppearance} usage={props.usage} storyActionId={moodMeta.find((item) => item.id === previewMood)?.loop} reduceMotion={props.story.reduceMotion} surface="preview" /></div>
-          <p>This is how your pet reacts right now based on local token flow.</p>
-        </section>
-
-        <section className="story-card mood-threshold-card">
-          <div className="story-card-title"><div><h2>Mood Thresholds</h2><p>Define token ranges that drive actor loops.</p></div><PetIcon name="info" /></div>
-          <div className="threshold-list">
-            <div><span><i className="mood-dot blue" /><strong>Sleepy</strong><small>idle below {compactNumber(props.story.moodThresholds.focused)}</small></span><em>automatic</em></div>
-            <label><span><i className="mood-dot green" /><strong>Focused</strong><small>steady local flow</small></span><input type="number" min="0" value={props.story.moodThresholds.focused} onChange={(event) => setThreshold("focused", Number(event.target.value))} /></label>
-            <label><span><i className="mood-dot gold" /><strong>Hot</strong><small>high local flow</small></span><input type="number" min="0" value={props.story.moodThresholds.hot} onChange={(event) => setThreshold("hot", Number(event.target.value))} /></label>
-            <label><span><i className="mood-dot red" /><strong>Overdrive</strong><small>short intense burst</small></span><input type="number" min="0" value={props.story.moodThresholds.overdrive} onChange={(event) => setThreshold("overdrive", Number(event.target.value))} /></label>
-          </div>
-          <small className="threshold-note">Ranges are evaluated in order. Inactivity always becomes gentle rest, never punishment.</small>
-        </section>
-
-        <section className="story-card mood-loop-map-card">
-          <div className="story-card-title"><div><h2>Mood to Actor Loop</h2><p>One shared loop mapping across cat types.</p></div><PetIcon name="info" /></div>
-          <div className="mood-loop-map">{moodMeta.map((mood) => <div key={mood.id}><span><i className={`mood-dot ${mood.dot}`} />{mood.label}</span><code>{mood.loop}</code></div>)}</div>
-          <p>These loops continue while a mood is active, subject to actor capability fallbacks.</p>
-        </section>
-
-        <section className="story-card reaction-rules-card">
-          <div className="story-card-title"><div><h2>Reaction Rules</h2><p>Control shared mood behavior.</p></div><PetIcon name="info" /></div>
-          <Toggle checked={props.appearance.moodBadge.showMood} onChange={(showMood) => props.setAppearance({ moodBadge: { ...props.appearance.moodBadge, showMood } })} detail="Display mood above the pet">Show mood badge</Toggle>
-          <Toggle checked={props.appearance.moodBadge.colorByState} onChange={(colorByState) => props.setAppearance({ moodBadge: { ...props.appearance.moodBadge, colorByState } })} detail="Use the approved mood color on the badge">Color mood badge by state</Toggle>
-          <Toggle checked={props.story.reactionRules.oneShotOnThreshold} onChange={(oneShotOnThreshold) => props.patch({ reactionRules: { ...props.story.reactionRules, oneShotOnThreshold } })} detail="Play one visible reaction once when mood changes">One-shot on threshold crossing</Toggle>
-          <Toggle checked={props.story.reactionRules.coolDownAfterOverdrive} onChange={(coolDownAfterOverdrive) => props.patch({ reactionRules: { ...props.story.reactionRules, coolDownAfterOverdrive } })} detail="Require time before re-entry">Cool down after overdrive</Toggle>
-          <Toggle checked={props.story.safety.muteDuringFocus} onChange={(muteDuringFocus) => props.patch({ safety: { ...props.story.safety, muteDuringFocus } })} detail="Reduce non-essential sounds in Focus-friendly mode">Quiet in focus mode</Toggle>
-        </section>
-      </div>
-
-      <section className="story-card scenario-card">
-        <div className="story-card-heading"><h2>Preview Scenarios</h2><p>{actorReady ? "Test the same actor loops used by live token flow." : "This cat uses an approved static fallback; actor-loop previews are planned."}</p></div>
-        <div className="scenario-grid">
-          {moodMeta.map((mood, index) => {
-            const look = moodLooks.find((entry) => entry.id === mood.id)!;
-            const samples = ["0 tokens", "750K tokens", "5M tokens", "2B tokens"];
-            return <button key={mood.id} className={previewMood === mood.id ? "selected" : ""} type="button" data-preview-mood={mood.id} disabled={!actorReady} title={actorReady ? `${mood.loop} preview` : "Actor loop planned for this static fallback cat."} onClick={() => previewScenario(mood.id, mood.loop)}><strong>Test {mood.label.toLowerCase()}</strong><small>{actorReady ? samples[index] : "Static fallback"}</small><img src={look.image} alt="" draggable={false} aria-hidden="true" /><code>{actorReady ? mood.loop : `${mood.loop} · planned`}</code></button>;
-          })}
-          <button className="reset-thresholds" type="button" onClick={() => props.patch({ moodThresholds: defaultPetStory.moodThresholds })}><strong>Reset thresholds</strong><small>Restore default ranges</small><span aria-hidden="true">↻</span></button>
-        </div>
-      </section>
-      <footer className="story-info-note"><PetIcon name="info" />Mood behavior is shared across every cat type. Cat type changes appearance only.</footer>
-    </div>
   );
 }
 
@@ -290,7 +220,7 @@ export function PetStoryPanel(props: Props) {
   };
   const common = { ...props, story, appearance, patch, trigger };
   if (props.section === "actions") return <ActionsWorkbench story={story} appearance={appearance} usage={props.usage} patch={patch} />;
-  if (props.section === "mood") return <MoodPanel {...common} />;
+  if (props.section === "mood") return <MoodReactionsPanel story={story} appearance={appearance} usage={props.usage} patch={patch} />;
   if (props.section === "sound") return <SoundPanel {...common} />;
   return <JourneyPanel {...common} />;
 }

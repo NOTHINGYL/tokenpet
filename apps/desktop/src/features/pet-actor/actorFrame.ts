@@ -32,11 +32,17 @@ function resolveMotionState(moodId: MoodLookId): PetMotionState {
   return "focused";
 }
 
-function resolveTokenFrame(appearance: PetAppearanceSettings, usage: UsageSnapshot, tokenMode: ActorTokenFrame["mode"], skin: ReturnType<typeof getCatSkin>): ActorTokenFrame | null {
+function resolveTokenFrame(
+  appearance: PetAppearanceSettings,
+  usage: UsageSnapshot,
+  tokenMode: ActorTokenFrame["mode"],
+  skin: ReturnType<typeof getCatSkin>,
+  tokenValue?: number,
+): ActorTokenFrame | null {
   const tokenBubbleId = getEffectiveTokenBubbleId(appearance);
   if (tokenMode === "hidden") return null;
 
-  const label = getActorTokenLabel(appearance, usage);
+  const label = getActorTokenLabel(appearance, usage, tokenValue);
   if (!label) return null;
 
   const compact = tokenBubbleId === "compact";
@@ -75,13 +81,15 @@ function resolveTokenFrame(appearance: PetAppearanceSettings, usage: UsageSnapsh
   };
 }
 
-function resolveMoodBadge(appearance: PetAppearanceSettings, moodId: MoodLookId, raised: boolean): ActorMoodBadge | null {
-  if (!shouldShowMoodBadge(appearance, moodId)) return null;
+function resolveMoodBadge(appearance: PetAppearanceSettings, moodId: MoodLookId, raised: boolean, visible?: boolean): ActorMoodBadge | null {
+  if (!(visible ?? shouldShowMoodBadge(appearance, moodId))) return null;
   const width = 198;
   const height = 70;
   return {
     label: getMoodLabel(moodId),
     tone: moodId,
+    style: "iconLabel",
+    entryPulse: false,
     rect: {
       x: 512 - width / 2,
       y: raised ? 72 : 112,
@@ -107,14 +115,27 @@ function resolveAttachments(appearance: PetAppearanceSettings, skin: ReturnType<
 export function createPetActorFrame(props: {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
+  tokenValue?: number;
   moodId?: MoodLookId;
+  moodBadgeVisible?: boolean;
+  moodBadgeColor?: string;
+  moodBadgeStyle?: "iconLabel" | "iconOnly";
+  moodBadgePulse?: boolean;
   surface: PetSurface;
 }): PetActorFrame {
   const moodId = props.moodId ?? props.appearance.moodId;
   const skin = getCatSkin(props.appearance.catTypeId);
   const outfit = resolveActorOutfit(props.appearance, skin);
-  const tokenFrame = resolveTokenFrame(props.appearance, props.usage, outfit.tokenMode, skin);
-  const moodBadge = resolveMoodBadge(props.appearance, moodId, outfit.moodBadgeRaised);
+  const tokenFrame = resolveTokenFrame(props.appearance, props.usage, outfit.tokenMode, skin, props.tokenValue);
+  const resolvedMoodBadge = resolveMoodBadge(props.appearance, moodId, outfit.moodBadgeRaised, props.moodBadgeVisible);
+  const moodBadge = resolvedMoodBadge
+    ? {
+      ...resolvedMoodBadge,
+      ...(props.moodBadgeColor ? { color: props.moodBadgeColor } : {}),
+      style: props.moodBadgeStyle ?? "iconLabel",
+      entryPulse: props.moodBadgePulse === true,
+    }
+    : null;
   const renderScale = getRenderScale(props.surface, props.appearance.size);
 
   return {

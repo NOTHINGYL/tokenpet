@@ -17,10 +17,27 @@ import type {
   UsageAnalysis,
   UsageSnapshot,
 } from "./types.js";
+import {
+  createLiveUsageSamplerState,
+  sampleLiveOneHourTokens,
+  type LiveUsageSamplerState,
+} from "./usage-window.js";
+import { readTrailingHourTokens } from "./hourly-usage.js";
+
+export { createLiveUsageSamplerState, sampleLiveOneHourTokens };
+export type { LiveUsageSamplerState };
 
 const execFileAsync = promisify(execFile);
 
-let usageCache: { expiresAt: number; snapshot: UsageSnapshot } | null = null;
+let usageCache: { expiresAt: number; localDateKey: string; snapshot: UsageSnapshot } | null = null;
+let liveUsageSamplerState: LiveUsageSamplerState = createLiveUsageSamplerState();
+let usageLoadInFlight: Promise<UsageSnapshot> | null = null;
+
+function attachLiveOneHourSignal(snapshot: UsageSnapshot, now: number, historicalTokens = snapshot.liveOneHourTokens ?? 0) {
+  const sampled = sampleLiveOneHourTokens(liveUsageSamplerState, snapshot.allTimeTokens, now);
+  liveUsageSamplerState = sampled.state;
+  return { ...snapshot, liveOneHourTokens: Math.max(0, historicalTokens, sampled.tokens) };
+}
 
 function ccusageBinPath() {
   const binName = process.platform === "win32" ? "ccusage.cmd" : "ccusage";
@@ -352,39 +369,64 @@ function buildUsageAnalysis(providerReports: ProviderReport[]): UsageAnalysis {
 
 export async function loadUsageSnapshot(options: { force?: boolean } = {}): Promise<UsageSnapshot> {
   const now = Date.now();
-  if (!options.force && usageCache && usageCache.expiresAt > now) {
-    return usageCache.snapshot;
+  const currentLocalDateKey = dateKey(new Date(now));
+  if (
+    !options.force
+    && usageCache
+    && usageCache.expiresAt > now
+    && usageCache.localDateKey === currentLocalDateKey
+  ) {
+    const snapshot = attachLiveOneHourSignal(usageCache.snapshot, now);
+    usageCache = { ...usageCache, snapshot };
+    return snapshot;
   }
 
-  const providerReports = await Promise.all([loadProvider("codex"), loadProvider("claude")]);
-  const sourceReports = [...providerReports, loadCursorProvider(), loadCcusageProvider()];
-  const todayTokens = providerReports.reduce((total, provider) => total + provider.todayTokens, 0);
-  const sevenDayTokens = providerReports.reduce((total, provider) => total + provider.sevenDayTokens, 0);
-  const allTimeTokens = providerReports.reduce((total, provider) => total + provider.allTimeTokens, 0);
-  const todayCost = providerReports.reduce((total, provider) => total + provider.todayCost, 0);
-  const sevenDayCost = providerReports.reduce((total, provider) => total + provider.sevenDayCost, 0);
-  const connected = providerReports.filter((provider) => provider.status === "connected");
-  const analysis = buildUsageAnalysis(providerReports);
+  // Pet, Menu Bar, Console, and Quick Play may all request usage together.
+  // ccusage scans are comparatively expensive, so share one in-flight scan
+  // instead of spawning a new process set on every renderer poll.
+  if (usageLoadInFlight) return usageLoadInFlight;
 
-  const snapshot: UsageSnapshot = {
-    todayTokens,
-    sevenDayTokens,
-    allTimeTokens,
-    todayCost,
-    sevenDayCost,
-    topModel: topModelFromProviders(providerReports),
-    topTool: connected.sort((a, b) => b.sevenDayTokens - a.sevenDayTokens)[0]?.label ?? "none",
-    burnRate: burnRate(todayTokens),
-    status: connected.length > 0 ? "ready" : "no usage found",
-    generatedAt: new Date().toISOString(),
-    providers: sourceReports.map(({ rows: _rows, sessions: _sessions, topModels: _topModels, ...provider }) => provider),
-    analysis,
-  };
+  const pendingLoad = (async () => {
+    const providerReports = await Promise.all([loadProvider("codex"), loadProvider("claude")]);
+    const sourceReports = [...providerReports, loadCursorProvider(), loadCcusageProvider()];
+    const todayTokens = providerReports.reduce((total, provider) => total + provider.todayTokens, 0);
+    const sevenDayTokens = providerReports.reduce((total, provider) => total + provider.sevenDayTokens, 0);
+    const allTimeTokens = providerReports.reduce((total, provider) => total + provider.allTimeTokens, 0);
+    const todayCost = providerReports.reduce((total, provider) => total + provider.todayCost, 0);
+    const sevenDayCost = providerReports.reduce((total, provider) => total + provider.sevenDayCost, 0);
+    const connected = providerReports.filter((provider) => provider.status === "connected");
+    const analysis = buildUsageAnalysis(providerReports);
+    const completedAt = Date.now();
 
-  usageCache = {
-    expiresAt: now + 15_000,
-    snapshot,
-  };
+    const historicalOneHourTokens = readTrailingHourTokens(app.getPath("home"), completedAt);
+    const snapshot = attachLiveOneHourSignal({
+      todayTokens,
+      sevenDayTokens,
+      allTimeTokens,
+      todayCost,
+      sevenDayCost,
+      topModel: topModelFromProviders(providerReports),
+      topTool: connected.sort((a, b) => b.sevenDayTokens - a.sevenDayTokens)[0]?.label ?? "none",
+      burnRate: burnRate(todayTokens),
+      status: connected.length > 0 ? "ready" : "no usage found",
+      generatedAt: new Date(completedAt).toISOString(),
+      providers: sourceReports.map(({ rows: _rows, sessions: _sessions, topModels: _topModels, ...provider }) => provider),
+      analysis,
+    } satisfies UsageSnapshot, completedAt, historicalOneHourTokens);
 
-  return snapshot;
+    usageCache = {
+      expiresAt: completedAt + 15_000,
+      localDateKey: currentLocalDateKey,
+      snapshot,
+    };
+
+    return snapshot;
+  })();
+
+  usageLoadInFlight = pendingLoad;
+  try {
+    return await pendingLoad;
+  } finally {
+    if (usageLoadInFlight === pendingLoad) usageLoadInFlight = null;
+  }
 }

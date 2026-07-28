@@ -1,17 +1,12 @@
 import type { CSSProperties } from "react";
 import { useEffect, useState } from "react";
 import type {
-  AccessoryChoiceId,
-  AccessorySettings,
   AppSettings,
   PetAppearanceSettings,
   PetIdentitySettings,
   UsageSnapshot,
 } from "../../types";
-import { AccessoriesPage } from "./AccessoriesPage";
-import { patchAccessorySettings } from "./accessorySettings";
 import {
-  accessoryCatalog,
   getDefaultCatDetails,
   petConsoleSections,
   type PetConsoleSection,
@@ -34,32 +29,19 @@ type AppearancePanelProps = {
   onSectionChange?: (section: PetConsoleSection) => void;
 };
 
-type AppearanceAccessoryCategory = "neck" | "head" | "base" | "effects";
-
-const accessorySettingKeys: Record<AppearanceAccessoryCategory, "neckId" | "headId" | "baseId" | "effectId"> = {
-  neck: "neckId",
-  head: "headId",
-  base: "baseId",
-  effects: "effectId",
-};
-
-const summaryAccessories = [
-  { id: "neck" as const, label: "Neck", featuredId: "collar" as const, featuredLabel: "Bell collar", noneIsDefault: false },
-  { id: "head" as const, label: "Head", featuredId: "focus-crown" as const, featuredLabel: "Focus crown", noneIsDefault: true },
-  { id: "base" as const, label: "Ground", featuredId: "desk-mat" as const, featuredLabel: "Desk mat", noneIsDefault: true },
-  { id: "effects" as const, label: "Effects", featuredId: "sparkle-aura" as const, featuredLabel: "Sparkle aura", noneIsDefault: true },
-];
-
 function PetSubnav(props: { activeSection: PetConsoleSection; onSelectSection: (section: PetConsoleSection) => void }) {
+  const visibleSections = petConsoleSections.filter((section) => section.enabled);
+
   return (
     <nav className="pet-console-subnav" aria-label="Pet customization sections">
-      {petConsoleSections.map((section) => (
+      {visibleSections.map((section) => (
         <button
           className={section.id === props.activeSection ? "active" : ""}
           key={section.id}
           type="button"
           aria-current={section.id === props.activeSection ? "page" : undefined}
           data-pet-section={section.id}
+          data-section-available="true"
           onClick={() => props.onSelectSection(section.id)}
         >
           <PetIcon name={section.id} />
@@ -262,97 +244,8 @@ function PetIdentityCard(props: {
   );
 }
 
-function NoneAccessoryMark() {
-  return <span className="appearance-summary-none" aria-hidden="true" />;
-}
-
-function AppearanceAccessoryGroup(props: {
-  category: AppearanceAccessoryCategory;
-  label: string;
-  featuredId: AccessoryChoiceId;
-  featuredLabel: string;
-  noneIsDefault: boolean;
-  selectedId: AccessoryChoiceId;
-  onSelect: (choiceId: AccessoryChoiceId) => void;
-}) {
-  const accessory = accessoryCatalog.find((item) => item.id === props.featuredId);
-  const featuredSelected = props.selectedId === props.featuredId;
-  const noneSelected = props.selectedId === "none";
-
-  return (
-    <div className="appearance-accessory-group" data-accessory-category={props.category}>
-      <strong className="appearance-accessory-group-title">{props.label}</strong>
-      <div className="appearance-accessory-pair">
-        <button
-          className={`appearance-summary-choice ${featuredSelected ? "selected" : ""}`}
-          type="button"
-          data-summary-choice="default"
-          data-accessory-id={props.featuredId}
-          aria-pressed={featuredSelected}
-          onClick={() => props.onSelect(props.featuredId)}
-        >
-          {!props.noneIsDefault ? <span className="appearance-default-chip">Default</span> : null}
-          <span className="appearance-summary-check" aria-hidden="true" />
-          {accessory ? <img src={accessory.image} alt="" draggable={false} aria-hidden="true" /> : null}
-          <strong>{props.featuredLabel}</strong>
-        </button>
-        <button
-          className={`appearance-summary-choice ${noneSelected ? "selected" : ""}`}
-          type="button"
-          data-summary-choice="none"
-          data-accessory-id="none"
-          aria-pressed={noneSelected}
-          onClick={() => props.onSelect("none")}
-        >
-          {props.noneIsDefault ? <span className="appearance-default-chip">Default</span> : null}
-          <span className="appearance-summary-check" aria-hidden="true" />
-          <NoneAccessoryMark />
-          <strong>None</strong>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function AccessoriesSummary(props: {
-  appearance: PetAppearanceSettings;
-  onSelectAccessory: (category: AppearanceAccessoryCategory, choiceId: AccessoryChoiceId) => void;
-  onViewAll: () => void;
-}) {
-  return (
-    <section className="pet-card appearance-accessories-summary" data-appearance-accessories>
-      <div className="appearance-accessories-heading">
-        <div>
-          <strong>Accessories</strong>
-          <span>Choose one per category; combine different categories.</span>
-        </div>
-        <button type="button" onClick={props.onViewAll} data-testid="open-accessories">
-          View all
-        </button>
-      </div>
-      <div className="appearance-accessories-groups">
-        {summaryAccessories.map((summary) => {
-          const settingKey = accessorySettingKeys[summary.id];
-          return (
-            <AppearanceAccessoryGroup
-              key={summary.id}
-              category={summary.id}
-              label={summary.label}
-              featuredId={summary.featuredId}
-              featuredLabel={summary.featuredLabel}
-              noneIsDefault={summary.noneIsDefault}
-              selectedId={props.appearance.accessorySettings[settingKey]}
-              onSelect={(choiceId) => props.onSelectAccessory(summary.id, choiceId)}
-            />
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
 export function AppearancePanel(props: AppearancePanelProps) {
-  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type" | "accessories">("appearance");
+  const [activeAppearancePage, setActiveAppearancePage] = useState<"appearance" | "cat-type">("appearance");
   const [activeSection, setActiveSection] = useState<PetConsoleSection>("appearance");
   const { appearance, canUndo, patchAppearance, resetAppearance, undoAppearance } = useAppearanceController(props.settings, props.setSetting);
 
@@ -376,14 +269,10 @@ export function AppearancePanel(props: AppearancePanelProps) {
   };
 
   const selectConsoleSection = (section: PetConsoleSection) => {
+    if (!petConsoleSections.find((item) => item.id === section)?.enabled) return;
     setActiveSection(section);
     props.onSectionChange?.(section);
     if (section !== "appearance") setActiveAppearancePage("appearance");
-  };
-
-  const selectAccessory = (category: AppearanceAccessoryCategory, choiceId: AccessoryChoiceId) => {
-    const settingKey = accessorySettingKeys[category];
-    patchAppearance(patchAccessorySettings(appearance, { [settingKey]: choiceId } as Partial<AccessorySettings>));
   };
 
   if (activeAppearancePage === "cat-type") {
@@ -397,20 +286,6 @@ export function AppearancePanel(props: AppearancePanelProps) {
           onBack={() => setActiveAppearancePage("appearance")}
           onPatchAppearance={patchAppearance}
           onUndo={undoAppearance}
-        />
-      </div>
-    );
-  }
-
-  if (activeAppearancePage === "accessories") {
-    return (
-      <div className="pet-appearance-panel pet-accessories-panel" data-pet-page="accessories" data-testid="accessories-page-shell">
-        <PetSubnav activeSection="appearance" onSelectSection={selectConsoleSection} />
-        <AccessoriesPage
-          appearance={appearance}
-          usage={props.usage}
-          onBack={() => setActiveAppearancePage("appearance")}
-          onPatchAppearance={patchAppearance}
         />
       </div>
     );
@@ -454,11 +329,6 @@ export function AppearancePanel(props: AppearancePanelProps) {
               />
             </div>
           </div>
-          <AccessoriesSummary
-            appearance={appearance}
-            onSelectAccessory={selectAccessory}
-            onViewAll={() => setActiveAppearancePage("accessories")}
-          />
           <footer className="pet-appearance-footer" data-appearance-footer>
             <span>
               <i className="appearance-footer-dot" aria-hidden="true" />

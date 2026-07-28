@@ -7,6 +7,19 @@ import type {
   PetStorySettings,
   UsageSnapshot,
 } from "./types.js";
+import {
+  defaultMoodControls,
+  defaultMoodPresentation,
+  defaultMoodPreviewValues,
+  defaultMoodThresholdProfiles,
+  moodSignalFromUsage,
+  moodSignalWindows,
+  moodThresholdSpan,
+  normalizeMoodPresentation,
+  normalizeMoodControls,
+  normalizeMoodThresholdProfile,
+  resolveMood,
+} from "./mood.js";
 
 export const defaultJourneyState: PetJourneyState = {
   schemaVersion: 1,
@@ -22,7 +35,12 @@ export const defaultJourneyState: PetJourneyState = {
 
 export const defaultPetStory: PetStorySettings = {
   behaviorMode: "balanced",
-  moodThresholds: { focused: 50_000, hot: 1_000_000, overdrive: 1_000_000_000 },
+  moodThresholds: defaultMoodThresholdProfiles.live,
+  moodSignalWindow: "live",
+  moodThresholdProfiles: defaultMoodThresholdProfiles,
+  moodPreviewValues: defaultMoodPreviewValues,
+  moodPresentation: defaultMoodPresentation,
+  moodControls: defaultMoodControls,
   quietMode: false,
   followCursor: false,
   lockPosition: false,
@@ -102,19 +120,35 @@ function normalizeMemories(value: unknown): PetMemory[] {
 export function normalizePetStory(value: unknown): PetStorySettings {
   const source = value && typeof value === "object" ? (value as Partial<PetStorySettings>) : {};
   const storedThresholds = source.moodThresholds;
-  const usesLegacyDefaults = storedThresholds?.focused === 1_000
-    && storedThresholds.hot === 10_000
-    && storedThresholds.overdrive === 50_000;
-  const thresholdSource = !storedThresholds || usesLegacyDefaults ? defaultPetStory.moodThresholds : storedThresholds;
-  const maxThreshold = Number.MAX_SAFE_INTEGER;
-  const focused = clamp(thresholdSource.focused, 0, maxThreshold - 2, defaultPetStory.moodThresholds.focused);
-  const hot = clamp(thresholdSource.hot, focused + 1, maxThreshold - 1, Math.max(defaultPetStory.moodThresholds.hot, focused + 1));
-  const overdrive = clamp(
-    thresholdSource.overdrive,
-    hot + 1,
-    maxThreshold,
-    Math.max(defaultPetStory.moodThresholds.overdrive, hot + 1),
+  const moodSignalWindow = moodSignalWindows.includes(source.moodSignalWindow as typeof moodSignalWindows[number])
+    ? source.moodSignalWindow!
+    : "live";
+  const isKnownLegacyDefault = (
+    storedThresholds?.focused === 1_000
+      && storedThresholds.hot === 10_000
+      && storedThresholds.overdrive === 50_000
+  ) || (
+    storedThresholds?.focused === 50_000
+      && storedThresholds.hot === 1_000_000
+      && storedThresholds.overdrive === 1_000_000_000
   );
+  const thresholdProfileSource = source.moodThresholdProfiles && typeof source.moodThresholdProfiles === "object"
+    ? source.moodThresholdProfiles
+    : null;
+  const moodThresholdProfiles = Object.fromEntries(moodSignalWindows.map((window) => {
+    const persisted = thresholdProfileSource?.[window];
+    const migratedLegacy = window === "live" && storedThresholds && !isKnownLegacyDefault
+      ? storedThresholds
+      : defaultMoodThresholdProfiles[window];
+    return [window, normalizeMoodThresholdProfile(persisted ?? migratedLegacy, window)];
+  })) as PetStorySettings["moodThresholdProfiles"];
+  const previewSource = source.moodPreviewValues && typeof source.moodPreviewValues === "object"
+    ? source.moodPreviewValues
+    : defaultMoodPreviewValues;
+  const moodPreviewValues = Object.fromEntries(moodSignalWindows.map((window) => {
+    const { max } = moodThresholdSpan(window);
+    return [window, clamp(previewSource[window], 0, max, defaultMoodPreviewValues[window])];
+  })) as PetStorySettings["moodPreviewValues"];
   const journeySource = source.journey && typeof source.journey === "object" ? source.journey : defaultJourneyState;
   const stage = lifeStages.includes(journeySource.stage) ? journeySource.stage : defaultJourneyState.stage;
   const pinnedStage = source.pinnedStage && lifeStages.includes(source.pinnedStage) ? source.pinnedStage : null;
@@ -141,7 +175,12 @@ export function normalizePetStory(value: unknown): PetStorySettings {
     behaviorMode: ["gentle", "balanced", "playful", "focusFriendly"].includes(source.behaviorMode ?? "")
       ? source.behaviorMode!
       : defaultPetStory.behaviorMode,
-    moodThresholds: { focused, hot, overdrive },
+    moodThresholds: moodThresholdProfiles[moodSignalWindow],
+    moodSignalWindow,
+    moodThresholdProfiles,
+    moodPreviewValues,
+    moodPresentation: normalizeMoodPresentation(source.moodPresentation),
+    moodControls: normalizeMoodControls(source.moodControls),
     quietMode: Boolean(source.quietMode),
     followCursor: Boolean(source.followCursor),
     lockPosition: Boolean(source.lockPosition),
@@ -253,14 +292,18 @@ export function reconcilePetStory(storyValue: unknown, usage: UsageSnapshot, now
   const events: PetDirectorEvent[] = [];
 
   if (previous.lastUsageTokens > 0 && usage.allTimeTokens > previous.lastUsageTokens) {
-    const burnRate = usage.burnRate.includes("overdrive") || usage.todayTokens >= story.moodThresholds.overdrive
-      ? "overdrive"
-      : usage.burnRate.includes("hot") || usage.todayTokens >= story.moodThresholds.hot
-        ? "hot"
-        : usage.todayTokens >= story.moodThresholds.focused || usage.burnRate.includes("steady") || usage.burnRate.includes("warm")
-          ? "steady"
-          : "quiet";
-    events.push({ type: "token.delta", tokens: usage.allTimeTokens - previous.lastUsageTokens, burnRate });
+    const mood = resolveMood(
+      moodSignalFromUsage(usage, story.moodSignalWindow),
+      story.moodThresholdProfiles[story.moodSignalWindow],
+    );
+    const burnRate = mood === "overdrive" ? "overdrive" : mood === "hot" ? "hot" : mood === "focused" ? "steady" : "quiet";
+    events.push({
+      type: "token.delta",
+      tokens: usage.allTimeTokens - previous.lastUsageTokens,
+      burnRate,
+      mood,
+      loop: defaultMoodPresentation[mood].actorLoop,
+    });
   }
 
   if (newlyReached.length) {

@@ -1,11 +1,16 @@
 import type { SyntheticEvent } from "react";
-import type { CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { CursorTrackingVisual, MoodBadgeStyle, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { PetCompositor } from "./PetCompositor";
 
 type PetAppearanceVisualProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
+  tokenValue?: number;
   moodId?: MoodLookId;
+  moodBadgeVisible?: boolean;
+  moodBadgeColor?: string;
+  moodBadgeStyle?: MoodBadgeStyle;
+  moodBadgePulse?: boolean;
   actionId?: PetActionId;
   storyActionId?: PetActionId;
   motionActionId?: MotionActionId;

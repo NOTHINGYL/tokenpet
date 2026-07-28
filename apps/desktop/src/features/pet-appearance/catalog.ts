@@ -19,12 +19,13 @@ export type PetConsoleSection = "appearance" | "actions" | "mood" | "sound" | "j
 export const petConsoleSections: Array<{
   id: PetConsoleSection;
   label: string;
+  enabled: boolean;
 }> = [
-  { id: "appearance", label: "Appearance" },
-  { id: "actions", label: "Actions" },
-  { id: "mood", label: "Mood & Reactions" },
-  { id: "sound", label: "Sound Cues" },
-  { id: "journey", label: "Journey" },
+  { id: "appearance", label: "Appearance", enabled: true },
+  { id: "actions", label: "Actions", enabled: true },
+  { id: "mood", label: "Mood & Reactions", enabled: true },
+  { id: "sound", label: "Sound Cues", enabled: false },
+  { id: "journey", label: "Journey", enabled: false },
 ];
 
 export type CatHairLength = "short" | "medium" | "long";

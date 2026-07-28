@@ -1,11 +1,14 @@
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { build } from "esbuild";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const storyBuildPath = join(root, "dist-electron/story.js");
+const hourlyUsageBuildPath = join(root, "dist-electron/hourly-usage.js");
+const usageWindowBuildPath = join(root, "dist-electron/usage-window.js");
 const windowBehaviorBuildPath = join(root, "dist-electron/window-behavior.js");
 const quickPlayChoreographyBuildPath = join(root, "dist-electron/quick-play-choreography.js");
 const feedSnackExecutorBuildPath = join(root, "dist-electron/quick-play/executors/feed-snack.js");
@@ -15,6 +18,8 @@ const playCursorExecutorBuildPath = join(root, "dist-electron/quick-play/executo
 const tossYarnExecutorBuildPath = join(root, "dist-electron/quick-play/executors/toss-yarn.js");
 
 assert.ok(existsSync(storyBuildPath), "dist-electron/story.js is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(hourlyUsageBuildPath), "dist-electron/hourly-usage.js is missing; run npm run build:main before runtime QA");
+assert.ok(existsSync(usageWindowBuildPath), "dist-electron/usage-window.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(windowBehaviorBuildPath), "dist-electron/window-behavior.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(quickPlayChoreographyBuildPath), "dist-electron/quick-play-choreography.js is missing; run npm run build:main before runtime QA");
 assert.ok(existsSync(feedSnackExecutorBuildPath), "Feed Snack executor build is missing; run npm run build:main before runtime QA");
@@ -24,6 +29,8 @@ assert.ok(existsSync(playCursorExecutorBuildPath), "Play Cursor executor build i
 assert.ok(existsSync(tossYarnExecutorBuildPath), "Toss Yarn executor build is missing; run npm run build:main before runtime QA");
 
 const story = await import(`${pathToFileURL(storyBuildPath).href}?qa=${Date.now()}`);
+const hourlyUsage = await import(`${pathToFileURL(hourlyUsageBuildPath).href}?qa=${Date.now()}`);
+const liveUsage = await import(`${pathToFileURL(usageWindowBuildPath).href}?qa=${Date.now()}`);
 const windowBehavior = await import(`${pathToFileURL(windowBehaviorBuildPath).href}?qa=${Date.now()}`);
 const quickPlay = await import(`${pathToFileURL(quickPlayChoreographyBuildPath).href}?qa=${Date.now()}`);
 const feedSnackExecutor = await import(`${pathToFileURL(feedSnackExecutorBuildPath).href}?qa=${Date.now()}`);
@@ -80,6 +87,7 @@ function usage(overrides = {}) {
     { id: "ccusage", label: "ccusage", status: "connected", detail: "bundled", todayTokens, sevenDayTokens: todayTokens, allTimeTokens },
   ];
   return {
+    liveOneHourTokens: overrides.liveOneHourTokens ?? 0,
     todayTokens,
     sevenDayTokens: overrides.sevenDayTokens ?? todayTokens,
     allTimeTokens,
@@ -133,24 +141,314 @@ verify("lifecycle stage boundaries", () => {
   assert.equal(story.lifecycleFromUsage(usage({ allTimeTokens: 2_000_000, activeDays: 30 })), "guardianCompanion");
 });
 
-verify("threshold migration and ordering", () => {
+verify("Mood v37 profile migration, defaults, and active mirror", () => {
   const migrated = story.normalizePetStory({ moodThresholds: { focused: 1_000, hot: 10_000, overdrive: 50_000 } });
-  assert.deepEqual(migrated.moodThresholds, story.defaultPetStory.moodThresholds);
-  const custom = story.normalizePetStory({ moodThresholds: { focused: 75_000, hot: 2_000_000, overdrive: 2_000_000_000 } });
-  assert.deepEqual(custom.moodThresholds, { focused: 75_000, hot: 2_000_000, overdrive: 2_000_000_000 });
+  assert.equal(migrated.moodSignalWindow, "live");
+  assert.deepEqual(migrated.moodThresholds, { focused: 50_000, hot: 1_000_000, overdrive: 10_000_000 });
+  assert.deepEqual(migrated.moodThresholdProfiles, {
+    live: { focused: 50_000, hot: 1_000_000, overdrive: 10_000_000 },
+    today: { focused: 1_000_000, hot: 20_000_000, overdrive: 100_000_000 },
+    last7Days: { focused: 10_000_000, hot: 100_000_000, overdrive: 500_000_000 },
+  });
+  assert.deepEqual(migrated.moodPreviewValues, { live: 5_000_000, today: 50_000_000, last7Days: 250_000_000 });
+
+  const custom = story.normalizePetStory({ moodThresholds: { focused: 75_000, hot: 2_000_000, overdrive: 20_000_000 } });
+  assert.deepEqual(custom.moodThresholds, { focused: 75_000, hot: 2_000_000, overdrive: 20_000_000 });
   const clamped = story.normalizePetStory({ moodThresholds: { focused: 90, hot: 20, overdrive: 10 } });
-  assert.ok(clamped.moodThresholds.focused < clamped.moodThresholds.hot);
-  assert.ok(clamped.moodThresholds.hot < clamped.moodThresholds.overdrive);
+  assert.ok(clamped.moodThresholds.hot >= clamped.moodThresholds.focused * 2);
+  assert.ok(clamped.moodThresholds.overdrive >= clamped.moodThresholds.hot * 2);
+
+  const today = story.normalizePetStory({
+    moodSignalWindow: "today",
+    moodThresholdProfiles: {
+      live: { focused: 70_000, hot: 2_000_000, overdrive: 20_000_000 },
+      today: { focused: 2_000_000, hot: 40_000_000, overdrive: 200_000_000 },
+      last7Days: { focused: 20_000_000, hot: 200_000_000, overdrive: 1_000_000_000 },
+    },
+  });
+  assert.deepEqual(today.moodThresholds, today.moodThresholdProfiles.today, "the compatibility mirror must follow only the selected window");
+  assert.notDeepEqual(today.moodThresholdProfiles.live, today.moodThresholdProfiles.today);
 });
 
-verify("mood boundaries", () => {
-  const thresholds = director.defaultPetStory.moodThresholds;
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 49_999 }), thresholds), "sleepy");
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 50_000 }), thresholds), "focused");
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 999_999 }), thresholds), "focused");
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 1_000_000 }), thresholds), "hot");
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 999_999_999 }), thresholds), "hot");
-  assert.equal(director.moodFromUsage(usage({ todayTokens: 1_000_000_000 }), thresholds), "overdrive");
+verify("Mood v37 signal windows and exact boundaries", () => {
+  const sample = usage({
+    liveOneHourTokens: 5_000_000,
+    todayTokens: 50_000_000,
+    sevenDayTokens: 250_000_000,
+    allTimeTokens: 9_999_999_999,
+  });
+  assert.equal(director.moodSignalFromUsage(sample, "live"), 5_000_000);
+  assert.equal(director.moodSignalFromUsage(sample, "today"), 50_000_000);
+  assert.equal(director.moodSignalFromUsage(sample, "last7Days"), 250_000_000);
+  assert.equal(director.resolveMood(49_999, director.defaultMoodThresholdProfiles.live), "sleepy");
+  assert.equal(director.resolveMood(50_000, director.defaultMoodThresholdProfiles.live), "focused");
+  assert.equal(director.resolveMood(999_999, director.defaultMoodThresholdProfiles.live), "focused");
+  assert.equal(director.resolveMood(1_000_000, director.defaultMoodThresholdProfiles.live), "hot");
+  assert.equal(director.resolveMood(9_999_999, director.defaultMoodThresholdProfiles.live), "hot");
+  assert.equal(director.resolveMood(10_000_000, director.defaultMoodThresholdProfiles.live), "overdrive");
+  assert.equal(director.moodFromUsage(sample, director.defaultMoodThresholdProfiles.live, "live"), "hot");
+  assert.equal(director.moodFromUsage(sample, director.defaultMoodThresholdProfiles.today, "today"), "hot");
+  assert.equal(director.moodFromUsage(sample, director.defaultMoodThresholdProfiles.last7Days, "last7Days"), "hot");
+});
+
+verify("Mood rolling Live sampler uses only observed one-hour deltas", () => {
+  const empty = { baselineTokens: null, samples: [] };
+  const baseline = liveUsage.sampleLiveOneHourTokens(empty, 1_000_000, 1_000);
+  assert.equal(baseline.tokens, 0, "a lifetime baseline must never become Live activity at launch");
+  const firstDelta = liveUsage.sampleLiveOneHourTokens(baseline.state, 1_050_000, 60_000);
+  assert.equal(firstDelta.tokens, 50_000);
+  const secondDelta = liveUsage.sampleLiveOneHourTokens(firstDelta.state, 1_075_000, 120_000);
+  assert.equal(secondDelta.tokens, 75_000);
+  const expiredWindow = liveUsage.sampleLiveOneHourTokens(secondDelta.state, 1_075_000, 3_720_001);
+  assert.equal(expiredWindow.tokens, 0, "samples older than one hour are removed from the trailing window");
+  const resetTotal = liveUsage.sampleLiveOneHourTokens(expiredWindow.state, 900_000, 3_730_000);
+  assert.equal(resetTotal.tokens, 0, "a provider/lifetime counter reset cannot create a negative Live sample");
+});
+
+verify("Live one-hour signal reconstructs timestamped Codex and Claude usage across launches", () => {
+  const now = Date.parse("2026-07-23T23:00:00.000Z");
+  const withinHour = new Date(now - 20 * 60_000).toISOString();
+  const outsideHour = new Date(now - 61 * 60_000).toISOString();
+  const codex = [
+    {
+      timestamp: withinHour,
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: {
+          total_token_usage: { total_tokens: 9_999_999 },
+          last_token_usage: { input_tokens: 1_250, output_tokens: 250, total_tokens: 1_500 },
+        },
+      },
+    },
+    {
+      timestamp: outsideHour,
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: { last_token_usage: { total_tokens: 8_000 } },
+      },
+    },
+  ].map((record) => JSON.stringify(record)).join("\n");
+  const claude = [
+    {
+      timestamp: withinHour,
+      type: "assistant",
+      message: {
+        id: "message-1",
+        usage: { input_tokens: 700, output_tokens: 300 },
+      },
+    },
+    {
+      timestamp: withinHour,
+      type: "assistant",
+      message: {
+        id: "message-1",
+        usage: { input_tokens: 700, output_tokens: 350 },
+      },
+    },
+  ].map((record) => JSON.stringify(record)).join("\n");
+  assert.equal(
+    hourlyUsage.trailingHourTokensFromJsonl([
+      { id: "codex.jsonl", text: codex },
+      { id: "claude.jsonl", text: claude },
+    ], now),
+    2_550,
+    "Codex must sum incremental last_token_usage records, Claude streamed duplicates must count once, and entries outside the trailing hour must expire",
+  );
+});
+
+verify("Live one-hour file reader scans backwards across oversized non-usage records", () => {
+  const root = mkdtempSync(join(tmpdir(), "tokenpet-hourly-usage-"));
+  try {
+    const sessions = join(root, ".codex", "sessions");
+    mkdirSync(sessions, { recursive: true });
+    const now = Date.now();
+    const record = (timestamp, tokens) => JSON.stringify({
+      timestamp: new Date(timestamp).toISOString(),
+      type: "event_msg",
+      payload: {
+        type: "token_count",
+        info: { last_token_usage: { total_tokens: tokens } },
+      },
+    });
+    const oversizedNonUsageRecord = JSON.stringify({
+      timestamp: new Date(now - 10 * 60_000).toISOString(),
+      type: "response_item",
+      payload: { type: "tool_output", content: "x".repeat(2 * 1024 * 1024 + 8_192) },
+    });
+    writeFileSync(
+      join(sessions, "large-session.jsonl"),
+      [
+        record(now - 70 * 60_000, 9_000),
+        record(now - 40 * 60_000, 1_500),
+        oversizedNonUsageRecord,
+        record(now - 5 * 60_000, 500),
+      ].join("\n"),
+    );
+    assert.equal(
+      hourlyUsage.readTrailingHourTokens(root, now),
+      2_000,
+      "the reverse scanner must count recent records on both sides of a huge irrelevant line and stop before the expired record",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+verify("Mood v37 logarithmic editor and 2x node clamps", () => {
+  for (const window of director.moodSignalWindows) {
+    const defaults = director.defaultMoodThresholdProfiles[window];
+    const span = director.moodThresholdSpan(window);
+    for (const value of Object.values(defaults)) {
+      const ratio = director.moodThresholdToLogRatio(value, window);
+      assert.ok(ratio >= 0 && ratio <= 1);
+      const roundTrip = director.moodThresholdFromLogRatio(ratio, window);
+      assert.ok(Math.abs(roundTrip - value) / value < 0.000_01);
+    }
+    const normalized = director.normalizeMoodThresholdProfile(
+      { focused: span.max, hot: span.min, overdrive: span.min },
+      window,
+    );
+    assert.ok(normalized.focused >= span.min && normalized.focused <= span.max);
+    assert.ok(normalized.hot >= normalized.focused * 2);
+    assert.ok(normalized.overdrive >= normalized.hot * 2 && normalized.overdrive <= span.max);
+    const focusedClamp = director.updateMoodThreshold(defaults, window, "focused", span.max);
+    assert.equal(focusedClamp.focused, defaults.hot / 2);
+    const hotClamp = director.updateMoodThreshold(defaults, window, "hot", span.max);
+    assert.equal(hotClamp.hot, defaults.overdrive / 2);
+    const overdriveClamp = director.updateMoodThreshold(defaults, window, "overdrive", 0);
+    assert.equal(overdriveClamp.overdrive, defaults.hot * 2);
+  }
+});
+
+verify("Mood simulator values resolve exact mood entries without runtime selection", () => {
+  const thresholds = director.defaultMoodThresholdProfiles.last7Days;
+  for (const mood of director.moodLookIds) {
+    const value = director.previewValueForMood(mood, thresholds);
+    assert.equal(director.resolveMood(value, thresholds), mood);
+  }
+  assert.deepEqual(
+    director.moodLookIds.map((mood) => director.previewValueForMood(mood, thresholds)),
+    [0, thresholds.focused, thresholds.hot, thresholds.overdrive],
+  );
+});
+
+verify("Mood v37 immutable loop and color normalization", () => {
+  const normalized = director.normalizeMoodPresentation({
+    sleepy: { actorLoop: "hot_loop", badgeVisible: false, badgeColor: "#112233" },
+    focused: { actorLoop: "click_purr", badgeVisible: true, badgeColor: "orange" },
+  });
+  assert.deepEqual(normalized.sleepy, { actorLoop: "sleep_loop", badgeVisible: false, badgeColor: "#112233" });
+  assert.deepEqual(normalized.focused, director.defaultMoodPresentation.focused);
+  assert.equal(director.moodAction("sleepy", normalized), "sleep_loop");
+  assert.equal(director.moodAction("overdrive", normalized), "overdrive_loop");
+});
+
+verify("Mood v37 global control normalization", () => {
+  assert.deepEqual(director.normalizeMoodControls(undefined), director.defaultMoodControls);
+  assert.deepEqual(
+    director.normalizeMoodControls({ badgeVisible: false, badgeStyle: "iconOnly", entryPulse: false }),
+    { badgeVisible: false, badgeStyle: "iconOnly", entryPulse: false },
+  );
+  assert.deepEqual(
+    director.normalizeMoodControls({ badgeVisible: true, badgeStyle: "invalid", entryPulse: true }),
+    { badgeVisible: true, badgeStyle: "iconLabel", entryPulse: true },
+  );
+});
+
+verify("Mood v37 mandatory dwell, hysteresis, and Overdrive cooldown", () => {
+  const thresholds = director.defaultMoodThresholdProfiles.live;
+  let upward = director.createMoodStabilizerState("sleepy", 0);
+  let result = director.stabilizeMood(upward, thresholds.hot, thresholds, 1_000);
+  assert.equal(result.mood, "sleepy");
+  assert.equal(result.rawMood, "hot");
+  result = director.stabilizeMood(result.state, thresholds.hot, thresholds, 2_999);
+  assert.equal(result.mood, "sleepy");
+  result = director.stabilizeMood(result.state, thresholds.hot, thresholds, 3_000);
+  assert.equal(result.mood, "hot");
+  assert.equal(result.changed, true);
+
+  result = director.stabilizeMood(result.state, thresholds.hot * 0.9, thresholds, 4_000);
+  assert.equal(result.mood, "hot", "90% remains above the 85% downward hysteresis boundary");
+  result = director.stabilizeMood(result.state, thresholds.hot * 0.84, thresholds, 5_000);
+  assert.equal(result.mood, "hot");
+  result = director.stabilizeMood(result.state, thresholds.hot * 0.84, thresholds, 9_999);
+  assert.equal(result.mood, "hot");
+  result = director.stabilizeMood(result.state, thresholds.hot * 0.84, thresholds, 10_000);
+  assert.equal(result.mood, "focused");
+
+  let overdrive = director.createMoodStabilizerState("overdrive", 0);
+  result = director.stabilizeMood(overdrive, thresholds.hot, thresholds, 20_000);
+  result = director.stabilizeMood(result.state, thresholds.hot, thresholds, 25_000);
+  assert.equal(result.mood, "hot");
+  assert.equal(result.state.overdriveCooldownUntil, 55_000);
+  result = director.stabilizeMood(result.state, thresholds.overdrive, thresholds, 30_000);
+  assert.equal(result.rawMood, "overdrive");
+  assert.equal(result.mood, "hot", "Overdrive cannot re-enter inside its mandatory 30-second guard");
+  result = director.stabilizeMood(result.state, thresholds.overdrive, thresholds, 55_000);
+  assert.equal(result.mood, "hot", "eligible Overdrive still needs the two-second upward dwell");
+  result = director.stabilizeMood(result.state, thresholds.overdrive, thresholds, 57_000);
+  assert.equal(result.mood, "overdrive");
+});
+
+verify("resolved Mood wakes stale sleep and uses Focus as every non-Sleepy steady pose", () => {
+  const presentation = director.normalizeMoodPresentation({
+    focused: { actorLoop: "hot_loop" },
+  });
+  let state = {
+    ...director.createPetDirectorState("sleepy", presentation),
+    currentAction: "sleep_loop",
+    moodLoop: "sleep_loop",
+    resting: true,
+  };
+  const focused = director.directPetEvent(
+    state,
+    { type: "token.delta", tokens: 0, burnRate: "steady", mood: "focused", loop: director.moodAction("focused", presentation) },
+    { actorId: "golden-british", now: 10_000 },
+  );
+  assert.equal(focused.decision?.resolved, "focus_loop");
+  assert.equal(focused.state.currentAction, "focus_loop");
+  assert.equal(focused.state.moodLoop, "focus_loop");
+  assert.equal(focused.state.resting, false);
+
+  state = focused.state;
+  const sleepy = director.directPetEvent(
+    state,
+    { type: "token.delta", tokens: 0, burnRate: "quiet", mood: "sleepy", loop: director.moodAction("sleepy", presentation) },
+    { actorId: "golden-british", now: 20_000 },
+  );
+  assert.equal(sleepy.decision?.resolved, "sleep_loop");
+  assert.equal(sleepy.state.currentAction, "sleep_loop");
+  assert.equal(sleepy.state.resting, true);
+});
+
+verify("Hot and Overdrive reactions last ten seconds then return to Focus", () => {
+  assert.equal(director.MOOD_REACTION_DURATION_MS, 10_000);
+  assert.equal(director.MOOD_REACTION_REPLAY_INTERVAL_MS, 5 * 60_000);
+  assert.equal(director.moodSteadyAction("sleepy"), "sleep_loop");
+  assert.equal(director.moodSteadyAction("focused"), "focus_loop");
+  assert.equal(director.moodSteadyAction("hot"), "focus_loop");
+  assert.equal(director.moodSteadyAction("overdrive"), "focus_loop");
+  assert.equal(director.ambientRestAllowedForMood("sleepy"), true);
+  assert.equal(director.ambientRestAllowedForMood("focused"), false);
+  assert.equal(director.ambientRestAllowedForMood("hot"), false);
+  assert.equal(director.ambientRestAllowedForMood("overdrive"), false);
+
+  for (const mood of ["hot", "overdrive"]) {
+    const directed = director.directPetEvent(
+      director.createPetDirectorState(mood),
+      { type: "mood.reactionPulse", mood },
+      { actorId: "golden-british", now: 40_000 },
+    );
+    assert.equal(directed.decision?.requested, `${mood}_loop`);
+    assert.equal(directed.decision?.resolved, `${mood}_loop`);
+    assert.equal(directed.decision?.durationMs, 10_000);
+    assert.equal(directed.decision?.returnTo, "focus_loop");
+    assert.equal(directed.state.moodLoop, "focus_loop");
+    assert.equal(directed.state.resting, false);
+    assert.equal(director.completePetDirectorAction(directed.state, 50_000).currentAction, "focus_loop");
+  }
 });
 
 verify("first source milestone and local memory", () => {
@@ -180,7 +478,7 @@ verify("token delta, warm mapping, and stage change events", () => {
       milestoneIds: ["first-token", "first-million"],
     },
   });
-  const reconciled = story.reconcilePetStory(previous, usage({ allTimeTokens: 50_000_000, todayTokens: 75_000, burnRate: "warm" }), "2026-07-09T19:00:00.000Z");
+  const reconciled = story.reconcilePetStory(previous, usage({ allTimeTokens: 50_000_000, liveOneHourTokens: 75_000, todayTokens: 75_000, burnRate: "warm" }), "2026-07-09T19:00:00.000Z");
   assert.ok(reconciled.events.some((event) => event.type === "token.delta" && event.burnRate === "steady"));
   assert.ok(reconciled.events.some((event) => event.type === "lifecycle.stageChanged" && event.stage === "flowCompanion"));
   assert.ok(reconciled.story.journey.memories.some((memory) => memory.kind === "stage" && memory.stage === "flowCompanion"));
@@ -214,7 +512,7 @@ verify("director direct manipulation priority and end state", () => {
   const drop = director.directPetEvent(state, { type: "pointer.drop" }, { actorId: "golden-british", now: 1_030 });
   assert.equal(drop.decision.resolved, "drop_bounce");
   const completed = director.completePetDirectorAction(drop.state, 3_000);
-  assert.equal(completed.currentAction, "hot_loop");
+  assert.equal(completed.currentAction, "focus_loop");
 });
 
 verify("director click cooldown", () => {
@@ -225,18 +523,17 @@ verify("director click cooldown", () => {
   assert.equal(repeated.decision, null);
 });
 
-verify("overdrive is a bounded burst that cools to hot", () => {
+verify("Overdrive token deltas establish the Focus steady baseline", () => {
   const directed = director.directPetEvent(
     director.createPetDirectorState("focused"),
     { type: "token.delta", tokens: 10_000, burnRate: "overdrive" },
     { actorId: "golden-british", now: 11_000 },
   );
-  assert.equal(directed.decision.resolved, "overdrive_loop");
-  assert.equal(directed.decision.durationMs, 3_200);
-  assert.equal(directed.state.activeUntil, 14_200);
-  assert.ok(Number.isFinite(directed.state.activeUntil));
-  assert.equal(directed.state.moodLoop, "hot_loop");
-  assert.equal(director.completePetDirectorAction(directed.state, 14_200).currentAction, "hot_loop");
+  assert.equal(directed.decision.resolved, "focus_loop");
+  assert.equal(directed.decision.durationMs, 0);
+  assert.equal(directed.state.activeUntil, Number.POSITIVE_INFINITY);
+  assert.equal(directed.state.moodLoop, "focus_loop");
+  assert.equal(directed.state.resting, false);
 });
 
 verify("desktop action requests retain explicit lifecycles outside the isolated Console preview", () => {
@@ -289,7 +586,7 @@ verify("desktop action requests retain explicit lifecycles outside the isolated 
   assert.equal(repeatedPreview.decision?.requested, "overdrive_loop", "explicit Console previews must bypass ambient cooldowns");
 });
 
-verify("threshold reaction fires exactly once per mood crossing", () => {
+verify("threshold reaction owns a bounded pulse and a Focus steady baseline", () => {
   assert.equal(director.thresholdCrossingEvent("focused", "focused", true), null);
   assert.equal(director.thresholdCrossingEvent("focused", "hot", false), null);
   const event = director.thresholdCrossingEvent("focused", "hot", true);
@@ -300,8 +597,10 @@ verify("threshold reaction fires exactly once per mood crossing", () => {
     { actorId: "golden-british", now: 15_000 },
   );
   assert.equal(directed.decision.requested, "hot_loop");
-  assert.equal(directed.decision.durationMs, 1_600);
-  assert.equal(directed.state.moodLoop, "hot_loop");
+  assert.equal(directed.decision.durationMs, 10_000);
+  assert.equal(directed.decision.returnTo, "focus_loop");
+  assert.equal(directed.state.moodLoop, "focus_loop");
+  assert.equal(director.completePetDirectorAction(directed.state, 25_000).currentAction, "focus_loop");
 });
 
 verify("ambient scheduler is deterministic and policy-aware", () => {
@@ -340,6 +639,11 @@ verify("ambient scheduler is deterministic and policy-aware", () => {
   assert.deepEqual(
     director.selectAmbientPetEvent({ ...base, minuteOfDay: 23 * 60 }),
     { kind: "rest", event: { type: "ambient.rest", reason: "night" } },
+  );
+  assert.equal(
+    director.selectAmbientPetEvent({ ...base, minuteOfDay: 23 * 60, nightModeEnabled: false }),
+    null,
+    "disabling quiet hours must gate the automatic night rest",
   );
   assert.deepEqual(
     director.selectAmbientPetEvent({ ...base, lastActivityAt: now - 10 * 60_000 }),

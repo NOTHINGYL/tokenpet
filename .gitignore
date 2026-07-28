@@ -15,9 +15,22 @@ __pycache__/
 .env.*
 !.env.example
 
-# Reproducible local audit cache extracted from the user-provided Dance video.
-# Keep the compact timing metadata, source/runtime comparison boards, and exact
-# AAC reference track in Git; regenerate these large intermediates when needed.
-/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/frames/
-/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/frame-sheets/
-/assets/source/pet-actors/golden-british/story-actions/dance-video-reference-v2/reference-audio.wav
+# Product-design history and local QA evidence are private working material.
+# Keep the curated public README media under docs/readme in Git.
+/docs/designs/
+/docs/pet-story/
+/docs/screenshots/
+/docs/setup.md
+/plan.md
+/.agents/
+/.codex/
+/local-notes/
+
+# High-resolution authoring inputs are intentionally local. The production
+# actor bundle under apps/desktop/public/pet-actors remains versioned so a
+# clean checkout keeps every desktop and Quick Play action intact.
+/assets/source/pet-actors/
+
+# Generator reports and copied authoring reference image are not runtime data.
+/apps/desktop/public/pet-actors/golden-british/qa/
+/apps/desktop/public/pet-actors/golden-british/source/

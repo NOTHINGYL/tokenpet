@@ -3,32 +3,112 @@ import { EmptyState } from "./ui";
 import type { CostStructure, DailyUsagePoint, ModelUsagePoint, SessionUsagePoint } from "../types";
 import { compactNumber, lastUpdated, maxOf, money, percent, shortDate } from "../utils/format";
 
+type ActivityMode = "daily" | "weekly" | "cumulative";
+
+const ACTIVITY_COLUMN_COUNT = 52;
+const DAYS_PER_ACTIVITY_COLUMN = 7;
+
+function isoDate(date: Date) {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+function addUtcDays(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function startOfUtcWeek(value: string) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - date.getUTCDay());
+  return date.toISOString().slice(0, 10);
+}
+
+function utcDateLabel(value: string, includeYear = true) {
+  return new Intl.DateTimeFormat("en", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+    ...(includeYear ? { year: "numeric" } : {}),
+  }).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function niceAxisMaximum(value: number) {
+  const padded = Math.max(value, 1) * 1.04;
+  const magnitude = 10 ** Math.floor(Math.log10(padded));
+  const normalized = padded / magnitude;
+  const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 2.5 ? 2.5 : normalized <= 5 ? 5 : 10;
+  return nice * magnitude;
+}
+
+function dailyActivityLevels(values: number[]) {
+  const maximum = Math.max(0, ...values);
+  return values.map((value) => {
+    if (value <= 0 || maximum <= 0) return 0;
+    const ratio = value / maximum;
+    if (ratio > 0.75) return 4;
+    if (ratio > 0.5) return 3;
+    if (ratio > 0.25) return 2;
+    return 1;
+  });
+}
+
+function weeklyTotals(values: number[]) {
+  return Array.from({ length: Math.ceil(values.length / DAYS_PER_ACTIVITY_COLUMN) }, (_value, index) =>
+    values
+      .slice(index * DAYS_PER_ACTIVITY_COLUMN, index * DAYS_PER_ACTIVITY_COLUMN + DAYS_PER_ACTIVITY_COLUMN)
+      .reduce((sum, value) => sum + value, 0),
+  );
+}
+
+function cumulativeTotals(values: number[]) {
+  let runningTotal = 0;
+  return values.map((value) => {
+    runningTotal += value;
+    return runningTotal;
+  });
+}
+
+function aggregateActivityLevels(values: number[]) {
+  const maximum = Math.max(0, ...values);
+  return values.flatMap((value) => {
+    const filled = value <= 0 || maximum <= 0 ? 0 : Math.max(1, Math.ceil((value / maximum) * DAYS_PER_ACTIVITY_COLUMN));
+    return Array.from({ length: DAYS_PER_ACTIVITY_COLUMN }, (_unused, row) =>
+      DAYS_PER_ACTIVITY_COLUMN - row <= filled ? 4 : 0,
+    );
+  });
+}
+
 export function SparkBars(props: { points: DailyUsagePoint[] }) {
-  const points = props.points.slice(-42);
+  const points = [...props.points]
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(-60);
   if (points.length === 0) {
     return <EmptyState title="No local trend yet" detail="TokenPet will draw the daily trend after ccusage finds local records." />;
   }
 
   const maxTokens = maxOf(points.map((point) => point.tokens));
   const labelEvery = Math.max(1, Math.ceil(points.length / 6));
-  const axisMax = Math.ceil(maxTokens / 20_000_000) * 20_000_000 || 20_000_000;
+  const axisMax = niceAxisMaximum(maxTokens);
   const axisLabels = [axisMax, axisMax * 0.75, axisMax * 0.5, axisMax * 0.25, 0];
 
   return (
     <div className="daily-trend" aria-label="Daily token trend">
       <div className="trend-axis" aria-hidden="true">
         {axisLabels.map((label) => (
-          <span key={label}>{label === 0 ? "0" : `${(label / 1_000_000).toFixed(1)}M`}</span>
+          <span key={label}>{compactNumber(label)}</span>
         ))}
       </div>
       <div className="spark-bars" style={{ gridTemplateColumns: `repeat(${points.length}, minmax(0, 1fr))` }}>
         {points.map((point, index) => {
-          const height = Math.max(3, (point.tokens / axisMax) * 100);
+          const height = point.tokens <= 0 ? 0 : Math.max(3, (point.tokens / axisMax) * 100);
           const edge = index < 3 ? "start" : index > points.length - 4 ? "end" : "middle";
 
           return (
             <div className={`spark-bar edge-${edge}`} key={point.date} style={{ "--bar-height": `${height}%` } as CSSProperties}>
-              <span className="spark-bar-fill" style={{ height: `${height}%` }} />
+              <span className="spark-bar-fill" style={{ height: `${height}%`, minHeight: point.tokens > 0 ? 3 : 0 }} />
               <small>{index % labelEvery === 0 || index === points.length - 1 ? shortDate(point.date) : ""}</small>
               <div className="trend-tooltip">
                 <span className="trend-tooltip-date">{shortDate(point.date)}</span>
@@ -43,117 +123,121 @@ export function SparkBars(props: { points: DailyUsagePoint[] }) {
 }
 
 export function TokenActivityGrid(props: { points: DailyUsagePoint[] }) {
-  const [mode, setMode] = useState<"daily" | "weekly" | "cumulative">("daily");
-  const source = props.points.length > 0 ? props.points : [];
-  const maxTokens = maxOf(source.map((point) => point.tokens));
-  const byDate = new Map(source.map((point) => [point.date, point.tokens]));
-  const end = source.length > 0 ? new Date(`${source[source.length - 1].date}T00:00:00`) : new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - 363);
-
-  const rawDays: Array<{ date: Date; key: string; tokens: number }> = [];
-  for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-    const key = date.toISOString().slice(0, 10);
-    const tokens = byDate.get(key) ?? 0;
-    rawDays.push({
-      date: new Date(date),
-      key,
-      tokens,
+  const [mode, setMode] = useState<ActivityMode>("daily");
+  const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+  const today = isoDate(new Date());
+  const activity = useMemo(() => {
+    const byDate = props.points.reduce((dates, point) => {
+      if (point.date <= today) dates.set(point.date, (dates.get(point.date) ?? 0) + Math.max(0, point.tokens));
+      return dates;
+    }, new Map<string, number>());
+    const currentWeek = startOfUtcWeek(today);
+    const start = addUtcDays(currentWeek, -(ACTIVITY_COLUMN_COUNT - 1) * DAYS_PER_ACTIVITY_COLUMN);
+    const days = Array.from({ length: ACTIVITY_COLUMN_COUNT * DAYS_PER_ACTIVITY_COLUMN }, (_value, index) => {
+      const date = addUtcDays(start, index);
+      return { date, tokens: byDate.get(date) ?? 0 };
     });
-  }
+    const values = days.map((day) => day.tokens);
+    const weekly = weeklyTotals(values);
+    const cumulative = cumulativeTotals(weekly);
+    const levels = {
+      daily: dailyActivityLevels(values),
+      weekly: aggregateActivityLevels(weekly),
+      cumulative: aggregateActivityLevels(cumulative),
+    } satisfies Record<ActivityMode, number[]>;
+    const months: Array<{ column: number; label: string }> = [{
+      column: 1,
+      label: new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(
+        new Date(`${start}T00:00:00.000Z`),
+      ),
+    }];
 
-  const totalTokens = rawDays.reduce((sum, day) => sum + day.tokens, 0);
-  const dailyDays = rawDays.map((day) => ({
-    ...day,
-    displayTokens: day.tokens,
-    level: day.tokens === 0 ? 0 : Math.max(1, Math.ceil((day.tokens / maxTokens) * 5)),
-  }));
-  const leadingBlanks = dailyDays[0]?.date.getDay() ?? 0;
-  const cells = [
-    ...Array.from({ length: leadingBlanks }, (_value, index) => ({ key: `blank-${index}`, blank: true as const })),
-    ...dailyDays.map((day) => ({ ...day, blank: false as const })),
-  ];
-  const columns = Math.ceil(cells.length / 7);
-  const weekColumns = useMemo(() => {
-    const base = Array.from({ length: columns }, (_value, columnIndex) => {
-      const columnCells = cells.slice(columnIndex * 7, columnIndex * 7 + 7);
-      const daysInColumn = columnCells.filter((cell) => !cell.blank);
-      const weekTokens = daysInColumn.reduce((sum, day) => sum + day.tokens, 0);
-      const weekStart = daysInColumn[0]?.date ?? start;
-      const weekEnd = daysInColumn[daysInColumn.length - 1]?.date ?? weekStart;
-      const cumulativeTokens = rawDays
-        .filter((day) => day.date <= weekEnd)
-        .reduce((sum, day) => sum + day.tokens, 0);
-
-      return {
-        cells: columnCells,
-        cumulativeTokens,
-        weekStart,
-        weekTokens,
-      };
-    });
-    const maxWeekTokens = maxOf(base.map((column) => column.weekTokens));
-
-    return base.map((column, index) => {
-      const columnValue = mode === "weekly" ? column.weekTokens : mode === "cumulative" ? column.cumulativeTokens : 0;
-      const columnMax = mode === "weekly" ? maxWeekTokens : Math.max(totalTokens, 1);
-      const columnLevel = columnValue === 0 ? 0 : Math.max(1, Math.ceil((columnValue / columnMax) * 5));
-      const edge = index < 4 ? "start" : index > columns - 5 ? "end" : "middle";
-      const dateLabel = new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(column.weekStart);
-      const tooltip = mode === "weekly"
-        ? `${compactNumber(column.weekTokens)} tokens on week of ${dateLabel}`
-        : `${compactNumber(column.cumulativeTokens)} tokens through week of ${dateLabel}`;
-
-      return {
-        ...column,
-        columnLevel,
-        edge,
-        tooltip,
-      };
-    });
-  }, [cells, columns, mode, rawDays, start, totalTokens]);
-  const monthLabels = cells.reduce<Array<{ label: string; column: number }>>((labels, cell, index) => {
-    if (cell.blank) return labels;
-    const isFirstDay = cell.date.getDate() <= 7;
-    const label = new Intl.DateTimeFormat("en", { month: "short" }).format(cell.date);
-    if (isFirstDay && labels[labels.length - 1]?.label !== label) {
-      labels.push({ label, column: Math.floor(index / 7) + 1 });
+    for (let column = 0; column < ACTIVITY_COLUMN_COUNT; column += 1) {
+      const dates = days.slice(column * DAYS_PER_ACTIVITY_COLUMN, column * DAYS_PER_ACTIVITY_COLUMN + DAYS_PER_ACTIVITY_COLUMN);
+      const firstOfMonth = dates.find((day) => day.date.endsWith("-01"));
+      if (!firstOfMonth) continue;
+      if (column === 0 && firstOfMonth.date.slice(0, 7) === start.slice(0, 7)) continue;
+      months.push({
+        column: column + 1,
+        label: new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" }).format(
+          new Date(`${firstOfMonth.date}T00:00:00.000Z`),
+        ),
+      });
     }
-    return labels;
-  }, []);
+
+    return { cumulative, days, levels, months, start, weekly };
+  }, [props.points, today]);
+  const modeLabel = mode === "daily" ? "Daily" : mode === "weekly" ? "Weekly" : "Cumulative";
 
   return (
     <section className="console-section token-activity-section">
       <div className="token-activity-header">
         <strong>Token activity</strong>
         <div aria-label="Activity granularity">
-          <button className={mode === "daily" ? "active" : ""} type="button" onClick={() => setMode("daily")}>Daily</button>
-          <button className={mode === "weekly" ? "active" : ""} type="button" onClick={() => setMode("weekly")}>Weekly</button>
-          <button className={mode === "cumulative" ? "active" : ""} type="button" onClick={() => setMode("cumulative")}>Cumulative</button>
+          <button aria-pressed={mode === "daily"} className={mode === "daily" ? "active" : ""} type="button" onClick={() => setMode("daily")}>Daily</button>
+          <button aria-pressed={mode === "weekly"} className={mode === "weekly" ? "active" : ""} type="button" onClick={() => setMode("weekly")}>Weekly</button>
+          <button aria-pressed={mode === "cumulative"} className={mode === "cumulative" ? "active" : ""} type="button" onClick={() => setMode("cumulative")}>Cumulative</button>
         </div>
       </div>
-      <div className="token-activity-grid" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
-        {weekColumns.map((column, columnIndex) => (
-          <span className={`activity-column edge-${column.edge}`} key={`week-${columnIndex}`}>
-            {mode !== "daily" && <span className="activity-tooltip column-tooltip">{column.tooltip}</span>}
-            {column.cells.map((cell) => (
+      <div className="token-activity-plot" data-activity-mode={mode}>
+        <div
+          aria-label={`${modeLabel} token activity over the last 52 weeks`}
+          className="token-activity-grid"
+          role="img"
+          style={{ gridTemplateColumns: `repeat(${ACTIVITY_COLUMN_COUNT}, minmax(1px, 1fr))` }}
+        >
+          {activity.days.map((day, index) => {
+            const column = Math.floor(index / DAYS_PER_ACTIVITY_COLUMN);
+            const edge = column < 4 ? "edge-start" : column > ACTIVITY_COLUMN_COUNT - 5 ? "edge-end" : "edge-middle";
+            const isFuture = day.date > today;
+            const isAggregateHover = mode !== "daily" && hoveredColumn === column;
+            if (mode === "daily" && isFuture) return null;
+
+            return (
               <span
-                className={cell.blank ? "activity-cell blank" : "activity-cell"}
-                data-level={cell.blank ? undefined : mode === "daily" ? cell.level : column.columnLevel}
-                key={cell.key}
+                className={`activity-cell ${edge}${isAggregateHover ? " column-hover" : ""}`}
+                data-level={activity.levels[mode][index]}
+                key={day.date}
               >
-                {mode === "daily" && !cell.blank ? (
+                {mode === "daily" ? (
                   <span className="activity-tooltip">
-                    {`${compactNumber(cell.displayTokens)} tokens on ${new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(cell.date)}`}
+                    {`${compactNumber(day.tokens)} tokens on ${utcDateLabel(day.date)}`}
                   </span>
                 ) : null}
               </span>
-            ))}
-          </span>
-        ))}
+            );
+          })}
+        </div>
+        {mode !== "daily" ? (
+          <div
+            aria-hidden="true"
+            className="token-activity-column-overlay"
+            style={{ gridTemplateColumns: `repeat(${ACTIVITY_COLUMN_COUNT}, minmax(1px, 1fr))` }}
+          >
+            {(mode === "weekly" ? activity.weekly : activity.cumulative).map((tokens, column) => {
+              const weekStart = addUtcDays(activity.start, column * DAYS_PER_ACTIVITY_COLUMN);
+              const edge = column < 4 ? "edge-start" : column > ACTIVITY_COLUMN_COUNT - 5 ? "edge-end" : "edge-middle";
+              const tooltip = mode === "weekly"
+                ? `${compactNumber(tokens)} tokens on week of ${utcDateLabel(weekStart)}`
+                : `${compactNumber(tokens)} tokens through week of ${utcDateLabel(weekStart)}`;
+              return (
+                <span
+                  className={`activity-column-hitbox ${edge}`}
+                  data-activity-tokens={tokens}
+                  data-week-start={weekStart}
+                  key={weekStart}
+                  onMouseEnter={() => setHoveredColumn(column)}
+                  onMouseLeave={() => setHoveredColumn(null)}
+                >
+                  <span className="activity-tooltip column-tooltip">{tooltip}</span>
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
-      <div className="token-activity-months" style={{ gridTemplateColumns: `repeat(${columns}, 12px)` }}>
-        {monthLabels.map((month) => (
+      <div className="token-activity-months" style={{ gridTemplateColumns: `repeat(${ACTIVITY_COLUMN_COUNT}, minmax(1px, 1fr))` }}>
+        {activity.months.map((month) => (
           <span key={`${month.label}-${month.column}`} style={{ gridColumn: month.column }}>
             {month.label}
           </span>

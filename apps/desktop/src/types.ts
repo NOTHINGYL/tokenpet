@@ -1,4 +1,12 @@
 export type UsageSnapshot = {
+  /**
+   * Token deltas observed by this TokenPet process during the trailing hour.
+   * This intentionally starts at zero after launch instead of
+   * estimating from the lifetime counter.
+   */
+  liveOneHourTokens?: number;
+  /** @deprecated Compatibility input for settings and fixtures created before v0.8.6. */
+  liveFiveMinuteTokens?: number;
   todayTokens: number;
   sevenDayTokens: number;
   allTimeTokens: number;
@@ -90,6 +98,21 @@ export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom
 export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
 export type TokenFrameId = "embedded" | "pillow" | "compact" | "cost" | "floating" | "hidden";
 export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
+export type MoodSignalWindow = "live" | "today" | "last7Days";
+export type MoodThresholdProfile = { focused: number; hot: number; overdrive: number };
+export type MoodActorLoop = "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop";
+export type MoodBadgeStyle = "iconLabel" | "iconOnly";
+export type MoodControlsSettings = {
+  badgeVisible: boolean;
+  badgeStyle: MoodBadgeStyle;
+  entryPulse: boolean;
+};
+export type MoodPresentationSettings = {
+  actorLoop: MoodActorLoop;
+  /** @deprecated Badge visibility is global; use PetStorySettings.moodControls. */
+  badgeVisible: boolean;
+  badgeColor: string;
+};
 export type MotionModeId = "calm" | "balanced" | "playful" | "energetic";
 export type MotionActionId =
   | "idle-breathe"
@@ -279,7 +302,13 @@ export type PetActionSettingsStore = {
 };
 export type PetStorySettings = {
   behaviorMode: PetBehaviorMode;
-  moodThresholds: { focused: number; hot: number; overdrive: number };
+  /** @deprecated Active-window compatibility mirror; use moodThresholdProfiles. */
+  moodThresholds: MoodThresholdProfile;
+  moodSignalWindow: MoodSignalWindow;
+  moodThresholdProfiles: Record<MoodSignalWindow, MoodThresholdProfile>;
+  moodPreviewValues: Record<MoodSignalWindow, number>;
+  moodPresentation: Record<MoodLookId, MoodPresentationSettings>;
+  moodControls: MoodControlsSettings;
   quietMode: boolean;
   followCursor: boolean;
   lockPosition: boolean;
@@ -361,12 +390,13 @@ export type PetDirectorEvent =
   | { type: "ambient.blink" }
   | { type: "ambient.rest"; reason: "inactivity" | "night" }
   | { type: "ambient.wake"; reason: "startup" | "day" | "activity" }
-  | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId }
+  | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId; loop?: MoodActorLoop }
+  | { type: "mood.reactionPulse"; mood: Extract<MoodLookId, "hot" | "overdrive"> }
   | { type: "pointer.click" }
   | { type: "pointer.dragStart" }
   | { type: "pointer.drop" }
   | { type: "quickPlay.action"; action: QuickPlayActionId }
-  | { type: "token.delta"; tokens: number; burnRate: PetBurnRate }
+  | { type: "token.delta"; tokens: number; burnRate: PetBurnRate; mood?: MoodLookId; loop?: MoodActorLoop }
   | { type: "milestone.reached"; milestone: string }
   | { type: "lifecycle.stageChanged"; stage: PetLifeStage }
   | { type: "day.digestReady" };

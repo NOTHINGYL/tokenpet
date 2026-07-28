@@ -1,153 +1,125 @@
 # TokenPet
 
-> TokenPet makes local AI usage visible, playful, and private.
+### Your AI token usage, living on your desktop.
 
-TokenPet is a macOS-first desktop companion for local AI coding workflows. It reads local usage through the bundled `ccusage` dependency, turns token flow into a small pet mood and Journey, and keeps settings, milestones, and memories on the machine.
+TokenPet is a local-first macOS companion that turns AI coding activity into a tiny cat with moods, movement, and personality. It was inspired by the small rituals of living with a real cat: the curious stare at a moving cursor, the sudden sprint across a room, the long nap beside your work, and the quiet habit of simply being there.
 
-![TokenPet launch story: wake, token update, click, drag, drop, and milestone](docs/screenshots/pet-story/tokenpet-story-demo.gif)
+Instead of leaving token usage buried in logs, TokenPet makes it glanceable and playful—right from the menu bar, the desktop, or a focused local console.
 
-![TokenPet Pet console](docs/screenshots/pet-story/console-appearance.png)
-
-<p>
-  <img src="docs/screenshots/pet-story/quick-play.png" alt="TokenPet Quick Play remote" width="292" />
-  <img src="docs/screenshots/pet-story/desktop-pet.png" alt="TokenPet desktop pet" width="260" />
+<p align="center">
+  <img src="./docs/readme/tokenpet-actions-showcase.gif" alt="TokenPet demonstrating Pet, Feed snack, Play cursor, Dangle toy, Toss yarn, Nap here, Wake up, and Dance" width="720" />
 </p>
 
-## Status
+## A companion, not another dashboard
 
-The current integrated release is `v0.8.3`.
+- **Lives on the desktop.** The cat stays visible on the current macOS Space and keeps its token total close at hand.
+- **Reacts to real local usage.** Sleepy, Focused, Hot, and Overdrive moods follow the token window you choose.
+- **Plays like a pet.** Eight authored actions use offline animation assets and action-specific choreography—not a static image sliding across the screen.
+- **Stays out of the way.** Size, opacity, shadow, name, always-on-top behavior, and motion preferences are under your control.
+- **Keeps data local.** TokenPet does not require an account or upload prompts, code, paths, or session content.
 
-- **One actor pipeline:** the desktop pet and every Console preview use the same generated Golden British actor bundle.
-- **Dynamic slots:** token and mood text render only inside manifest-declared slots. The actor artwork already contains its cream token frame.
-- **Pet Director:** click, drag/drop, token changes, lifecycle events, milestones, and Quick Play actions go through one priority and capability gate.
-- **Real desktop choreography:** Actions includes `run_across`, a 12-step Golden British sequence built from four approved action poses that moves the real pet window safely across the active display; Lock position blocks it and Reduce Motion shortens it.
-- **Ambient story loop:** non-Egg companions wake on startup/new days, blink on deterministic mode-aware intervals, rest at night or after inactivity, and wake again when local activity resumes.
-- **Quick Play:** double-click the pet to open the v18 compact controller: nine stable actions, exactly three pet controls, and one Console command. Its 292×492 window contains a complete 280×480 design-faithful panel, so it fits compact Retina work areas without clipping while keeping a 32px safety gap from the pet.
-- **Current-Space launch:** every app launch reveals one pet on the active macOS Space. Re-launching reuses and re-homes the existing instance instead of creating duplicate pets across desktops.
-- **Five Pet pages:** Appearance, Actions, Mood & Reactions, Sound Cues, and Journey, plus Cat Type, Mood Looks, and Accessories subpages.
-- **Local story state:** behavior, thresholds, sound cues, safety controls, Journey, memories, milestones, position, and appearance persist locally.
+## Meet TokenPet
 
-## First-minute demo
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="./docs/readme/desktop-companion.png" alt="TokenPet Golden British desktop companion with local token total" width="360" />
+      <br /><strong>Always nearby</strong><br />A compact desktop companion driven by local token activity.
+    </td>
+    <td align="center" width="50%">
+      <img src="./docs/readme/quick-play.png" alt="TokenPet Quick Play panel with eight pet actions and Capture" width="280" />
+      <br /><strong>Double-click to play</strong><br />Open Quick Play without leaving the app you are working in.
+    </td>
+  </tr>
+</table>
 
-Install and launch:
+## Eight ways to play
+
+| Action | What happens |
+| --- | --- |
+| **Pet** | The cat chooses a destination, walks there with direction-aware steps, looks around, and returns. |
+| **Feed snack** | Place a treat and watch the cat approach, lick, bite, chew, swallow, and head back. |
+| **Play cursor** | For 10 seconds, the cat follows the cursor with its eyes, head, and ears. |
+| **Dangle toy** | Turn the pointer into a fish teaser and invite an alert, stalk, pounce, and chase. |
+| **Toss yarn** | Throw a yarn ball for the cat to chase, collect, carry, and drop. |
+| **Nap here** | Settle the cat into a five-minute nap with its token bubble still visible. |
+| **Wake up** | Wake the companion with a full-body stretch sequence. |
+| **Dance** | Play the fixed-anchor Golden British dance loop. |
+
+The showcase above is generated from the real Actions Preview renderer. Each action is sampled across its complete source timeline, so long routines remain visible inside the 19.2-second loop.
+
+## See the activity behind the pet
+
+The local console turns raw usage into a readable overview: daily token trends, model and project activity, estimated cost, source breakdowns, and a GitHub-style activity view.
+
+<p align="center">
+  <img src="./docs/readme/console-overview.png" alt="TokenPet local token usage overview" width="1080" />
+</p>
+
+## Make it yours
+
+Appearance controls apply immediately, while Mood & Reactions lets you choose whether the last hour, today, or the last seven days drives the companion. The preview is a safe stage for trying thresholds and badge presentation before returning to the desktop.
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="./docs/readme/console-appearance.png" alt="TokenPet Appearance console with cat preview, display controls, and pet identity" />
+      <br /><strong>Appearance</strong>
+    </td>
+    <td align="center" width="50%">
+      <img src="./docs/readme/console-mood-reactions.png" alt="TokenPet Mood and Reactions console with local token thresholds" />
+      <br /><strong>Mood &amp; Reactions</strong>
+    </td>
+  </tr>
+</table>
+
+## Install from source
+
+TokenPet currently targets macOS and requires Node.js 18.20 or newer.
 
 ```bash
+git clone https://github.com/NOTHINGYL/tokenpet.git
+cd tokenpet
 npm install
 npm run launch
 ```
 
-Then follow this short demo path:
+`npm run launch` builds the local actor assets and app, then opens TokenPet. On subsequent launches the desktop pet appears on the Space you are currently using.
 
-1. Watch the generated Golden British actor appear with its local token value.
-2. Click the cat for `click_purr`.
-3. Drag and release it for `drag_dangle` → `drop_bounce`.
-4. Double-click it to open Quick Play.
-5. Try Feed snack, Play cursor, Toss yarn, Nap here, Wake up, Summon, and Capture.
-6. Choose **Open Console**, then review all five Pet pages.
-7. In **Actions**, try **Run across desktop** to see the companion traverse the real work area.
+Once it is running:
 
-Regenerate the launch GIF from the real renderer, Director, and approved actor bundle with synthetic local usage:
+1. Double-click the desktop cat to open Quick Play.
+2. Use the menu bar item to open the token overview.
+3. Open **Pet** in the console to adjust Appearance, Actions, and Mood & Reactions.
+4. Click the desktop cat’s close control to hide it; use **Show pet** from the menu bar to bring it back on the current Space.
 
-```bash
-npm run demo:pet-story
-```
+## Local-first by design
 
-The script drives `wake_up` → token update → `click_purr` → `drag_dangle` → `drop_bounce` → `milestone_celebrate`, records frame hashes, and verifies that every beat uses exactly one generated actor with its embedded token frame. GIF regeneration needs Python with Pillow; set `TOKENPET_PYTHON` if it is not available as `python3`.
+TokenPet reads locally available usage metadata through its bundled usage adapter and stores pet preferences on the machine. It does not need a TokenPet account, and it does not send prompts, code, file paths, or session content to a TokenPet service. Captured pet moments are written locally.
 
-Run the complete deterministic acceptance suite with synthetic data and no private user data:
+## Development
 
-```bash
-npm run qa:pet-story
-```
-
-That command type-checks and builds the app, validates the actor schema and generated bundle, exercises the real Electron main process plus Pet/Quick Play/Menu Bar/Console renderers, checks crash recovery, native Capture/Summon/drag behavior, fallback/shared-state behavior, setting persistence, and layout overflow, then regenerates the screenshots and launch GIF under `docs/screenshots/pet-story`.
-
-## Actor and capability status
-
-Golden British is the first fully actor-ready cat. Its generated PNG states currently include the core loops and all nine Quick Play actions. The runtime never recreates cat anatomy with CSS, inline SVG, emoji, or primitive canvas shapes.
-
-Other cat types use approved static fallback images as complete compositions. They remain selectable as appearance choices, but actor-only motion, dynamic token frames, mood loops, and runtime wearables are suppressed until a generated bundle declares them compatible; TokenPet does not draw a guessed canvas pill over the fallback. The approved mood-badge UI overlay may remain available because it does not alter cat anatomy. Cat type changes appearance only; it never resets behavior, thresholds, sound, Journey, milestones, or memories.
-
-Capability-gated work that is intentionally not presented as fully shipped:
-
-- `hatch` currently resolves to `milestone_celebrate`.
-- `level_up` currently resolves to `milestone_celebrate`.
-- `daily_digest` is a local data-model milestone; its final visual card is planned.
-- Rich memory-shelf and lifecycle-room art is planned.
-- Lifecycle thresholds are fixed in this release at 1M/50M/500M tokens plus 7/30 active days; user-customizable lifecycle thresholds are target-design work for a later release.
-- The target-design alternative “first completed focus session” path to Desk Buddy is planned; this release does not claim a reliable focus-session completion signal.
-- Additional actor-ready cat bundles are planned; static fallbacks remain in place.
-- Arbitrary runtime wearables are not supported for the generated actor. Only baked/manifest-compatible looks may be presented as usable.
-
-The generated manifest is the source of truth: `ready` plays a same-id animation, `fallback` resolves through a declared chain, `planned` is disabled, and `unavailable` is hidden.
-
-## Pet surfaces
-
-### Appearance
-
-Select the cat image, actor-safe token display, mood badge, Mood Looks, and compatible appearance options. Changes apply immediately. Cat Type is visual-only; thresholds belong in Mood & Reactions.
-
-### Actions
-
-Configure behavior mode, inspect implementation ids, test multi-frame actor states, play `run_across` on the real desktop, and adjust interaction and motion-safety rules. Direct manipulation has higher priority than reactions, milestones, mood loops, and lifecycle idle.
-
-### Mood & Reactions
-
-Configure ordered local token thresholds and map Sleepy, Focused, Hot, and Overdrive to `sleep_loop`, `focus_loop`, `hot_loop`, and `overdrive_loop`.
-
-### Sound Cues
-
-Optional local WebAudio cues support wake, purr, drag/drop, snack, milestone, hot, and rest moments. Master/cue volume, quiet hours, and focus muting are persisted. Audio always goes through the operating-system mixer. Automatic screen-sharing detection is planned and its UI control remains disabled; it is not presented as shipped.
-
-### Journey
-
-Lifecycle progress follows local sources, all-time tokens, and active days. Milestones and memories are gentle local records—not chores, hunger bars, missions, stores, or punishment loops.
-
-## Local-first privacy
-
-TokenPet reads local usage metadata only. It does not need an account or cloud telemetry, and it does not send prompts, code, paths, or session content anywhere. Capture exports are created locally.
-
-## Verification
+TokenPet is built with Electron, React, and TypeScript.
 
 ```bash
 npm run typecheck
 npm run build
-npm run test:pet-story
-npm run demo:pet-story
 npm run qa:pet-story
 ```
 
-See the full plan-to-implementation acceptance matrix in [docs/pet-story/verification.md](docs/pet-story/verification.md) and implementation notes in [docs/pet-story/implementation.md](docs/pet-story/implementation.md).
-
-## Repository layout
-
-```text
-apps/desktop/electron                 Electron windows, IPC, persistence, local usage
-apps/desktop/public/pet-actors        Generated runtime actor bundles
-apps/desktop/src/features/pet-story   Pet Director, capability gate, story pages, sound cues
-apps/desktop/src/features/pet-*       Actor rendering and Appearance surfaces
-assets/source/pet-actors              Approved source actor specs and raster poses
-packages/pet-asset-schema             Actor/source contracts and validators
-tools/pet-asset-studio                Deterministic actor-bundle generator and QA artifacts
-scripts                               Build, launch, static QA, interaction QA, screenshots
-docs/pet-story                        Product plan, implementation, and verification evidence
-```
-
-## Development
-
-Requires Node.js 18.20+.
+Regenerate and validate the public README media from the production renderer with synthetic local demo data:
 
 ```bash
-npm install
-npm run dev
+npm run capture:readme
+npm run verify:readme
 ```
 
-Build and run the production app in the foreground:
+The export manifest at [`docs/readme/manifest.json`](./docs/readme/manifest.json) records the source surface, dimensions, hashes, GIF timing, and all eight action segments. No private usage data is used in these assets.
 
-```bash
-npm start
-```
+## Contributing
+
+Issues and focused pull requests are welcome. If TokenPet makes local AI usage feel a little more alive, consider starring the repository—it helps more people discover the project.
 
 ## License
 
-MIT
+[MIT](./LICENSE)

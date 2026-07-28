@@ -9,10 +9,15 @@ export function PetActorCanvas(props: PetActorProps) {
       createPetActorFrame({
         appearance: props.appearance,
         usage: props.usage,
+        tokenValue: props.tokenValue,
         moodId: props.moodId,
+        moodBadgeVisible: props.moodBadgeVisible,
+        moodBadgeColor: props.moodBadgeColor,
+        moodBadgeStyle: props.moodBadgeStyle,
+        moodBadgePulse: props.moodBadgePulse,
         surface: props.surface,
       }),
-    [props.appearance, props.usage, props.moodId, props.surface],
+    [props.appearance, props.usage, props.tokenValue, props.moodId, props.moodBadgeVisible, props.moodBadgeColor, props.moodBadgeStyle, props.moodBadgePulse, props.surface],
   );
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const hoverRef = useRef(false);
@@ -33,8 +38,9 @@ export function PetActorCanvas(props: PetActorProps) {
       const context = canvas?.getContext("2d");
       if (!canvas || !context) return;
 
+      const startedAt = performance.now();
       const draw = (time: number) => {
-        renderPetActorCanvas(context, frame, images!, time, { hover: hoverRef.current });
+        renderPetActorCanvas(context, frame, images!, Math.max(0, time - startedAt), { hover: hoverRef.current });
         animationFrame = window.requestAnimationFrame(draw);
       };
 
@@ -50,7 +56,15 @@ export function PetActorCanvas(props: PetActorProps) {
   }, [frame]);
 
   return (
-    <div className={frame.className} style={frame.styleVars as React.CSSProperties}>
+    <div
+      className={frame.className}
+      style={frame.styleVars as React.CSSProperties}
+      data-mood-badge-icon={frame.moodBadge ? props.moodId : undefined}
+      data-mood-badge-color={frame.moodBadge ? props.moodBadgeColor : undefined}
+      data-mood-badge-style={frame.moodBadge?.style}
+      data-mood-badge-pulse={frame.moodBadge?.entryPulse ? "true" : "false"}
+      data-token-label={frame.tokenFrame?.label}
+    >
       <span
         className={`pet-visual-cat-wrap pet-actor-canvas-root ${ready ? "is-ready" : "is-loading"}`}
         onPointerEnter={() => {

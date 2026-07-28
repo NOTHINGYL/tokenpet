@@ -22,6 +22,7 @@ const todayTokens = daily.at(-1).tokens;
 const allTimeTokens = 297_500_000;
 
 const snapshot = {
+  liveOneHourTokens: 5_000_000,
   todayTokens,
   sevenDayTokens,
   allTimeTokens,
@@ -107,7 +108,25 @@ const settings = {
   petOpacity: 1,
   petStory: {
     behaviorMode: "balanced",
-    moodThresholds: { focused: 50_000, hot: 1_000_000, overdrive: 1_000_000_000 },
+    moodThresholds: { focused: 50_000, hot: 1_000_000, overdrive: 10_000_000 },
+    moodSignalWindow: "live",
+    moodThresholdProfiles: {
+      live: { focused: 50_000, hot: 1_000_000, overdrive: 10_000_000 },
+      today: { focused: 1_000_000, hot: 20_000_000, overdrive: 100_000_000 },
+      last7Days: { focused: 10_000_000, hot: 100_000_000, overdrive: 500_000_000 },
+    },
+    moodPreviewValues: {
+      live: 5_000_000,
+      today: 50_000_000,
+      last7Days: 250_000_000,
+    },
+    moodPresentation: {
+      sleepy: { actorLoop: "sleep_loop", badgeVisible: true, badgeColor: "#2878e3" },
+      focused: { actorLoop: "focus_loop", badgeVisible: true, badgeColor: "#18a33c" },
+      hot: { actorLoop: "hot_loop", badgeVisible: true, badgeColor: "#ff5a1f" },
+      overdrive: { actorLoop: "overdrive_loop", badgeVisible: true, badgeColor: "#f21f2d" },
+    },
+    moodControls: { badgeVisible: true, badgeStyle: "iconLabel", entryPulse: true },
     quietMode: false,
     followCursor: false,
     lockPosition: false,

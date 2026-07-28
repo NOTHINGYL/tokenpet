@@ -196,6 +196,7 @@ function verifyReachableUi() {
     "apps/desktop/src/features/pet-appearance/AccessoriesPage.tsx",
     "apps/desktop/src/features/pet-story/PetStoryPanel.tsx",
     "apps/desktop/src/features/pet-story/ActionsWorkbench.tsx",
+    "apps/desktop/src/features/pet-story/MoodReactionsPanel.tsx",
   ];
   const missingHandlers = petUiFiles.flatMap(buttonDiagnostics);
   verify("reachable Pet buttons", missingHandlers.length === 0, missingHandlers.length ? `enabled buttons without handlers: ${missingHandlers.join(", ")}` : "every reachable enabled Pet button has an interaction handler");
@@ -204,9 +205,12 @@ function verifyReachableUi() {
   if (consoleDiagnostics.length) warnings.push(`Console-wide enabled buttons without handlers: ${consoleDiagnostics.join(", ")}`);
 
   const popoverSource = read("apps/desktop/src/views/PopoverApp.tsx");
+  const desktop = read("apps/desktop/src/views/PetApp.tsx");
   const menuBarSource = read("apps/desktop/src/views/MenuBarApp.tsx");
   const consoleSource = read("apps/desktop/src/views/ConsoleApp.tsx");
   const electronMainSource = read("apps/desktop/electron/main.ts");
+  const usageSource = read("apps/desktop/electron/usage.ts");
+  const hourlyUsageSource = read("apps/desktop/electron/hourly-usage.ts");
   const quickPlayOverlaySource = read("apps/desktop/src/views/QuickPlayOverlayApp.tsx");
   const quickPlayOverlayStyles = read("apps/desktop/src/styles/quick-play-overlay.css");
   const appearanceSource = read("apps/desktop/src/features/pet-appearance/AppearancePanel.tsx");
@@ -228,6 +232,28 @@ function verifyReachableUi() {
   verify("Dance closes Quick Play immediately", popoverSource.includes('{ label: "Dance", id: "dance", closesPanel: true }'), "Dance begins only after the compact panel closes");
   verify("Quick Play v18 controls", ["Always on top", "Lock position", "Mute pet sounds"].every((label) => popoverSource.includes(`label=\"${label}\"`)), "the panel declares exactly the three public pet controls");
   verify("Menu Bar Console entries target Overview", menuBarSource.match(/openConsole\("overview"\)/gu)?.length === 2, "both the settings icon and Open Console footer explicitly request Overview");
+  verify(
+    "Visible token surfaces have explicit ownership",
+    consoleSource.includes("tokenValue={usage.allTimeTokens}")
+      && electronMainSource.includes("trayTokenTitle = compactNumber(moodSignalFromUsage(snapshot, settings.petStory.moodSignalWindow))")
+      && desktop.includes("tokenValue={moodSignal}")
+      && desktop.includes('getTokenBubbleLabel("pill", usage, moodSignal)'),
+    "Console sidebar is pinned to Local all time while the native Menu Bar title, desktop frame, and sleep bubble follow the selected Mood signal",
+  );
+  verify(
+    "Live one-hour signal uses process-independent local history",
+    usageSource.includes("readTrailingHourTokens")
+      && usageSource.includes("historicalOneHourTokens")
+      && usageSource.includes("Math.max(0, historicalTokens, sampled.tokens)")
+      && hourlyUsageSource.includes('join(homeDirectory, ".codex", "sessions")')
+      && hourlyUsageSource.includes('join(homeDirectory, ".claude", "projects")')
+      && hourlyUsageSource.includes("last_token_usage")
+      && hourlyUsageSource.includes('record.type === "assistant"')
+      && hourlyUsageSource.includes("REVERSE_READ_CHUNK_BYTES")
+      && hourlyUsageSource.includes("discardingOversizedLine")
+      && !hourlyUsageSource.includes("readFileSync"),
+    "Live 1 hour reconstructs timestamped numeric Codex/Claude usage across app launches, scans large session logs backwards without whole-file reads, and retains the in-process sampler only as a log-write-lag fallback",
+  );
   verify("Quick Play Console entry targets Pet", popoverSource.includes('openConsole("pet")'), "the double-click panel explicitly requests the Pet console");
   verify("Pet navigation resets to Appearance", consoleSource.includes('if (tab === "pet")') && consoleSource.includes('setPetSection("appearance")') && consoleSource.includes("setPetNavigationEpoch"), "an external Pet request remounts the Pet surface at Appearance even when Console is already on another Pet subpage");
   verify("Quick Play closes on outside focus", electronMainSource.includes('if (popoverWindow === createdWindow) closeUsableWindow(createdWindow)') && electronMainSource.includes("createdWindow.show();") && electronMainSource.includes("createdWindow.focus();") && !electronMainSource.includes("createdWindow.showInactive();"), "the native Quick Play window acquires focus and closes itself on blur");
@@ -242,11 +268,12 @@ function verifyReachableUi() {
   const v20Artwork = ["header-paw", "walk-round-trip", "token-snack", "play-cursor", "drag-dangle", "toss-yarn", "nap-here", "wake-up", "dance", "capture-moment", "control-pin", "control-lock", "control-mute"];
   verify("Quick Play v20 normative artwork", v20Artwork.every((name) => fileIsNonEmpty(join(root, `apps/desktop/public/quick-play-v18/${name}.png`))) && popoverSource.includes("./quick-play-v18/"), "all title, action, cat-illustration, and control icons are deterministic local artwork from the normative v20 design");
   verify(
-    "Appearance v30 exact module ownership",
+    "Appearance v1 exact module ownership",
     appearanceSource.includes("appearance-v22-workbench")
-      && appearanceSource.includes("appearance-accessories-summary")
+      && !appearanceSource.includes("appearance-accessories-summary")
+      && !appearanceSource.includes("AccessoriesPage")
+      && !appearanceSource.includes("open-accessories")
       && catTypePickerSource.includes("appearance-cat-type-strip")
-      && ["neck", "head", "base", "effects"].every((category) => appearanceSource.includes(category))
       && !appearanceSource.includes("TokenFrameSummary")
       && !appearanceSource.includes("MoodBadgeCard")
       && !appearanceSource.includes("MoodLooksCard")
@@ -254,7 +281,14 @@ function verifyReachableUi() {
       && appearanceSource.includes("PetIdentityCard")
       && !appearanceSource.includes("SkinCard")
       && !appearanceSource.includes("pet-preview-actions"),
-    "Appearance is the v30 five-cat strip + natural held-hover preview + Display/Pet Identity stack + Neck/Head/Ground/Effects two-cell summary, with Token Frame and duplicate preview commands removed",
+    "Appearance exposes only the five-cat strip, natural held-hover preview, Display, Pet Identity, and the single page footer; the deferred Accessories surface is absent",
+  );
+  verify(
+    "Pet v1 hides deferred navigation",
+    appearanceSource.includes("petConsoleSections.filter((section) => section.enabled)")
+      && accessoryCatalogSource.includes('{ id: "sound", label: "Sound Cues", enabled: false }')
+      && accessoryCatalogSource.includes('{ id: "journey", label: "Journey", enabled: false }'),
+    "Sound Cues and Journey remain implemented behind the catalog capability gate but are not rendered in the public Pet navigation",
   );
   verify(
     "Pet Identity 10-grapheme contract",
@@ -305,9 +339,13 @@ function verifyReachableUi() {
   const generatedRenderer = read("apps/desktop/src/features/pet-generated-actor/GeneratedPetActorCanvas.tsx");
   const fallbackRenderer = read("apps/desktop/src/features/pet-actor/actorCanvasRenderer.ts");
   const fallbackOutfit = read("apps/desktop/src/features/pet-actor/outfitResolver.ts");
-  const desktop = read("apps/desktop/src/views/PetApp.tsx");
   const story = read("apps/desktop/src/features/pet-story/PetStoryPanel.tsx");
   const actions = read("apps/desktop/src/features/pet-story/ActionsWorkbench.tsx");
+  const moodPanel = read("apps/desktop/src/features/pet-story/MoodReactionsPanel.tsx");
+  const moodRuntime = read("apps/desktop/src/features/pet-story/moodRuntime.ts");
+  const rendererTypes = read("apps/desktop/src/types.ts");
+  const storyRuntime = read("apps/desktop/electron/story.ts");
+  const usageRuntime = read("apps/desktop/electron/usage.ts");
   const danceVideoLayer = read("apps/desktop/src/features/pet-story/DanceVideoLayer.tsx");
   const danceVideoRenderer = read("tools/pet-asset-studio/dance-video/style-scene.mjs");
   const danceVideoManifest = JSON.parse(read("assets/source/pet-actors/golden-british/story-actions/dance-video-v3/manifest.json"));
@@ -321,7 +359,7 @@ function verifyReachableUi() {
     "Sleepy owns a frame-free persistent token bubble",
     generatedRenderer.includes('animation.id === "action.sleep_loop"')
       && generatedRenderer.includes('data-sleep-token-frame-hidden')
-      && desktop.includes('getTokenBubbleLabel("pill", usage)')
+      && desktop.includes('getTokenBubbleLabel("pill", usage, moodSignal)')
       && desktop.includes('contentMode={sleepVisual && !sleepBubbleShowsName ? "token" : "name"}')
       && compositor.includes('const isSleepVisual')
       && compositor.includes('getAccessory(effectId)')
@@ -369,7 +407,113 @@ function verifyReachableUi() {
   const executorIndex = read("apps/desktop/electron/quick-play/executors/index.ts");
   const executorModules = ["pet", "feed-snack", "play-cursor", "dangle-toy", "toss-yarn", "nap-here", "wake-up", "dance"];
   verify("Quick Play actions have isolated executor modules", executorModules.every((name) => fileIsNonEmpty(join(root, `apps/desktop/electron/quick-play/executors/${name}.ts`)) && executorIndex.includes(`./${name}.js`)) && electronMainSource.includes('from "./quick-play/executors/index.js"') && electronMainSource.includes("runAuthoredLocomotionLeg") && !electronMainSource.includes('action === "token_snack" || action === "toss_yarn"'), "each animated action owns one semantic module; Electron window ports and the authored locomotion transport are reused explicitly");
-  verify("console shared renderer", story.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
+  verify("console shared renderer", story.includes("<PetAppearanceVisual") && moodPanel.includes("<PetAppearanceVisual"), "Actions, Mood, Sound, and Journey previews use the shared appearance/actor renderer");
+  verify(
+    "Mood v37 exact single-screen modules",
+    story.includes("<MoodReactionsPanel")
+      && [
+        "data-mood-page-layout",
+        "data-mood-window",
+        "data-mood-threshold",
+        "data-mood-preview-token",
+        "data-mood-controls",
+        "data-mood-badge-toggle",
+        "data-mood-badge-color",
+        "data-mood-badge-style",
+        "data-mood-entry-pulse",
+        "data-reset-thresholds",
+      ].every((token) => moodPanel.includes(token))
+      && ["Live · 1 hour", "Today", "Last 7 days", "Preview token level", "Mood controls", "Badge colors", "Badge style", "Entry pulse"].every((label) => moodPanel.includes(label))
+      && !["Selected mood:", "Actor loop · fixed", "data-mood-actor-loop"].some((label) => moodPanel.includes(label)),
+    "the page declares the v37 signal rail, one-way simulator, global Mood controls, and one-window reset surfaces without a second Mood selector",
+  );
+  verify(
+    "Mood v37 independent recommended profiles",
+    moodRuntime.includes('["live", "today", "last7Days"]')
+      && moodRuntime.includes("live: { focused: 50_000, hot: 1_000_000, overdrive: 10_000_000 }")
+      && moodRuntime.includes("today: { focused: 1_000_000, hot: 20_000_000, overdrive: 100_000_000 }")
+      && moodRuntime.includes("last7Days: { focused: 10_000_000, hot: 100_000_000, overdrive: 500_000_000 }")
+      && moodPanel.includes("moodThresholdProfiles")
+      && moodPanel.includes("moodSignalWindow"),
+    "Live, Today, and Last 7 days own the documented independent defaults and selected-window compatibility mirror",
+  );
+  verify(
+    "Mood v37 logarithmic 2x clamp",
+    moodRuntime.includes("Math.log10")
+      && moodRuntime.includes("focused * 2")
+      && moodRuntime.includes("hot * 2")
+      && moodRuntime.includes("profile.hot / 2")
+      && moodRuntime.includes("profile.overdrive / 2")
+      && moodPanel.includes("Reset thresholds"),
+    "only positive thresholds enter logarithmic space and adjacent editable nodes preserve the mandatory 2x separation",
+  );
+  verify(
+    "Mood v37 semantic icon mapping",
+    ["sleepy", "focused", "hot", "overdrive"].every((mood) => moodPanel.includes(`props.mood === "${mood}"`) || mood === "overdrive")
+      && moodPanel.includes('"data-mood-icon": props.mood')
+      && moodPanel.includes("MoodSemanticIcon"),
+    "one reusable moon/target/local-flame/lightning component labels the threshold rail, preview badge, and selected mood",
+  );
+  verify(
+    "Hot semantic icon is a deterministic offline asset",
+    fileIsNonEmpty(join(root, "apps/desktop/public/assets/icons/mood-hot.svg"))
+      && moodPanel.includes("mood-semantic-icon-hot")
+      && read("apps/desktop/src/styles/console.css").includes('mask: url("../../public/assets/icons/mood-hot.svg")')
+      && read("apps/desktop/src/features/pet-story/moodVisuals.ts").includes('moodHotIconAssetPath = "assets/icons/mood-hot.svg"')
+      && read("apps/desktop/src/features/pet-generated-actor/GeneratedPetActorCanvas.tsx").includes("moodHotIconAssetPath"),
+    "Console and desktop badges reuse the same crisp local Hot glyph instead of drawing the former uneven inline flame",
+  );
+  verify(
+    "Hot and Overdrive use bounded reaction pulses over the Focus steady pose",
+    desktop.includes("ambientRestAllowedForMood(mood)")
+      && desktop.includes('event.type === "ambient.rest"')
+      && desktop.includes('type: "mood.reactionPulse"')
+      && desktop.includes('"mood.reactionPulse", "token.delta"')
+      && desktop.includes("MOOD_REACTION_REPLAY_INTERVAL_MS")
+      && desktop.includes("quickPlayActiveRef.current || timedNapActiveRef.current")
+      && read("apps/desktop/src/features/pet-story/PetDirector.ts").includes("MOOD_REACTION_DURATION_MS = 10_000")
+      && read("apps/desktop/src/features/pet-story/PetDirector.ts").includes("MOOD_REACTION_REPLAY_INTERVAL_MS = 5 * 60_000")
+      && read("apps/desktop/src/features/pet-story/PetDirector.ts").includes('return mood === "sleepy" ? "sleep_loop" : "focus_loop"'),
+    "only Sleepy may auto-rest; Hot/Overdrive play for ten seconds on entry and every five minutes, return to Focus, and skip scheduled pulses while Quick Play or timed Nap Here owns the actor",
+  );
+  verify(
+    "Mood stateless one-way preview and global presentation persistence",
+    moodPanel.includes("const previewUsage =")
+      && moodPanel.includes("realtimePreviewValue")
+      && moodPanel.includes("setPreviewValueState")
+      && !moodPanel.includes("moodPreviewValues")
+      && moodPanel.includes("moodPresentation:")
+      && moodPanel.includes("moodControls:")
+      && moodPanel.includes("previewPresentation.actorLoop")
+      && moodPanel.includes("previewPresentation.badgeColor")
+      && moodPanel.includes("moodControls.badgeVisible")
+      && moodPanel.includes("moodControls.badgeStyle")
+      && moodPanel.includes("moodControls.entryPulse")
+      && !moodPanel.includes("setSelectedMood")
+      && !moodPanel.includes("data-select-preview-mood")
+      && !/window\.tokenpet|dispatchPetAction|PetDirectorEvent/u.test(moodPanel),
+    "the simulator keeps only local transient state while global Badge controls flow into the simulator and desktop without any preview-to-runtime or persisted-preview path",
+  );
+  verify(
+    "Mood v37 retires the old rule dashboard",
+    !/Reaction Rules|Preview Scenarios|Lifetime|Total tokens|Quiet in focus mode|Cool down after overdrive|Overdrive cooldown|One-shot on threshold crossing/u.test(moodPanel),
+    "Mood exposes no Lifetime signal, duplicate scenarios, Focus mute, user cooldown, or legacy reaction-rule module",
+  );
+  verify(
+    "Mood v37 settings schema",
+    rendererTypes.includes('export type MoodSignalWindow = "live" | "today" | "last7Days"')
+      && ["moodSignalWindow", "moodThresholdProfiles", "moodPreviewValues", "moodPresentation", "moodControls"].every((field) => rendererTypes.includes(field))
+      && ["defaultMoodThresholdProfiles", "normalizeMoodThresholdProfile", "normalizeMoodControls", "moodThresholdSpan", "stabilizeMood"].every((helper) => moodRuntime.includes(helper))
+      && ["defaultMoodThresholdProfiles", "normalizeMoodThresholdProfile", "normalizeMoodControls", "moodThresholdSpan"].every((helper) => storyRuntime.includes(helper)),
+    "renderer/Electron settings share bounded-window profiles, backward-compatible legacy preview storage, four colors, and normalized global Badge controls",
+  );
+  verify(
+    "Mood v37 Today rolls over at local midnight",
+    usageRuntime.includes("currentLocalDateKey")
+      && usageRuntime.includes("usageCache.localDateKey === currentLocalDateKey")
+      && usageRuntime.includes("localDateKey: currentLocalDateKey"),
+    "the 15-second usage cache is reusable only inside the same local calendar day, so Today re-reads immediately after midnight",
+  );
   const actionsV19Ids = quickPlayIds.filter((id) => id !== "capture_moment");
   verify("Actions v20 exact selector", actionsV19Ids.every((id) => actions.includes(`\"${id}\"`)) && actions.includes("export const actionsPreviewIds") && !/actionsPreviewIds[\s\S]{0,400}capture_moment/u.test(actions), "Actions declares exactly the eight v20 preview actions and excludes Capture from its selector");
   verify("Actions defaults to the first Pet action", actions.includes('useState<ActionsPreviewId>("walk_round_trip")') && !actions.includes('useState<ActionsPreviewId>("dance")'), "each Actions workbench mount starts with Pet and its settings instead of retaining Dance");
@@ -384,15 +528,16 @@ function verifyReachableUi() {
     "all eight action previews use the clean Quick Play presentation without mutating or rendering the saved accessory selection",
   );
   verify(
-    "Menu bar pet keeps its dynamic token count and self-heals",
+    "Menu bar pet follows Mood signal and self-heals",
     electronMainSource.includes("target.setTitle(trayTokenTitle)")
-      && electronMainSource.includes("trayTokenTitle = compactNumber(snapshot.todayTokens)")
+      && electronMainSource.includes("trayTokenTitle = compactNumber(moodSignalFromUsage(snapshot, settings.petStory.moodSignalWindow))")
       && electronMainSource.includes("TRAY_HEALTH_INTERVAL_MS = 30_000")
       && electronMainSource.includes('powerMonitor.on("resume", recoverTrayAfterSystemChange)')
       && electronMainSource.includes('screen.on("display-metrics-changed", recoverTrayAfterSystemChange)')
       && electronMainSource.includes("ensureTray({ recreate: true })")
-      && electronMainSource.includes("compactNumber(snapshot.todayTokens)"),
-    "the macOS status item preserves the colored cat plus live compact token title, recreates after wake/display changes, and periodically repairs a destroyed Tray",
+      && electronMainSource.includes("settings.petStory.moodSignalWindow !== previousMoodSignalWindow")
+      && electronMainSource.includes("void loadAndPublishUsage()"),
+    "the macOS status item preserves the colored cat, follows the selected bounded Mood signal immediately, and repairs itself after wake/display changes",
   );
   verify("Actions Pet preview reuses Quick Play locomotion", actions.includes("distanceLockedWalkProgressAtTime") && actions.includes("createDistanceLockedWalkPlan") && actions.includes('resolveAnimation(manifest, "walk_round_trip_walk_front_right")') && actions.includes("offline-eight-direction-vector-selected-distance-locked") && actions.includes("data-preview-walk-root-progress") && !actions.includes("actorX: roundTrip * 31") && consoleStyles.includes(".action-preview-walk_round_trip .pet-generated-actor-shell") && consoleStyles.includes('.action-settings-card input[type="range"]'), "Pet traverses the diagonal sandbox with the production front-right action/root curve, a contained actor artboard, and pointer cursors on Settings controls");
   verify("Actions Feed preview mirrors the production asset sequence", actions.includes("feedPhaseDurations") && actions.includes("data-preview-feed-phase") && actions.includes("offline-eight-direction-single-prop-consume-exact-return") && actions.includes("feed_snack_arrive_front_right") && actions.includes("feed_snack_bite_front_right") && actions.includes("feed_snack_chew_front_right") && actions.includes("feed_snack_swallow_front_right") && actions.includes("feed_snack_return_run_back_left") && actions.includes("data-preview-snack-stage") && actions.includes("snack-${String(settings.snackStyle") && consoleStyles.includes(".action-preview-token_snack .pet-generated-actor-shell"), "Console visibly previews a direction-matched diagonal Feed route with the production rasters, root motion and continuous selected snack handoff");
@@ -515,10 +660,38 @@ function verifyReachableUi() {
   verify("Actions v20 old modules removed", !/Behavior Mode|Actor States|Interaction Rules|Director Priority|Live Actor Preview|Run across desktop|Summon/u.test(actions), "the Actions implementation contains none of the retired director-dashboard or Summon modules");
   verify("ambient story scheduler", desktop.includes("selectAmbientPetEvent") && desktop.includes("ambientRef") && desktop.includes("window.setInterval(tick"), "desktop pet schedules deterministic blink, rest, and wake events through PetDirector");
   verify("Token Egg ambient gate", desktop.includes("lifecycleStage: lifecycleFromUsage(usage)"), "ambient wake/rest/blink receives lifecycle state so Stage 0 can wait for the first-source/token hatch");
-  verify("mood badge color setting", generatedRenderer.includes("appearance.moodBadge.colorByState ? palette") && fallbackRenderer.includes("appearance.moodBadge.colorByState ?"), "Color-by-state changes both generated and approved static-fallback mood badge palettes");
+  verify(
+    "Mood v37 global badge presentation reaches both actor paths",
+    desktop.includes("moodBadgeVisible={story.moodControls.badgeVisible}")
+      && desktop.includes("moodBadgeColor={story.moodPresentation[mood].badgeColor}")
+      && desktop.includes("moodBadgeStyle={story.moodControls.badgeStyle}")
+      && desktop.includes("moodBadgePulse={moodBadgePulseActive}")
+      && generatedRenderer.includes("plan.moodBadgeColor ?? undefined")
+      && generatedRenderer.includes("plan.moodBadgeStyle")
+      && generatedRenderer.includes("plan.moodBadgePulse")
+      && generatedRenderer.includes("drawMoodSemanticIcon(")
+      && generatedRenderer.includes("data-mood-badge-icon={plan.moodBadgeRect ? plan.moodId : undefined}")
+      && generatedRenderer.includes("data-mood-badge-color={plan.moodBadgeRect ? plan.moodBadgeColor ?? undefined : undefined}")
+      && fallbackRenderer.includes("badge.color")
+      && fallbackRenderer.includes("drawMoodSemanticIcon(")
+      && read("apps/desktop/src/features/pet-actor/PetActorCanvas.tsx").includes("data-mood-badge-icon={frame.moodBadge ? props.moodId : undefined}")
+      && read("apps/desktop/src/features/pet-actor/PetActorCanvas.tsx").includes("data-mood-badge-color={frame.moodBadge ? props.moodBadgeColor : undefined}")
+      && read("apps/desktop/src/features/pet-actor/actorFrame.ts").includes("props.moodBadgeVisible")
+      && read("apps/desktop/src/features/pet-actor/actorFrame.ts").includes("props.moodBadgeColor"),
+    "global visibility, shared style, entry pulse, and the resolved mood color flow through generated and approved static-fallback mood badges",
+  );
   verify("static fallback accessory safety", fallbackOutfit.includes("STATIC_FALLBACK_RUNTIME_ACCESSORIES = false") && fallbackOutfit.includes("accessoryIds: STATIC_FALLBACK_RUNTIME_ACCESSORIES ? suppressed : []"), "approved static fallback images suppress old runtime wearable settings until a manifest declares compatible slots");
-  verify("static fallback composition safety", fallbackOutfit.includes('return "hidden"') && !fallbackRenderer.includes("function drawTokenFrame") && !fallbackRenderer.includes("context.createLinearGradient") && !fallbackRenderer.includes("context.filter =") && !fallbackRenderer.includes('slot === "baseBack"') && fallbackRenderer.includes("const rect = { ...badge.rect }"), "approved static fallbacks stay frozen exactly as shipped: no token/frame primitive, breathing deformation, added cat shadow, or bobbing badge");
-  verify("one-shot threshold crossing", desktop.includes("thresholdCrossingEvent(previousMoodRef.current, mood, story.reactionRules.oneShotOnThreshold)"), "threshold reaction is gated by the persisted rule and previous mood rather than every token refresh");
+  verify("static fallback composition safety", fallbackOutfit.includes('return "hidden"') && !fallbackRenderer.includes("function drawTokenFrame") && !fallbackRenderer.includes("context.createLinearGradient") && !fallbackRenderer.includes("context.filter =") && !fallbackRenderer.includes('slot === "baseBack"') && fallbackRenderer.includes('badge.style === "iconOnly"'), "approved static fallbacks stay frozen exactly as shipped while the shared icon-only badge presentation remains available");
+  verify(
+    "Mood stabilized signal and bounded reaction scheduling",
+    desktop.includes("stabilizeMood(moodStabilizerRef.current")
+      && desktop.includes("window.setInterval(tick, 1_000)")
+      && desktop.includes("const moodChanged = previousMoodRef.current !== mood")
+      && desktop.includes('dispatchDirectorEvent({ type: "mood.reactionPulse", mood })')
+      && desktop.includes("const loop = moodSteadyAction(immediateMood)")
+      && desktop.includes("resting: immediateMood === \"sleepy\""),
+    "the desktop evaluates the bounded signal every second, synchronizes the steady sleep/focus baseline immediately, and starts a bounded Hot/Overdrive pulse only when the stabilized Mood changes",
+  );
   verify("honest loading lifecycle", /todayTokens:\s*0[\s\S]*sevenDayTokens:\s*0[\s\S]*allTimeTokens:\s*0[\s\S]*burnRate:\s*"quiet"/u.test(fallbackState), "loading fallback contains no fake token activity, so first launch remains a calm Token Egg until local usage resolves");
 
   const actorSurfaceFiles = [

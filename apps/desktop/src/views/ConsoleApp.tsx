@@ -16,52 +16,51 @@ function NavIcon(props: { tab: ConsoleTab }) {
     stroke: "currentColor",
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
-    strokeWidth: 1.8,
+    strokeWidth: 1.85,
   };
 
   if (props.tab === "overview") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M4 10.5 12 4l8 6.5" />
-        <path {...common} d="M6.5 9.5V20h11V9.5" />
-        <path {...common} d="M10 20v-5h4v5" />
+      <svg className="console-nav-icon" data-nav-icon="overview" viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="m3.5 10.7 8.5-7 8.5 7" />
+        <path {...common} d="M5.8 9.8V20h12.4V9.8" />
+        <path {...common} d="M9.6 20v-6.2h4.8V20" />
       </svg>
     );
   }
 
   if (props.tab === "breakdown") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M12 4a8 8 0 1 1-8 8" />
-        <path {...common} d="M12 4v8h8" />
+      <svg className="console-nav-icon" data-nav-icon="breakdown" viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="M10.5 3.2a8.8 8.8 0 1 0 10.3 10.3H10.5V3.2Z" />
+        <path {...common} d="M14 3.6a7.7 7.7 0 0 1 6.4 6.4H14V3.6Z" />
       </svg>
     );
   }
 
   if (props.tab === "cost") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M12 3v18" />
-        <path {...common} d="M17 7.5c-1-1.2-2.7-2-5-2-2.6 0-4.2 1.1-4.2 2.8 0 4.6 9.4 1.8 9.4 6.8 0 1.9-1.8 3.4-5 3.4-2.4 0-4.2-.8-5.4-2.1" />
+      <svg className="console-nav-icon" data-nav-icon="cost" viewBox="0 0 24 24" aria-hidden="true">
+        <circle {...common} cx="12" cy="12" r="8.7" />
+        <path {...common} d="M15.3 8.4c-.8-.7-1.9-1.1-3.2-1.1-1.8 0-3 .8-3 2.1 0 3.1 6 1.6 6 4.9 0 1.5-1.3 2.5-3.3 2.5-1.4 0-2.6-.5-3.4-1.3M12 5.6v12.8" />
       </svg>
     );
   }
 
   if (props.tab === "pet") {
     return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="m7 9-2-4 4 2" />
-        <path {...common} d="m17 9 2-4-4 2" />
-        <path {...common} d="M5.5 12.5c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5S15.8 19 12 19s-6.5-2.5-6.5-6.5Z" />
-        <path {...common} d="M9 13h.01M15 13h.01M10 16c1.2 1 2.8 1 4 0" />
+      <svg className="console-nav-icon" data-nav-icon="pet" viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="m5.6 9.3-.7-4.7 4.2 2A8.7 8.7 0 0 1 12 6c1 0 2 .2 2.9.6l4.2-2-.7 4.7a6.8 6.8 0 0 1 1.5 4.2c0 4.1-3.2 6.5-7.9 6.5s-7.9-2.4-7.9-6.5c0-1.6.5-3 1.5-4.2Z" />
+        <path {...common} d="M9 13h.01M15 13h.01M10 16c1.2.8 2.8.8 4 0" />
       </svg>
     );
   }
 
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path {...common} d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" />
-      <path {...common} d="M19.5 12a7.8 7.8 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7.5 7.5 0 0 0-2-1.1L12.7 3h-4l-.3 2.7a7.5 7.5 0 0 0-2 1.1l-2.4-1-2 3.5 2 1.5a7.8 7.8 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7.5 7.5 0 0 0 2 1.1l.3 2.7h4l.3-2.7a7.5 7.5 0 0 0 2-1.1l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.2Z" />
+    <svg className="console-nav-icon" data-nav-icon="settings" viewBox="0 0 24 24" aria-hidden="true">
+      <path {...common} d="M4 6h8M16 6h4M12 3.8v4.4" />
+      <path {...common} d="M4 12h3M11 12h9M7 9.8v4.4" />
+      <path {...common} d="M4 18h10M18 18h2M14 15.8v4.4" />
     </svg>
   );
 }
@@ -373,7 +372,14 @@ export function ConsoleApp() {
           <strong>All systems good</strong>
           <small>Updated {lastUpdated(usage.generatedAt)}</small>
           <div className="sidebar-pet-actor" data-testid="sidebar-pet-actor">
-            <PetAppearanceVisual appearance={sidebarAppearance} usage={usage} storyActionId="idle_breathe" reduceMotion surface="preview" />
+            <PetAppearanceVisual
+              appearance={sidebarAppearance}
+              usage={usage}
+              tokenValue={usage.allTimeTokens}
+              storyActionId="idle_breathe"
+              reduceMotion
+              surface="preview"
+            />
           </div>
         </div>
       </aside>

@@ -295,22 +295,6 @@
   font-weight: 700;
 }
 
-.panel-header .menubar-tiny-pet {
-  position: relative;
-  display: block;
-  width: 52px;
-  height: 34px;
-  margin: -4px 0;
-  overflow: hidden;
-  flex: 0 0 auto;
-  pointer-events: none;
-}
-
-.menubar-tiny-pet .pet-generated-actor-shell {
-  --pet-visual-cat-width: 92px;
-  --pet-visual-cat-y: -11px;
-}
-
 .panel-header .panel-header-actions,
 .console-header .console-header-actions {
   display: flex;

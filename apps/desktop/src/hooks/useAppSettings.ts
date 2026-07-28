@@ -1,6 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { normalizePetAppearance, syncLegacyAppearanceFields } from "../features/pet-appearance/appearanceState";
-import { defaultJourneyState, defaultPetStory } from "../features/pet-story/PetDirector";
+import {
+  defaultJourneyState,
+  defaultMoodControls,
+  defaultMoodPreviewValues,
+  defaultMoodThresholdProfiles,
+  defaultPetStory,
+  moodSignalWindows,
+  moodThresholdSpan,
+  normalizeMoodPresentation,
+  normalizeMoodControls,
+  normalizeMoodThresholdProfile,
+} from "../features/pet-story/PetDirector";
 import { fallbackSettings } from "../state/fallbacks";
 import type { AppSettings } from "../types";
 
@@ -8,16 +19,45 @@ export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(fallbackSettings);
 
   const normalizeSettings = useCallback((value: Partial<AppSettings>): AppSettings => {
+    const storySource = value.petStory;
+    const moodSignalWindow = moodSignalWindows.includes(storySource?.moodSignalWindow ?? "live")
+      ? storySource?.moodSignalWindow ?? "live"
+      : "live";
+    const oldThresholds = storySource?.moodThresholds;
+    const knownOldDefaults = (
+      oldThresholds?.focused === 1_000
+        && oldThresholds.hot === 10_000
+        && oldThresholds.overdrive === 50_000
+    ) || (
+      oldThresholds?.focused === 50_000
+        && oldThresholds.hot === 1_000_000
+        && oldThresholds.overdrive === 1_000_000_000
+    );
+    const moodThresholdProfiles = Object.fromEntries(moodSignalWindows.map((window) => [
+      window,
+      normalizeMoodThresholdProfile(
+        storySource?.moodThresholdProfiles?.[window]
+          ?? (window === "live" && oldThresholds && !knownOldDefaults ? oldThresholds : defaultMoodThresholdProfiles[window]),
+        window,
+      ),
+    ])) as AppSettings["petStory"]["moodThresholdProfiles"];
+    const moodPreviewValues = Object.fromEntries(moodSignalWindows.map((window) => {
+      const candidate = Number(storySource?.moodPreviewValues?.[window] ?? defaultMoodPreviewValues[window]);
+      const { max } = moodThresholdSpan(window);
+      return [window, Number.isFinite(candidate) ? Math.min(Math.max(candidate, 0), max) : defaultMoodPreviewValues[window]];
+    })) as AppSettings["petStory"]["moodPreviewValues"];
     const merged = {
       ...fallbackSettings,
       ...value,
       petStory: {
         ...defaultPetStory,
-        ...(value.petStory ?? {}),
-        moodThresholds: {
-          ...defaultPetStory.moodThresholds,
-          ...(value.petStory?.moodThresholds ?? {}),
-        },
+        ...(storySource ?? {}),
+        moodSignalWindow,
+        moodThresholdProfiles,
+        moodPreviewValues,
+        moodPresentation: normalizeMoodPresentation(storySource?.moodPresentation),
+        moodControls: normalizeMoodControls(storySource?.moodControls ?? defaultMoodControls),
+        moodThresholds: moodThresholdProfiles[moodSignalWindow],
         cueVolumes: {
           ...defaultPetStory.cueVolumes,
           ...(value.petStory?.cueVolumes ?? {}),

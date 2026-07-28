@@ -49,7 +49,10 @@ export function useUsage() {
     }
 
     load();
-    const timer = window.setInterval(load, 60_000);
+    // Mood stabilization ticks once per second in PetApp. Refresh provider
+    // totals at the main-process cache cadence so every renderer does not
+    // repeatedly invoke the same expensive local usage scan.
+    const timer = window.setInterval(load, 15_000);
 
     return () => {
       active = false;

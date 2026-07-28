@@ -60,6 +60,14 @@ export type UsageAnalysis = {
 };
 
 export type UsageSnapshot = {
+  /**
+   * Token deltas observed by this TokenPet process during the trailing hour.
+   * It is deliberately process-local rather than derived from the
+   * lifetime total.
+   */
+  liveOneHourTokens?: number;
+  /** @deprecated Compatibility input for settings and fixtures created before v0.8.6. */
+  liveFiveMinuteTokens?: number;
   todayTokens: number;
   sevenDayTokens: number;
   allTimeTokens: number;
@@ -94,6 +102,12 @@ export type PetThemeId = "gold" | "mint" | "rose" | "sky" | "midnight" | "custom
 export type TokenBubbleId = "pill" | "compact" | "hidden" | "cost";
 export type TokenFrameId = "embedded" | "pillow" | "compact" | "cost" | "floating" | "hidden";
 export type MoodLookId = "sleepy" | "focused" | "hot" | "overdrive";
+export type MoodSignalWindow = "live" | "today" | "last7Days";
+export type MoodThresholdProfile = { focused: number; hot: number; overdrive: number };
+export type MoodActorLoop = "sleep_loop" | "focus_loop" | "hot_loop" | "overdrive_loop";
+export type MoodBadgeStyle = "iconLabel" | "iconOnly";
+export type MoodControlsSettings = { badgeVisible: boolean; badgeStyle: MoodBadgeStyle; entryPulse: boolean };
+export type MoodPresentationSettings = { actorLoop: MoodActorLoop; badgeVisible: boolean; badgeColor: string };
 export type MotionModeId = "calm" | "balanced" | "playful" | "energetic";
 export type MotionActionId =
   | "idle-breathe"
@@ -243,13 +257,13 @@ export type PetMemory = { id: string; kind: "firstSource" | "milestone" | "stage
 export type PetJourneyState = { schemaVersion: 1; stage: PetLifeStage; milestoneIds: string[]; memories: PetMemory[]; firstSeenAt: string | null; lastSeenAt: string | null; lastUsageTokens: number; activeDays: number; lastDigestDate: string | null };
 export type PetActionTuningValue = string | number | boolean;
 export type PetActionSettingsStore = { schemaVersion: 1; byAction: Partial<Record<Exclude<QuickPlayActionId, "capture_moment">, Record<string, PetActionTuningValue>>> };
-export type PetStorySettings = { behaviorMode: "gentle" | "balanced" | "playful" | "focusFriendly"; moodThresholds: { focused: number; hot: number; overdrive: number }; quietMode: boolean; followCursor: boolean; lockPosition: boolean; reduceMotion: boolean; soundEnabled: boolean; soundStyle: "soft" | "cozy" | "playful"; volume: number; cueIds: string[]; cueVolumes: Record<"wake" | "purr" | "drop" | "snack" | "milestone" | "hot" | "rest", number>; interactionRules: { click: boolean; drag: boolean; drop: boolean; feed: boolean; cursor: boolean }; safety: { batteryLowPause: boolean; muteDuringFocus: boolean; quietHoursEnabled: boolean; quietHoursStart: string; quietHoursEnd: string; screenSharingStillness: boolean; respectSystemVolume: boolean }; reactionRules: { oneShotOnThreshold: boolean; coolDownAfterOverdrive: boolean }; companionSettings: { keepTinyMenuForm: boolean; showMemoryCards: boolean; celebrateMilestones: boolean }; actionSettings: PetActionSettingsStore; pinnedStage: PetLifeStage | null; lastAction: { id: PetActionId; nonce: number } | null; journey: PetJourneyState };
+export type PetStorySettings = { behaviorMode: "gentle" | "balanced" | "playful" | "focusFriendly"; /** @deprecated Active-window compatibility mirror. */ moodThresholds: MoodThresholdProfile; moodSignalWindow: MoodSignalWindow; moodThresholdProfiles: Record<MoodSignalWindow, MoodThresholdProfile>; moodPreviewValues: Record<MoodSignalWindow, number>; moodPresentation: Record<MoodLookId, MoodPresentationSettings>; moodControls: MoodControlsSettings; quietMode: boolean; followCursor: boolean; lockPosition: boolean; reduceMotion: boolean; soundEnabled: boolean; soundStyle: "soft" | "cozy" | "playful"; volume: number; cueIds: string[]; cueVolumes: Record<"wake" | "purr" | "drop" | "snack" | "milestone" | "hot" | "rest", number>; interactionRules: { click: boolean; drag: boolean; drop: boolean; feed: boolean; cursor: boolean }; safety: { batteryLowPause: boolean; muteDuringFocus: boolean; quietHoursEnabled: boolean; quietHoursStart: string; quietHoursEnd: string; screenSharingStillness: boolean; respectSystemVolume: boolean }; reactionRules: { oneShotOnThreshold: boolean; coolDownAfterOverdrive: boolean }; companionSettings: { keepTinyMenuForm: boolean; showMemoryCards: boolean; celebrateMilestones: boolean }; actionSettings: PetActionSettingsStore; pinnedStage: PetLifeStage | null; lastAction: { id: PetActionId; nonce: number } | null; journey: PetJourneyState };
 export type QuickPlayActionId = "walk_round_trip" | "token_snack" | "play_cursor" | "drag_dangle" | "toss_yarn" | "nap_here" | "wake_up" | "dance" | "capture_moment";
 export type QuickPlayPhase = "idle" | "awaiting-placement" | "rolling" | "stand" | "outbound" | "arrive" | "lick" | "bite" | "chew" | "swallow" | "eat" | "pause" | "tracking" | "alert" | "stalk" | "crouch" | "pounce" | "play" | "pursuit" | "release" | "interact" | "pickup" | "carry" | "drop" | "return" | "settle" | "dance_rise" | "dance_reference_clip" | "dance_restore" | "complete" | "failed";
 export type QuickPlayWalkMotion = { startedAt: number; durationMs: number; stepDurationMs: number; cycleDurationMs: number; stepCount: number; stepDistancePx: number; footfallsPerCycle: number; rootStepKeyframes: number[] };
 export type QuickPlayActorDirection = "left" | "right" | "front" | "back" | "front-left" | "front-right" | "back-left" | "back-right";
 export type QuickPlaySession = { activeAction: Exclude<QuickPlayActionId, "capture_moment"> | null; startedAt: number | null; phase: QuickPlayPhase; phaseStartedAt: number | null; startBounds: { x: number; y: number; width: number; height: number } | null; currentBounds?: { x: number; y: number; width: number; height: number } | null; startDirectorState: PetActionId | null; targetPoint: { x: number; y: number } | null; walkMotion: QuickPlayWalkMotion | null; actorDirection: QuickPlayActorDirection | null; actorVariant: "orange" | "blue" | "violet" | null; pointerMode: "none" | "snack" | "dangle" | "yarn"; resting: boolean; restingUntil: number | null; failure: string | null };
-export type PetDirectorEvent = { type: "actor.actionRequested"; action: PetActionId } | { type: "ambient.blink" } | { type: "ambient.rest"; reason: "inactivity" | "night" } | { type: "ambient.wake"; reason: "startup" | "day" | "activity" } | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId } | { type: "pointer.click" } | { type: "pointer.dragStart" } | { type: "pointer.drop" } | { type: "quickPlay.action"; action: QuickPlayActionId } | { type: "token.delta"; tokens: number; burnRate: "quiet" | "steady" | "hot" | "overdrive" } | { type: "milestone.reached"; milestone: string } | { type: "lifecycle.stageChanged"; stage: PetLifeStage } | { type: "day.digestReady" };
+export type PetDirectorEvent = { type: "actor.actionRequested"; action: PetActionId } | { type: "ambient.blink" } | { type: "ambient.rest"; reason: "inactivity" | "night" } | { type: "ambient.wake"; reason: "startup" | "day" | "activity" } | { type: "mood.thresholdCrossed"; previous: MoodLookId; mood: MoodLookId; loop?: MoodActorLoop } | { type: "mood.reactionPulse"; mood: Extract<MoodLookId, "hot" | "overdrive"> } | { type: "pointer.click" } | { type: "pointer.dragStart" } | { type: "pointer.drop" } | { type: "quickPlay.action"; action: QuickPlayActionId } | { type: "token.delta"; tokens: number; burnRate: "quiet" | "steady" | "hot" | "overdrive"; mood?: MoodLookId; loop?: MoodActorLoop } | { type: "milestone.reached"; milestone: string } | { type: "lifecycle.stageChanged"; stage: PetLifeStage } | { type: "day.digestReady" };
 
 export type CcusageDailyRow = {
   date?: string;

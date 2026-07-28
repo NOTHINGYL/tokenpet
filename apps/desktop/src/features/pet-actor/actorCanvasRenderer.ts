@@ -1,5 +1,6 @@
 import { actorSlotOrder } from "./canonicalActor";
 import type { ActorAnchor, ActorRenderAttachment, ActorSlotId, CatSkin, PetActorFrame, Point, Rect } from "./actorTypes";
+import { drawMoodSemanticIcon, moodHotIconAssetPath, resolveMoodBadgeTone } from "../pet-story/moodVisuals";
 
 type ActorImageMap = Map<string, HTMLImageElement>;
 
@@ -12,6 +13,7 @@ type SkinPlacement = {
 export function collectPetActorAssets(frame: PetActorFrame) {
   const assets = new Set<string>();
   assets.add(frame.skin.attachments.fullBody);
+  assets.add(moodHotIconAssetPath);
   frame.attachments.forEach((attachment) => {
     if (attachment.asset) assets.add(attachment.asset);
   });
@@ -171,31 +173,78 @@ function drawContactShadow(context: CanvasRenderingContext2D, center: Point, wid
   context.restore();
 }
 
-function drawMoodBadge(context: CanvasRenderingContext2D, frame: PetActorFrame) {
+function drawMoodBadge(context: CanvasRenderingContext2D, frame: PetActorFrame, images: ActorImageMap, time: number) {
   const badge = frame.moodBadge;
   if (!badge) return;
 
-  const rect = { ...badge.rect };
-  const palette: Record<string, { bg: string; stroke: string; text: string }> = {
-    sleepy: { bg: "rgba(239, 246, 255, 0.96)", stroke: "rgba(49, 84, 120, 0.18)", text: "#315478" },
-    focused: { bg: "rgba(225, 246, 232, 0.96)", stroke: "rgba(47, 148, 97, 0.18)", text: "#176c3a" },
-    hot: { bg: "rgba(255, 237, 213, 0.96)", stroke: "rgba(179, 90, 2, 0.18)", text: "#a34308" },
-    overdrive: { bg: "rgba(255, 228, 230, 0.96)", stroke: "rgba(200, 48, 48, 0.2)", text: "#b42318" },
-  };
-  const tone = frame.appearance.moodBadge.colorByState ? (palette[badge.tone] ?? palette.focused) : palette.focused;
+  const rect = badge.style === "iconOnly"
+    ? { ...badge.rect, x: badge.rect.x + (badge.rect.width - badge.rect.height) / 2, width: badge.rect.height }
+    : { ...badge.rect };
+  const tone = resolveMoodBadgeTone(
+    badge.tone,
+    frame.appearance.moodBadge.colorByState,
+    badge.color,
+  );
 
   context.save();
+  if (badge.entryPulse && time < .4) {
+    const progress = Math.max(0, Math.min(1, time / .4));
+    const scale = progress < .55
+      ? .94 + (.12 * progress / .55)
+      : 1.06 - (.06 * (progress - .55) / .45);
+    context.globalAlpha *= Math.min(1, .7 + progress * .55);
+    context.translate(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    context.scale(scale, scale);
+    context.translate(-(rect.x + rect.width / 2), -(rect.y + rect.height / 2));
+  }
   drawRoundRect(context, rect, rect.height / 2);
-  context.fillStyle = tone.bg;
+  context.fillStyle = tone.background;
   context.fill();
   context.lineWidth = 3;
-  context.strokeStyle = tone.stroke;
+  context.strokeStyle = tone.border;
   context.stroke();
-  context.fillStyle = tone.text;
-  context.textAlign = "center";
+  context.fillStyle = tone.foreground;
+  context.textAlign = "left";
   context.textBaseline = "middle";
-  context.font = "800 52px Inter, system-ui, sans-serif";
-  context.fillText(badge.label, rect.x + rect.width / 2, rect.y + rect.height / 2 + 1);
+  let fontSize = 52;
+  context.font = `800 ${fontSize}px Inter, system-ui, sans-serif`;
+  let iconSize = fontSize * 0.72;
+  if (badge.style === "iconOnly") {
+    drawMoodSemanticIcon(
+      context,
+      badge.tone,
+      rect.x + rect.width / 2,
+      rect.y + rect.height / 2,
+      Math.min(rect.width, rect.height) * .48,
+      tone.foreground,
+      images.get(moodHotIconAssetPath),
+    );
+    context.restore();
+    return;
+  }
+  let gap = fontSize * 0.22;
+  let textWidth = context.measureText(badge.label).width;
+  const availableWidth = Math.max(1, rect.width - 22);
+  const naturalWidth = iconSize + gap + textWidth;
+  if (naturalWidth > availableWidth) {
+    fontSize = Math.max(22, fontSize * availableWidth / naturalWidth);
+    context.font = `800 ${fontSize}px Inter, system-ui, sans-serif`;
+    iconSize = fontSize * 0.72;
+    gap = fontSize * 0.22;
+    textWidth = context.measureText(badge.label).width;
+  }
+  const contentWidth = iconSize + gap + textWidth;
+  const contentStart = rect.x + (rect.width - contentWidth) / 2;
+  drawMoodSemanticIcon(
+    context,
+    badge.tone,
+    contentStart + iconSize / 2,
+    rect.y + rect.height / 2,
+    iconSize,
+    tone.foreground,
+    images.get(moodHotIconAssetPath),
+  );
+  context.fillText(badge.label, contentStart + iconSize + gap, rect.y + rect.height / 2 + 1);
   context.restore();
 }
 
@@ -274,7 +323,7 @@ function drawSlot(
   }
 
   if (slot === "moodBadge") {
-    drawMoodBadge(context, frame);
+    drawMoodBadge(context, frame, images, time);
   }
 }
 

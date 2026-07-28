@@ -1572,6 +1572,15 @@ async function run() {
   qa.toggleMenuBar();
   let menuBar = await waitForWindow(qa, "menubar");
   await waitForDom(menuBar, ".menubar-panel");
+  await waitFor(() => menuBar.isVisible(), "visible Menu Bar window");
+  menuBar.hide();
+  qa.toggleMenuBar();
+  await waitFor(() => safeWindow(qa, "menubar")?.id === menuBar.id && menuBar.isVisible(), "hidden Menu Bar re-show");
+  verify(
+    "Menu Bar click re-shows a retained hidden panel",
+    safeWindow(qa, "menubar")?.id === menuBar.id && menuBar.isVisible(),
+    "a usable but hidden panel is shown instead of being mistaken for an open panel to close",
+  );
   const crashedMenuId = menuBar.id;
   await forceRendererCrash(menuBar, "Menu Bar");
   qa.toggleMenuBar();

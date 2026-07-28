@@ -1,5 +1,5 @@
 import type { SyntheticEvent } from "react";
-import type { CursorTrackingVisual, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
+import type { CursorTrackingVisual, MoodBadgeStyle, MoodLookId, MotionActionId, PetActionId, PetAppearanceSettings, UsageSnapshot } from "../../types";
 import { getAccessory, getTokenBubbleLabel } from "./appearanceView";
 import { PetNameBubble } from "./PetNameBubble";
 import { PetRenderer } from "../pet-runtime/PetRenderer";
@@ -7,7 +7,12 @@ import { PetRenderer } from "../pet-runtime/PetRenderer";
 type PetCompositorProps = {
   appearance: PetAppearanceSettings;
   usage: UsageSnapshot;
+  tokenValue?: number;
   moodId?: MoodLookId;
+  moodBadgeVisible?: boolean;
+  moodBadgeColor?: string;
+  moodBadgeStyle?: MoodBadgeStyle;
+  moodBadgePulse?: boolean;
   actionId?: PetActionId;
   storyActionId?: PetActionId;
   motionActionId?: MotionActionId;
@@ -54,7 +59,7 @@ export function PetCompositor(props: PetCompositorProps) {
       {isSleepVisual && props.surface === "preview" ? (
         <PetNameBubble
           name={props.appearance.identity.name}
-          content={getTokenBubbleLabel("pill", props.usage) ?? "0"}
+          content={getTokenBubbleLabel("pill", props.usage, props.tokenValue) ?? "0"}
           contentMode="token"
           visible
           surface="preview"
