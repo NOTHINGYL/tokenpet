@@ -1,0 +1,38 @@
+name: Feature request
+description: Suggest a focused improvement for TokenPet.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: What would this improve for TokenPet users?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed experience
+      description: Describe the interaction, not only the implementation.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Desktop pet
+        - Quick Play action
+        - Menu bar
+        - Console
+        - Appearance
+        - Mood & Reactions
+        - Usage sources
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered

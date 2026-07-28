@@ -3,6 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "description": "A tiny desktop pet that tracks your AI tokens, quotas, and burn rate.",
+  "keywords": [
+    "macos",
+    "electron",
+    "desktop-pet",
+    "codex",
+    "token-usage",
+    "ai-tools"
+  ],
+  "author": "NOTHINGYL",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NOTHINGYL/tokenpet.git"
+  },
+  "homepage": "https://github.com/NOTHINGYL/tokenpet#readme",
+  "bugs": {
+    "url": "https://github.com/NOTHINGYL/tokenpet/issues"
+  },
   "license": "MIT",
   "type": "module",
   "main": "dist-electron/main.js",
@@ -14,7 +31,8 @@
     "dev": "node scripts/dev.mjs",
     "build": "npm run build:pet-assets && npm run build:main && npm run build:renderer",
     "build:pet-schema": "npm --prefix packages/pet-asset-schema run build",
-    "build:dance-video": "electron tools/pet-asset-studio/scripts/render-dance-video.cjs",
+    "build:dance-video": "npm run build:dance-video:authoring",
+    "build:dance-video:authoring": "electron tools/pet-asset-studio/scripts/render-dance-video.cjs",
     "qa:dance-video": "electron tools/pet-asset-studio/scripts/verify-dance-video.cjs && node tools/pet-asset-studio/scripts/verify-dance-registration.cjs",
     "build:pet-assets": "npm run build:pet-schema && node scripts/prepare-pet-assets.mjs",
     "build:main": "node -e \"require('node:fs').rmSync('dist-electron',{recursive:true,force:true})\" && tsc -p apps/desktop/electron/tsconfig.json && cp apps/desktop/electron/preload.cjs dist-electron/preload.cjs",
@@ -22,6 +40,7 @@
     "screenshots": "npm run qa:pet-story",
     "capture:readme": "npm run build && electron scripts/capture-screenshots.cjs && electron scripts/capture-readme-assets.cjs",
     "verify:readme": "node scripts/verify-readme-assets.mjs",
+    "verify:public": "node scripts/verify-public-readiness.mjs",
     "verify:pet-story": "node scripts/run-pet-story-verification.mjs",
     "verify:pet-story:demo": "node scripts/verify-pet-story-demo.mjs",
     "test:pet-story:runtime": "npm run build:main && node scripts/verify-pet-story-runtime.mjs",

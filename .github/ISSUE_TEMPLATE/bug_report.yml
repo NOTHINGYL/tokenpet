@@ -1,0 +1,60 @@
+name: Bug report
+description: Report a reproducible TokenPet problem.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve TokenPet. Do not attach prompts, source code, API keys, private file paths, or raw usage logs.
+  - type: input
+    id: version
+    attributes:
+      label: TokenPet version
+      placeholder: v1.0.0 or a commit SHA
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS and Mac
+      placeholder: macOS 15.5, Apple Silicon
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the visible behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Launch TokenPet
+        2. Double-click the cat
+        3. Select ...
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Desktop pet
+        - Quick Play action
+        - Menu bar
+        - Console overview
+        - Appearance
+        - Mood & Reactions
+        - Installation or build
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Sanitized screenshots are welcome. Remove private usage data and paths first.

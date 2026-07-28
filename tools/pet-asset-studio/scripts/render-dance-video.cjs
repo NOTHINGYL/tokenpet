@@ -1,6 +1,6 @@
 const { app, BrowserWindow } = require("electron");
 const { spawn } = require("node:child_process");
-const { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require("node:fs/promises");
+const { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } = require("node:fs/promises");
 const { join, resolve } = require("node:path");
 const { tmpdir } = require("node:os");
 const crypto = require("node:crypto");
@@ -52,6 +52,16 @@ async function waitForRenderer(window) {
 }
 
 async function render() {
+  if (!previewOnly) {
+    try {
+      await access(referenceAudio);
+    } catch {
+      throw new Error(
+        "The Dance video renderer requires private authoring inputs that are intentionally not distributed. "
+        + "The checked-in production video remains ready for normal builds and runtime QA.",
+      );
+    }
+  }
   await mkdir(sourceRoot, { recursive: true });
   await mkdir(publicRoot, { recursive: true });
   await mkdir(publicAudioRoot, { recursive: true });

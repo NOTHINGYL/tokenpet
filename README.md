@@ -80,7 +80,7 @@ TokenPet currently targets macOS and requires Node.js 18.20 or newer.
 ```bash
 git clone https://github.com/NOTHINGYL/tokenpet.git
 cd tokenpet
-npm install
+npm ci
 npm run launch
 ```
 
@@ -118,7 +118,7 @@ The export manifest at [`docs/readme/manifest.json`](./docs/readme/manifest.json
 
 ## Contributing
 
-Issues and focused pull requests are welcome. If TokenPet makes local AI usage feel a little more alive, consider starring the repository—it helps more people discover the project.
+Issues and focused pull requests are welcome. Please read the [contribution guidelines](./CONTRIBUTING.md) before proposing a change, and use the [security policy](./SECURITY.md) for private vulnerability reports. If TokenPet makes local AI usage feel a little more alive, consider starring the repository—it helps more people discover the project.
 
 ## License
 

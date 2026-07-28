@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, powerMonitor, screen, Tray } from "electron";
-import type { Rectangle } from "electron";
+import type { IpcMainEvent, IpcMainInvokeEvent, Rectangle } from "electron";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,6 +60,8 @@ import {
 } from "./quick-play/executors/index.js";
 import type { FeedSnackLocomotionId as FeedSnackSemanticLocomotionId, FeedSnackPropStage } from "./quick-play/executors/feed-snack.js";
 import type { DancePhase } from "./quick-play/executors/dance.js";
+
+app.enableSandbox();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -254,12 +256,63 @@ const PET_WINDOW_SIZE = {
 };
 
 type ConsoleTab = "overview" | "breakdown" | "cost" | "pet" | "settings";
+type RendererView = "pet" | "popover" | "menubar" | "console" | "quick-play-overlay";
+
+const rendererViews = new Set<RendererView>(["pet", "popover", "menubar", "console", "quick-play-overlay"]);
+
+function trustedRendererViewForUrl(value: string): RendererView | null {
+  try {
+    const url = new URL(value);
+    const view = url.searchParams.get("view") as RendererView | null;
+    if (!view || !rendererViews.has(view)) return null;
+
+    if (isDev && devServerUrl) {
+      return url.origin === new URL(devServerUrl).origin ? view : null;
+    }
+
+    if (url.protocol !== "file:") return null;
+    const expectedPath = join(__dirname, "../dist-renderer/index.html");
+    return fileURLToPath(url) === expectedPath ? view : null;
+  } catch {
+    return null;
+  }
+}
+
+function isTrustedRendererUrl(value: string) {
+  return trustedRendererViewForUrl(value) !== null;
+}
+
+type IpcSenderEvent = IpcMainEvent | IpcMainInvokeEvent;
+
+function ipcSenderView(event: IpcSenderEvent) {
+  return trustedRendererViewForUrl(event.senderFrame?.url ?? event.sender.getURL());
+}
+
+function isTrustedIpcSender(event: IpcSenderEvent, ...allowedViews: RendererView[]) {
+  const view = ipcSenderView(event);
+  return view !== null && (allowedViews.length === 0 || allowedViews.includes(view));
+}
+
+function assertTrustedIpcSender(event: IpcSenderEvent, ...allowedViews: RendererView[]) {
+  const view = ipcSenderView(event);
+  if (view === null || (allowedViews.length > 0 && !allowedViews.includes(view))) {
+    throw new Error("Blocked IPC request from an untrusted TokenPet renderer");
+  }
+  return view;
+}
 
 function isUsableWindow(window: BrowserWindow | null): window is BrowserWindow {
   return Boolean(window && !window.isDestroyed() && !rendererGoneWindows.has(window) && !window.webContents.isCrashed());
 }
 
 function trackWindowHealth(window: BrowserWindow) {
+  window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  window.webContents.on("will-navigate", (event, url) => {
+    if (!isTrustedRendererUrl(url)) event.preventDefault();
+  });
+  window.webContents.on("will-redirect", (event, url) => {
+    if (!isTrustedRendererUrl(url)) event.preventDefault();
+  });
   window.webContents.on("render-process-gone", (_event, details) => {
     if (details.reason !== "clean-exit") {
       rendererGoneWindows.add(window);
@@ -281,7 +334,7 @@ function currentCursorScreenPoint() {
   return isMainProcessQa && mainProcessQaCursor ? mainProcessQaCursor : screen.getCursorScreenPoint();
 }
 
-function rendererUrl(view: "pet" | "popover" | "menubar" | "console" | "quick-play-overlay", params: Record<string, string> = {}) {
+function rendererUrl(view: RendererView, params: Record<string, string> = {}) {
   const query = new URLSearchParams({ view, ...params }).toString();
   if (isDev && devServerUrl) {
     return `${devServerUrl}/?${query}`;
@@ -292,7 +345,7 @@ function rendererUrl(view: "pet" | "popover" | "menubar" | "console" | "quick-pl
 
 async function loadWindow(
   window: BrowserWindow,
-  view: "pet" | "popover" | "menubar" | "console" | "quick-play-overlay",
+  view: RendererView,
   params?: Record<string, string>,
 ) {
   await window.loadURL(rendererUrl(view, params));
@@ -2353,34 +2406,49 @@ app.on("window-all-closed", () => {
   }
 });
 
-ipcMain.handle("usage:get-snapshot", () => loadAndPublishUsage());
+ipcMain.handle("usage:get-snapshot", (event) => {
+  assertTrustedIpcSender(event);
+  return loadAndPublishUsage();
+});
 
-ipcMain.handle("usage:refresh-snapshot", () => loadAndPublishUsage({ force: true }));
+ipcMain.handle("usage:refresh-snapshot", (event) => {
+  assertTrustedIpcSender(event);
+  return loadAndPublishUsage({ force: true });
+});
 
-ipcMain.handle("app:get-settings", () => currentSettings());
+ipcMain.handle("app:get-settings", (event) => {
+  assertTrustedIpcSender(event);
+  return currentSettings();
+});
 
-ipcMain.handle("app:set-setting", (_event, key: keyof AppSettings, value: AppSettings[keyof AppSettings]) =>
-  setSetting(key, value),
-);
+ipcMain.handle("app:set-setting", (event, key: keyof AppSettings, value: AppSettings[keyof AppSettings]) => {
+  assertTrustedIpcSender(event);
+  return setSetting(key, value);
+});
 
-ipcMain.on("pet:toggle-popover", () => {
+ipcMain.on("pet:toggle-popover", (event) => {
+  if (!isTrustedIpcSender(event, "pet")) return;
   togglePopover();
 });
 
-ipcMain.on("pet:close", () => {
+ipcMain.on("pet:close", (event) => {
+  if (!isTrustedIpcSender(event, "pet")) return;
   setSetting("petVisible", false);
 });
 
-ipcMain.on("popover:close", () => {
+ipcMain.on("popover:close", (event) => {
+  if (!isTrustedIpcSender(event, "popover")) return;
   closeUsableWindow(popoverWindow);
 });
 
-ipcMain.on("app:open-console", (_event, requestedTab: ConsoleTab = "overview") => {
+ipcMain.on("app:open-console", (event, requestedTab: ConsoleTab = "overview") => {
+  if (!isTrustedIpcSender(event, "menubar", "popover")) return;
   const tab: ConsoleTab = ["overview", "breakdown", "cost", "pet", "settings"].includes(requestedTab) ? requestedTab : "overview";
   openConsoleWindow(tab);
 });
 
-ipcMain.on("app:quit", () => {
+ipcMain.on("app:quit", (event) => {
+  if (!isTrustedIpcSender(event, "menubar")) return;
   quitTokenPet();
 });
 
@@ -2399,9 +2467,13 @@ const consolePetActionIds = new Set<PetActionId>([
   "click_purr", "token_snack", "play_cursor", "drag_dangle", "toss_yarn", "nap_here", "wake_up", "dance", "summon_to_screen", "capture_moment",
 ]);
 
-ipcMain.handle("quick-play:get-session", () => currentQuickPlaySession());
+ipcMain.handle("quick-play:get-session", (event) => {
+  assertTrustedIpcSender(event, "pet", "popover");
+  return currentQuickPlaySession();
+});
 
-ipcMain.on("pet:director-state", (_event, state: { action?: PetActionId; resting?: boolean }) => {
+ipcMain.on("pet:director-state", (event, state: { action?: PetActionId; resting?: boolean }) => {
+  if (!isTrustedIpcSender(event, "pet")) return;
   if (state && typeof state.action === "string" && typeof state.resting === "boolean") {
     // Automatic renderer events cannot shorten an explicit five-minute Nap.
     // The timer expiry or an accepted Quick Play action clears timedNapState
@@ -2466,7 +2538,8 @@ ipcMain.on("quick-play:overlay-input", (event, input: { type?: string; screenX?:
 });
 
 ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetActionId) => {
-  const fromQuickPlay = new URL(event.sender.getURL()).searchParams.get("view") === "popover";
+  const senderView = assertTrustedIpcSender(event, "popover", "console");
+  const fromQuickPlay = senderView === "popover";
   if (!fromQuickPlay && consolePetActionIds.has(action as PetActionId)) {
     emitPetDirectorEvent({ type: "actor.actionRequested", action: action as PetActionId });
     return { accepted: true };
@@ -2490,11 +2563,20 @@ ipcMain.handle("pet:dispatch-action", (event, action: QuickPlayActionId | PetAct
   return { accepted: true };
 });
 
-ipcMain.handle("pet:summon", () => summonPetToCurrentScreen());
+ipcMain.handle("pet:summon", (event) => {
+  assertTrustedIpcSender(event, "pet");
+  return summonPetToCurrentScreen();
+});
 
-ipcMain.handle("pet:traverse", () => traversePetAcrossWorkArea());
+ipcMain.handle("pet:traverse", (event) => {
+  assertTrustedIpcSender(event, "pet");
+  return traversePetAcrossWorkArea();
+});
 
-ipcMain.handle("pet:capture-moment", () => capturePetMoment());
+ipcMain.handle("pet:capture-moment", (event) => {
+  assertTrustedIpcSender(event, "pet");
+  return capturePetMoment();
+});
 
 function stopDrag() {
   if (!dragState) return;
@@ -2510,7 +2592,8 @@ function stopDrag() {
   }
 }
 
-ipcMain.handle("pet:start-drag", () => {
+ipcMain.handle("pet:start-drag", (event) => {
+  assertTrustedIpcSender(event, "pet");
   cancelPetTraversal();
   if (!isUsableWindow(petWindow) || settings.petStory.lockPosition || quickPlaySession.activeAction !== null) return { started: false };
 
@@ -2544,7 +2627,8 @@ ipcMain.handle("pet:start-drag", () => {
   return { started: true };
 });
 
-ipcMain.handle("pet:end-drag", () => {
+ipcMain.handle("pet:end-drag", (event) => {
+  assertTrustedIpcSender(event, "pet");
   const moved = dragState?.moved ?? false;
   stopDrag();
   if (moved && isUsableWindow(petWindow)) {

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Build and verify
+    runs-on: macos-14
+    timeout-minutes: 30
+    env:
+      TOKENPET_USE_PREBUILT_ASSETS: "1"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 18.20.8
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.20.8
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
+      - name: Verify public repository boundary
+        run: npm run verify:public
+
+      - name: Typecheck and build public bundle
+        run: npm run check
+
+      - name: Verify Pet Story runtime
+        run: npm run test:pet-story
+
+      - name: Verify Dance video and audio
+        run: npm run qa:dance-video
+
+      - name: Verify README media
+        run: npm run verify:readme

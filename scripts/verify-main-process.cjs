@@ -302,6 +302,27 @@ async function run() {
   await main.tokenPetReady;
   const qa = main.mainProcessQa;
   verify("main-process QA guard", qa.enabled === true, "production main is running through the explicit QA environment guard");
+
+  const untrustedRenderer = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      preload: join(root, "dist-electron", "preload.cjs"),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  await untrustedRenderer.loadURL("data:text/html,<title>Untrusted TokenPet IPC QA</title>");
+  const untrustedIpcBlocked = await execute(
+    untrustedRenderer,
+    "window.tokenpet.getAppSettings().then(() => false, () => true)",
+  );
+  verify(
+    "Untrusted renderer IPC is rejected",
+    untrustedIpcBlocked === true,
+    "a renderer outside the packaged TokenPet URL and view allowlist cannot invoke privileged IPC",
+  );
+  untrustedRenderer.destroy();
+
   const trayIcon = qa.getTrayIconInfo();
   verify(
     "Menu bar pet icon is launch-ready",
